@@ -1,53 +1,69 @@
-﻿const mongoose = require('mongoose');
+const mongoose = require('mongoose');
+
+const proposalItemSchema = new mongoose.Schema({
+  productId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Product'
+  },
+  productName: String,
+  quantity: Number,
+  unit: String,
+  unitPrice: {
+    type: Number,
+    required: true
+  },
+  totalPrice: Number,
+  packaging: String,
+  deliveryTerms: String,
+  notes: String
+});
 
 const proposalSchema = new mongoose.Schema({
-  proposalId: {
+  proposalNumber: {
     type: String,
-    unique: true,
-    sparse: true
+    unique: true
   },
-  request: {
+  rfq: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Request',
+    ref: 'RFQ',
     required: true
   },
   supplier: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Company',
+    ref: 'User',
     required: true
   },
-  status: {
-    type: String,
-    enum: ['pending', 'submitted', 'in_review', 'accepted', 'rejected', 'negotiating'],
-    default: 'pending'
+  supplierCompany: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Company'
   },
-  products: [{
-    product: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Product'
-    },
-    quantity: Number,
-    price: Number,
-    notes: String
-  }],
-  totalValue: Number,
+  items: [proposalItemSchema],
+  totalAmount: {
+    type: Number,
+    required: true
+  },
   currency: {
     type: String,
     default: 'USD'
   },
-  incoterms: String,
-  portOfLoading: String,
-  paymentTerms: String,
-  deliveryTime: String,
-  validUntil: Date,
-  brandingLabel: String,
-  documents: {
-    proposal: String,
-    productImages: [String],
-    certificates: [String],
-    forecast: String
+  validUntil: {
+    type: Date,
+    required: true
   },
-  notes: String,
+  deliveryDate: Date,
+  paymentTerms: String,
+  shippingTerms: String,
+  additionalTerms: String,
+  attachments: [{
+    name: String,
+    url: String,
+    type: String
+  }],
+  status: {
+    type: String,
+    enum: ['draft', 'submitted', 'under_review', 'accepted', 'rejected', 'expired'],
+    default: 'draft'
+  },
   createdAt: {
     type: Date,
     default: Date.now
@@ -58,10 +74,14 @@ const proposalSchema = new mongoose.Schema({
   }
 });
 
-// Update timestamp on save
-proposalSchema.pre('save', function(next) {
-  this.updatedAt = new Date();
+// Generate proposal number
+proposalSchema.pre('save', async function(next) {
+  if (!this.proposalNumber) {
+    const count = await this.constructor.countDocuments();
+    this.proposalNumber = `PROP-${new Date().getFullYear()}-${String(count + 1).padStart(5, '0')}`;
+  }
   next();
 });
 
-module.exports = mongoose.model('Proposal', proposalSchema);
+const Proposal = mongoose.model('Proposal', proposalSchema);
+module.exports = Proposal;

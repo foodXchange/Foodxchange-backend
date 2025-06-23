@@ -1,15 +1,22 @@
-﻿const mongoose = require('mongoose');
+const mongoose = require('mongoose');
+
+const orderItemSchema = new mongoose.Schema({
+  productId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Product'
+  },
+  productName: String,
+  quantity: Number,
+  unit: String,
+  unitPrice: Number,
+  totalPrice: Number,
+  packaging: String
+});
 
 const orderSchema = new mongoose.Schema({
-  orderId: {
+  orderNumber: {
     type: String,
-    unique: true,
-    required: true
-  },
-  poNumber: {
-    type: String,
-    unique: true,
-    required: true
+    unique: true
   },
   rfq: {
     type: mongoose.Schema.Types.ObjectId,
@@ -25,66 +32,47 @@ const orderSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
-  buyerCompany: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Company',
-    required: true
-  },
   supplier: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Company',
+    ref: 'User',
     required: true
+  },
+  items: [orderItemSchema],
+  totalAmount: {
+    type: Number,
+    required: true
+  },
+  currency: {
+    type: String,
+    default: 'USD'
   },
   status: {
     type: String,
-    enum: ['draft', 'confirmed', 'in_production', 'shipped', 'in_transit', 'delivered', 'completed', 'cancelled'],
-    default: 'draft'
+    enum: ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'],
+    default: 'pending'
   },
-  orderDetails: {
-    products: [{
-      productName: String,
-      quantity: Number,
-      unit: String,
-      unitPrice: Number,
-      totalPrice: Number
-    }],
-    totalAmount: Number,
-    currency: { type: String, default: 'USD' }
+  paymentStatus: {
+    type: String,
+    enum: ['pending', 'partial', 'paid'],
+    default: 'pending'
   },
-  shipping: {
-    incoterm: String,
+  shippingDetails: {
+    address: String,
     method: String,
-    originPort: String,
-    destinationPort: String,
-    estimatedDeparture: Date,
-    estimatedArrival: Date,
-    actualDeparture: Date,
-    actualArrival: Date
-  },
-  payment: {
-    terms: String,
-    method: String,
-    dueDate: Date,
-    status: { 
-      type: String, 
-      enum: ['pending', 'partial', 'paid', 'overdue'],
-      default: 'pending'
-    }
+    trackingNumber: String,
+    estimatedDelivery: Date
   },
   documents: [{
+    type: String,
     name: String,
-    type: { 
-      type: String,
-      enum: ['po', 'invoice', 'packing_list', 'bol', 'coa', 'other']
-    },
     url: String,
-    uploadedAt: { type: Date, default: Date.now }
+    uploadedAt: Date
   }],
-  shipments: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Shipment'
+  timeline: [{
+    status: String,
+    date: Date,
+    note: String
   }],
-  notes: String,
   createdAt: {
     type: Date,
     default: Date.now
@@ -95,19 +83,24 @@ const orderSchema = new mongoose.Schema({
   }
 });
 
-// Auto-generate Order ID and PO Number
+// Generate order number
 orderSchema.pre('save', async function(next) {
-  if (this.isNew) {
+  if (!this.orderNumber) {
     const count = await this.constructor.countDocuments();
-    if (!this.orderId) {
-      this.orderId = `ORD-${String(count + 1).padStart(5, '0')}`;
-    }
-    if (!this.poNumber) {
-      this.poNumber = `PO-${String(count + 1).padStart(5, '0')}`;
-    }
+    this.orderNumber = `ORD-${new Date().getFullYear()}-${String(count + 1).padStart(5, '0')}`;
   }
-  this.updatedAt = new Date();
+  
+  // Add to timeline
+  if (this.isNew) {
+    this.timeline.push({
+      status: 'created',
+      date: new Date(),
+      note: 'Order created'
+    });
+  }
+  
   next();
 });
 
-module.exports = mongoose.model('Order', orderSchema);
+const Order = mongoose.model('Order', orderSchema);
+module.exports = Order;

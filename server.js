@@ -63,19 +63,11 @@ try {
   console.log('✅ Auth routes loaded');
 } catch (err) {
   console.warn('⚠️  Auth routes not found, creating mock endpoint');
-  const productsRoutes = require('./src/routes/products');
-const requestsRoutes = require('./src/routes/requests');
-const ordersRoutes = require('./src/routes/orders');
-
-app.use('/api/products', productsRoutes);
-app.use('/api/requests', requestsRoutes);
-app.use('/api/rfqs', requestsRoutes); // Alias for requests
-app.use('/api/orders', ordersRoutes);
   // Mock auth endpoint for testing
   app.post('/api/auth/login', (req, res) => {
     const { email, password } = req.body;
     console.log('Login attempt:', email);
-    
+
     // Mock successful login for testing
     if (email === 'buyer@test.com' && password === 'password123') {
       res.json({
@@ -93,6 +85,22 @@ app.use('/api/orders', ordersRoutes);
     }
   });
 }
+
+// Import and use other routes outside the try-catch
+const productsRoutes = require('./src/routes/products');
+const requestsRoutes = require('./src/routes/requests');
+const ordersRoutes = require('./src/routes/orders');
+const rfqRoutes = require('./src/routes/rfqs');
+const proposalRoutes = require('./src/routes/proposals');
+
+app.use('/api/rfqs', rfqRoutes);
+app.use('/api/proposals', proposalRoutes);
+app.use('/api/orders', ordersRoutes);
+
+app.use('/api/products', productsRoutes);
+app.use('/api/requests', requestsRoutes);
+app.use('/api/rfqs', requestsRoutes); // Alias for requests
+app.use('/api/orders', ordersRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

@@ -1,154 +1,108 @@
-﻿const Proposal = require('../models/Proposal');
+const Proposal = require('../models/Proposal');
 const RFQ = require('../models/RFQ');
 
-// Get all proposals for buyer's RFQs
-const getBuyerProposals = async (req, res) => {
+// Create new proposal
+exports.createProposal = async (req, res) => {
   try {
-    const userId = req.user._id;
-    const { rfqId, status } = req.query;
-    
-    // First get all RFQs for this buyer
-    let rfqQuery = { buyer: userId };
-    if (rfqId) {
-      rfqQuery.rfqId = rfqId;
-    }
-    
-    const buyerRFQs = await RFQ.find(rfqQuery).select('_id');
-    const rfqIds = buyerRFQs.map(rfq => rfq._id);
-    
-    // Now get all proposals for these RFQs
-    let proposalQuery = { rfq: { $in: rfqIds } };
-    if (status && status !== 'All') {
-      proposalQuery.status = status.toLowerCase().replace(' ', '_');
-    }
-    
-    const proposals = await Proposal.find(proposalQuery)
-      .populate('rfq', 'rfqId title productInfo')
-      .populate('supplier', 'name country certifications')
-      .sort('-createdAt');
-    
-    res.json(proposals);
+    const proposalData = {
+      ...req.body,
+      supplier: req.user._id,
+      supplierCompany: req.user.company
+    };
+
+    const proposal = new Proposal(proposalData);
+    await proposal.save();
+
+    // Update RFQ proposal count
+    await RFQ.findByIdAndUpdate(req.body.rfq, {
+      $inc: { proposalCount: 1 }
+    });
+
+    res.status(201).json(proposal);
   } catch (error) {
-    console.error('Get buyer proposals error:', error);
-    res.status(400).json({ error: error.message });
+    console.error('Error creating proposal:', error);
+    res.status(500).json({ error: 'Failed to create proposal' });
   }
 };
 
-// Compare proposals for an RFQ
-const compareProposals = async (req, res) => {
+// Get proposals for an RFQ
+exports.getProposalsByRFQ = async (req, res) => {
   try {
-    const { rfqId } = req.params;
-    const userId = req.user._id;
+    const rfq = await RFQ.findById(req.params.rfqId);
     
-    // Verify RFQ ownership
-    const rfq = await RFQ.findOne({ rfqId, buyer: userId });
     if (!rfq) {
       return res.status(404).json({ error: 'RFQ not found' });
     }
-    
-    // Get all proposals for this RFQ
-    const proposals = await Proposal.find({ 
-      rfq: rfq._id,
-      status: { $in: ['submitted', 'under_review', 'selected'] }
-    })
-      .populate('supplier', 'name country certifications')
-      .sort('pricing.unitPrice');
-    
-    // Format for comparison
-    const comparison = proposals.map(proposal => ({
-      proposalId: proposal.proposalId,
-      supplier: proposal.supplier,
-      pricing: proposal.pricing,
-      terms: proposal.terms,
-      certifications: proposal.productDetails.certifications,
-      sampleStatus: proposal.sampleInfo,
-      status: proposal.status,
-      score: calculateProposalScore(proposal)
-    }));
-    
-    res.json({
-      rfq: {
-        rfqId: rfq.rfqId,
-        title: rfq.title,
-        productInfo: rfq.productInfo
-      },
-      proposals: comparison
-    });
+
+    // Check if user has access
+    if (rfq.buyer.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const proposals = await Proposal.find({ rfq: req.params.rfqId })
+      .populate('supplier', 'name email')
+      .populate('supplierCompany', 'name');
+
+    res.json(proposals);
   } catch (error) {
-    console.error('Compare proposals error:', error);
-    res.status(400).json({ error: error.message });
+    console.error('Error fetching proposals:', error);
+    res.status(500).json({ error: 'Failed to fetch proposals' });
   }
 };
 
-// Select a proposal
-const selectProposal = async (req, res) => {
+// Get single proposal
+exports.getProposalById = async (req, res) => {
   try {
-    const { proposalId } = req.params;
-    const userId = req.user._id;
-    
-    // Get proposal and verify ownership through RFQ
-    const proposal = await Proposal.findById(proposalId).populate('rfq');
+    const proposal = await Proposal.findById(req.params.id)
+      .populate('rfq')
+      .populate('supplier', 'name email')
+      .populate('supplierCompany', 'name');
+
     if (!proposal) {
       return res.status(404).json({ error: 'Proposal not found' });
     }
-    
-    if (proposal.rfq.buyer.toString() !== userId.toString()) {
-      return res.status(403).json({ error: 'Unauthorized' });
+
+    // Check access
+    const rfq = await RFQ.findById(proposal.rfq._id);
+    if (proposal.supplier._id.toString() !== req.user._id.toString() && 
+        rfq.buyer.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: 'Access denied' });
     }
-    
-    // Update proposal status
-    proposal.status = 'selected';
-    await proposal.save();
-    
-    // Update other proposals for this RFQ to rejected
-    await Proposal.updateMany(
-      { 
-        rfq: proposal.rfq._id,
-        _id: { $ne: proposalId },
-        status: { $nin: ['selected', 'draft'] }
-      },
-      { status: 'rejected' }
-    );
-    
-    // Update RFQ status
-    await RFQ.findByIdAndUpdate(proposal.rfq._id, { status: 'offer_received' });
-    
-    res.json({
-      message: 'Proposal selected successfully',
-      proposal
-    });
+
+    res.json(proposal);
   } catch (error) {
-    console.error('Select proposal error:', error);
-    res.status(400).json({ error: error.message });
+    console.error('Error fetching proposal:', error);
+    res.status(500).json({ error: 'Failed to fetch proposal' });
   }
 };
 
-// Helper function to calculate proposal score
-function calculateProposalScore(proposal) {
-  let score = 0;
-  
-  // Price score (lower is better)
-  score += 100 - (proposal.pricing.unitPrice * 10);
-  
-  // Lead time score (shorter is better)
-  score += 100 - (proposal.terms.leadTimeDays * 2);
-  
-  // Certification score
-  const certs = proposal.productDetails.certifications;
-  if (certs.kosher) score += 10;
-  if (certs.organic) score += 10;
-  if (certs.vegan) score += 5;
-  if (certs.halal) score += 5;
-  
-  // Sample availability
-  if (proposal.sampleInfo.available) score += 20;
-  if (proposal.sampleInfo.sent) score += 10;
-  
-  return Math.max(0, Math.min(100, score));
-}
+// Accept proposal
+exports.acceptProposal = async (req, res) => {
+  try {
+    const proposal = await Proposal.findById(req.params.id).populate('rfq');
 
-module.exports = {
-  getBuyerProposals,
-  compareProposals,
-  selectProposal
+    if (!proposal) {
+      return res.status(404).json({ error: 'Proposal not found' });
+    }
+
+    // Check if user owns the RFQ
+    const rfq = await RFQ.findById(proposal.rfq._id);
+    if (rfq.buyer.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    proposal.status = 'accepted';
+    await proposal.save();
+
+    // Update RFQ status
+    rfq.status = 'completed';
+    await rfq.save();
+
+    // TODO: Create order from accepted proposal
+
+    res.json(proposal);
+  } catch (error) {
+    console.error('Error accepting proposal:', error);
+    res.status(500).json({ error: 'Failed to accept proposal' });
+  }
 };

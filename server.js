@@ -1,68 +1,132 @@
-﻿const express = require('express');
+const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const helmet = require('helmet');
-const morgan = require('morgan');
 require('dotenv').config();
-
-const corsOptions = require('./src/config/cors');
-const authRoutes = require('./src/routes/auth');
-const rfqRoutes = require('./src/routes/rfqs');
-const dashboardRoutes = require('./src/routes/dashboard');
-const productRoutes = require('./src/routes/products');
-const proposalRoutes = require('./src/routes/proposals');
-const { protect } = require('./src/middleware/auth');
 
 const app = express();
 
-// Security middleware
-app.use(helmet());
-app.use(cors(corsOptions));
-app.use(morgan('dev'));
+// Enable CORS for all origins during development
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Body parser middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/foodxchange', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
-.then(() => console.log('MongoDB connected successfully'))
-.catch(err => console.error('MongoDB connection error:', err));
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  next();
+});
 
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/rfqs', rfqRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/proposals', proposalRoutes);
-
-// Health check
-app.get('/api/health', (req, res) => {
+// Basic route
+app.get('/', (req, res) => {
   res.json({ 
-    status: 'FoodXchange API is running!',
+    message: 'FoodXchange Backend API is running!',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
+    endpoints: {
+      health: '/api/health',
+      auth: '/api/auth/login'
+    }
   });
 });
 
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'OK',
+    service: 'FoodXchange API',
+    timestamp: new Date().toISOString(),
+    mongodb: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected'
+  });
+});
+
+// MongoDB connection
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/foodxchange';
+mongoose.connect(MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+}).then(() => {
+  console.log('✅ MongoDB connected successfully');
+}).catch((err) => {
+  console.error('❌ MongoDB connection error:', err);
+});
+
+// Import routes
+try {
+  const authRoutes = require('./src/routes/auth');
+  app.use('/api/auth', authRoutes);
+  console.log('✅ Auth routes loaded');
+} catch (err) {
+  console.warn('⚠️  Auth routes not found, creating mock endpoint');
+  const productsRoutes = require('./src/routes/products');
+const requestsRoutes = require('./src/routes/requests');
+const ordersRoutes = require('./src/routes/orders');
+
+app.use('/api/products', productsRoutes);
+app.use('/api/requests', requestsRoutes);
+app.use('/api/rfqs', requestsRoutes); // Alias for requests
+app.use('/api/orders', ordersRoutes);
+  // Mock auth endpoint for testing
+  app.post('/api/auth/login', (req, res) => {
+    const { email, password } = req.body;
+    console.log('Login attempt:', email);
+    
+    // Mock successful login for testing
+    if (email === 'buyer@test.com' && password === 'password123') {
+      res.json({
+        message: 'Login successful',
+        token: 'mock-jwt-token-' + Date.now(),
+        user: {
+          id: '1',
+          name: 'Test Buyer',
+          email: 'buyer@test.com',
+          role: 'buyer'
+        }
+      });
+    } else {
+      res.status(401).json({ message: 'Invalid credentials' });
+    }
+  });
+}
+
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  console.error('Error:', err);
   res.status(err.status || 500).json({
-    error: err.message || 'Something went wrong!',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    message: err.message || 'Internal server error',
+    error: process.env.NODE_ENV === 'development' ? err : {}
   });
 });
 
 // 404 handler
 app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found' });
+  console.log('404 Not Found:', req.path);
+  res.status(404).json({ message: 'Endpoint not found' });
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`FoodXchange server running on port ${PORT}`);
+const server = app.listen(PORT, () => {
+  console.log(`
+╔═══════════════════════════════════════════════════════════════╗
+║         FoodXchange Backend Server Started! ✓                ║
+╠═══════════════════════════════════════════════════════════════╣
+║  Server running at: http://localhost:${PORT}                    ║
+║  Environment: ${process.env.NODE_ENV || 'development'}                           ║
+║  MongoDB: ${MONGODB_URI}  ║
+╚═══════════════════════════════════════════════════════════════╝
+  `);
 });
 
-module.exports = app;
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully...');
+  server.close(() => {
+    mongoose.connection.close();
+    process.exit(0);
+  });
+});

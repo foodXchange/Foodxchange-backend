@@ -1,56 +1,52 @@
 ﻿const mongoose = require('mongoose');
 
 const requestSchema = new mongoose.Schema({
-  requestName: {
-    type: String,
-    required: true,
-    trim: true
-  },
   requestId: {
     type: Number,
     unique: true,
+    sparse: true
+  },
+  requestName: {
+    type: String,
     required: true
   },
-  requestStatus: {
+  status: {
     type: String,
-    enum: ['Draft', 'Pending', 'In Progress', 'Awaiting Sample', 'Offer Received', 'Finalized', 'Cancelled'],
-    default: 'Draft'
+    enum: ['draft', 'pending', 'active', 'awaiting', 'finalized', 'cancelled'],
+    default: 'draft'
   },
   buyer: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Company',
     required: true
   },
-  buyerContact: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'BuyerContact'
-  },
-  productCategory: {
+  category: {
     type: String,
     required: true
   },
-  requestBrief: {
-    type: String,
-    maxlength: 2000
+  brief: {
+    type: String
   },
-  benchmarkImages: [{
-    url: String,
-    caption: String
+  lineItems: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'RequestLineItem'
   }],
   kosher: {
-    required: { type: Boolean, default: false },
-    type: String,
-    passover: { type: Boolean, default: false }
+    type: Boolean,
+    default: false
   },
-  packagingPreference: String,
+  kosherType: String,
+  passoverKosher: {
+    type: Boolean,
+    default: false
+  },
+  packaging: String,
   brandingRequirements: String,
-  briefStatus: String,
-  projectStatus: String,
-  assignedTo: {
+  assignedTo: String,
+  proposals: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  },
-  latestSupplierAdded: Date,
+    ref: 'Proposal'
+  }],
   createdAt: {
     type: Date,
     default: Date.now
@@ -58,16 +54,13 @@ const requestSchema = new mongoose.Schema({
   updatedAt: {
     type: Date,
     default: Date.now
-  },
-  openComments: {
-    type: Number,
-    default: 0
   }
 });
 
-// Indexes for performance
-requestSchema.index({ buyer: 1, requestStatus: 1 });
-requestSchema.index({ productCategory: 1 });
-requestSchema.index({ createdAt: -1 });
+// Update timestamp on save
+requestSchema.pre('save', function(next) {
+  this.updatedAt = new Date();
+  next();
+});
 
 module.exports = mongoose.model('Request', requestSchema);

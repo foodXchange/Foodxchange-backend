@@ -4,16 +4,11 @@ const proposalSchema = new mongoose.Schema({
   proposalId: {
     type: String,
     unique: true,
-    required: true
+    sparse: true
   },
   request: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Request',
-    required: true
-  },
-  buyer: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Company',
     required: true
   },
   supplier: {
@@ -23,32 +18,36 @@ const proposalSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['Draft', 'Submitted', 'Under Review', 'Accepted', 'Rejected', 'Negotiating'],
-    default: 'Draft'
+    enum: ['pending', 'submitted', 'in_review', 'accepted', 'rejected', 'negotiating'],
+    default: 'pending'
   },
   products: [{
-    product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
-    proposedPrice: Number,
+    product: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Product'
+    },
     quantity: Number,
+    price: Number,
     notes: String
   }],
-  logistics: {
-    incoterms: String,
-    portOfLoading: String,
-    paymentTerms: String,
-    leadTime: Number, // in days
-    deliveryDate: Date
+  totalValue: Number,
+  currency: {
+    type: String,
+    default: 'USD'
   },
-  documents: {
-    proposalDoc: String,
-    productImages: [String],
-    supplierLogo: String,
-    supplierProfileImages: [String],
-    forecastFiles: [String]
-  },
+  incoterms: String,
+  portOfLoading: String,
+  paymentTerms: String,
+  deliveryTime: String,
+  validUntil: Date,
   brandingLabel: String,
-  sellerVatNumber: String,
-  autoNumber: Number,
+  documents: {
+    proposal: String,
+    productImages: [String],
+    certificates: [String],
+    forecast: String
+  },
+  notes: String,
   createdAt: {
     type: Date,
     default: Date.now
@@ -56,14 +55,13 @@ const proposalSchema = new mongoose.Schema({
   updatedAt: {
     type: Date,
     default: Date.now
-  },
-  openComments: {
-    type: Number,
-    default: 0
   }
 });
 
-proposalSchema.index({ request: 1, supplier: 1 });
-proposalSchema.index({ buyer: 1, status: 1 });
+// Update timestamp on save
+proposalSchema.pre('save', function(next) {
+  this.updatedAt = new Date();
+  next();
+});
 
 module.exports = mongoose.model('Proposal', proposalSchema);

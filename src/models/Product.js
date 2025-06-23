@@ -4,79 +4,72 @@ const productSchema = new mongoose.Schema({
   productId: {
     type: String,
     unique: true,
-    required: true
+    sparse: true
   },
   productCode: Number,
-  productName: {
+  name: {
     type: String,
-    required: true,
-    trim: true
+    required: true
   },
   supplier: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Company',
-    required: true
+    ref: 'Company'
   },
-  buyerCompany: {
+  buyer: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Company'
   },
+  category: String,
   status: {
     type: String,
-    enum: ['Active', 'Pending', 'Discontinued', 'Draft'],
-    default: 'Pending'
-  },
-  productImages: [{
-    url: String,
-    caption: String,
-    isMain: Boolean
-  }],
-  category: {
-    type: String,
-    required: true
+    enum: ['active', 'inactive', 'pending', 'discontinued'],
+    default: 'active'
   },
   pricing: {
-    unitWholesalePrice: {
-      latest: Number,
-      initial: Number,
-      currency: { type: String, default: 'USD' }
-    },
+    unitPrice: Number,
     cartonPrice: Number,
+    currency: {
+      type: String,
+      default: 'USD'
+    },
     incoterms: String,
     paymentTerms: String
   },
-  specifications: {
+  packaging: {
+    unitsPerCarton: Number,
     grossWeight: Number,
     netWeight: Number,
-    unitsPerCarton: Number,
-    unitOfMeasure: String,
-    hsTariffCode: String,
-    moqUnits: Number,
-    shelfLifeDays: Number,
-    temperature: {
-      min: Number,
-      max: Number
-    }
+    unitOfMeasure: String
   },
   logistics: {
-    cartonsPerTwentyFt: Number,
-    cartonsPerFortyFt: Number,
-    palletsPerTwentyFt: Number,
-    palletsPerFortyFt: Number,
-    totalUnitsTwentyFt: Number,
-    totalUnitsFortyFt: Number,
-    closestSeaPort: String
+    moq: Number,
+    containers20ft: Number,
+    containers40ft: Number,
+    pallets20ft: Number,
+    pallets40ft: Number,
+    totalUnits20ft: Number,
+    totalUnits40ft: Number,
+    preferredPort: String
+  },
+  specifications: {
+    hsTariffCode: String,
+    shelfLife: Number,
+    minTemp: Number,
+    maxTemp: Number,
+    supplierProductCode: String,
+    buyerProductCode: String
   },
   certifications: {
-    kosher: { type: Boolean, default: false },
-    organic: { type: Boolean, default: false },
-    halal: { type: Boolean, default: false },
-    nonGmo: { type: Boolean, default: false },
+    kosher: Boolean,
+    organic: Boolean,
+    halal: Boolean,
+    vegan: Boolean,
     other: [String]
   },
-  supplierProductCode: String,
-  buyerProductCode: String,
-  productStage: String,
+  images: [String],
+  privateLabelImages: [String],
+  description: String,
+  stage: String,
   createdAt: {
     type: Date,
     default: Date.now
@@ -84,16 +77,19 @@ const productSchema = new mongoose.Schema({
   updatedAt: {
     type: Date,
     default: Date.now
-  },
-  openComments: {
-    type: Number,
-    default: 0
   }
 });
 
-// Indexes
-productSchema.index({ supplier: 1, status: 1 });
-productSchema.index({ productName: 'text', productId: 1 });
+// Update timestamp on save
+productSchema.pre('save', function(next) {
+  this.updatedAt = new Date();
+  next();
+});
+
+// Indexes for search
+productSchema.index({ name: 'text', description: 'text' });
 productSchema.index({ category: 1 });
+productSchema.index({ supplier: 1 });
+productSchema.index({ status: 1 });
 
 module.exports = mongoose.model('Product', productSchema);

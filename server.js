@@ -7,7 +7,10 @@ require('dotenv').config();
 
 const corsOptions = require('./src/config/cors');
 const authRoutes = require('./src/routes/auth');
-const buyerRoutes = require('./src/routes/buyer');
+const rfqRoutes = require('./src/routes/rfqs');
+const dashboardRoutes = require('./src/routes/dashboard');
+const productRoutes = require('./src/routes/products');
+const proposalRoutes = require('./src/routes/proposals');
 const { protect } = require('./src/middleware/auth');
 
 const app = express();
@@ -29,7 +32,10 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/foodxchan
 
 // Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/buyer', buyerRoutes);
+app.use('/api/rfqs', rfqRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/proposals', proposalRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -37,14 +43,6 @@ app.get('/api/health', (req, res) => {
     status: 'FoodXchange API is running!',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development'
-  });
-});
-
-// Protected test route
-app.get('/api/test', protect, (req, res) => {
-  res.json({ 
-    message: 'You are authenticated!',
-    user: req.user
   });
 });
 

@@ -1,0 +1,239 @@
+// ===================================
+// 📁 PRODUCT MAPPING CONFIGURATION
+// ===================================
+
+// 📄 config/mappings/productMapping.json
+const productMapping = {
+  settings: {
+    number_of_shards: 1,
+    number_of_replicas: 1,
+    analysis: {
+      filter: {
+        food_synonyms: {
+          type: 'synonym',
+          synonyms: [
+            'corn,maize,sweetcorn',
+            'wheat,grain,cereal',
+            'sugar,sweetener,sucrose',
+            'oil,fat,lipid',
+            'dairy,milk,cheese,yogurt',
+            'meat,protein,flesh',
+            'organic,natural,bio',
+            'pasta,noodles,spaghetti',
+            'rice,grain,basmati',
+            'coffee,espresso,arabica',
+            'tea,green tea,black tea',
+            'spice,seasoning,herb'
+          ]
+        },
+        food_stemmer: {
+          type: 'stemmer',
+          language: 'english'
+        }
+      },
+      analyzer: {
+        food_analyzer: {
+          tokenizer: 'standard',
+          filter: [
+            'lowercase',
+            'food_synonyms',
+            'food_stemmer'
+          ]
+        },
+        autocomplete_analyzer: {
+          tokenizer: 'keyword',
+          filter: [
+            'lowercase',
+            'edge_ngram_filter'
+          ]
+        },
+        edge_ngram_filter: {
+          type: 'edge_ngram',
+          min_gram: 2,
+          max_gram: 20
+        }
+      }
+    }
+  },
+  mappings: {
+    properties: {
+      id: { type: 'keyword' },
+      name: { 
+        type: 'text', 
+        analyzer: 'food_analyzer',
+        fields: {
+          keyword: { type: 'keyword' },
+          autocomplete: {
+            type: 'text',
+            analyzer: 'autocomplete_analyzer'
+          }
+        }
+      },
+      description: { 
+        type: 'text', 
+        analyzer: 'food_analyzer' 
+      },
+      category: { 
+        type: 'keyword',
+        fields: {
+          text: {
+            type: 'text',
+            analyzer: 'food_analyzer'
+          }
+        }
+      },
+      subcategory: { type: 'keyword' },
+      brand: { type: 'keyword' },
+      
+      // Product specifications
+      specifications: {
+        type: 'nested',
+        properties: {
+          grade: { type: 'keyword' },
+          origin: { type: 'keyword' },
+          packaging: { type: 'keyword' },
+          weight: {
+            properties: {
+              value: { type: 'float' },
+              unit: { type: 'keyword' }
+            }
+          },
+          shelfLife: { type: 'integer' },
+          minimumOrder: {
+            properties: {
+              value: { type: 'float' },
+              unit: { type: 'keyword' }
+            }
+          },
+          storageConditions: { type: 'keyword' }
+        }
+      },
+      
+      // Certifications and compliance
+      certifications: { 
+        type: 'keyword',
+        copy_to: 'all_searchable'
+      },
+      allergens: { 
+        type: 'keyword',
+        copy_to: 'all_searchable'
+      },
+      ingredients: {
+        type: 'text',
+        analyzer: 'food_analyzer',
+        copy_to: 'all_searchable'
+      },
+      
+      // Nutritional information
+      nutritionalInfo: {
+        properties: {
+          calories: { type: 'float' },
+          protein: { type: 'float' },
+          carbohydrates: { type: 'float' },
+          fat: { type: 'float' },
+          fiber: { type: 'float' },
+          sugar: { type: 'float' },
+          sodium: { type: 'float' },
+          servingSize: {
+            properties: {
+              value: { type: 'float' },
+              unit: { type: 'keyword' }
+            }
+          }
+        }
+      },
+      
+      // Supplier information
+      supplier: {
+        properties: {
+          id: { type: 'keyword' },
+          name: { 
+            type: 'text',
+            analyzer: 'food_analyzer',
+            copy_to: 'all_searchable'
+          },
+          companyName: { type: 'keyword' },
+          country: { type: 'keyword' },
+          region: { type: 'keyword' },
+          verified: { type: 'boolean' },
+          rating: { type: 'float' },
+          responseTime: { type: 'integer' },
+          certifications: { type: 'keyword' }
+        }
+      },
+      
+      // Pricing and availability
+      pricing: {
+        properties: {
+          currency: { type: 'keyword' },
+          basePrice: { type: 'float' },
+          minPrice: { type: 'float' },
+          maxPrice: { type: 'float' },
+          pricePerUnit: { type: 'float' },
+          priceUnit: { type: 'keyword' },
+          bulkDiscounts: { type: 'boolean' },
+          paymentTerms: { type: 'keyword' },
+          incoterms: { type: 'keyword' }
+        }
+      },
+      
+      availability: {
+        properties: {
+          inStock: { type: 'boolean' },
+          stockLevel: { type: 'integer' },
+          leadTime: { type: 'integer' },
+          leadTimeUnit: { type: 'keyword' },
+          seasonality: { type: 'keyword' },
+          harvestSeason: { type: 'keyword' },
+          availableFrom: { type: 'date' },
+          availableUntil: { type: 'date' }
+        }
+      },
+      
+      // Geographic and logistics
+      location: { 
+        type: 'geo_point' 
+      },
+      shippingOrigins: {
+        type: 'nested',
+        properties: {
+          country: { type: 'keyword' },
+          port: { type: 'keyword' },
+          location: { type: 'geo_point' }
+        }
+      },
+      
+      // Media and metadata
+      images: { 
+        type: 'keyword' 
+      },
+      documents: {
+        type: 'nested',
+        properties: {
+          type: { type: 'keyword' },
+          url: { type: 'keyword' },
+          title: { type: 'text' }
+        }
+      },
+      tags: { 
+        type: 'keyword',
+        copy_to: 'all_searchable'
+      },
+      
+      // Tracking and analytics
+      createdAt: { type: 'date' },
+      updatedAt: { type: 'date' },
+      lastViewedAt: { type: 'date' },
+      viewCount: { type: 'integer' },
+      inquiryCount: { type: 'integer' },
+      popularity: { type: 'float' },
+      trending: { type: 'boolean' },
+      
+      // Combined search field
+      all_searchable: {
+        type: 'text',
+        analyzer: 'food_analyzer'
+      }
+    }
+  }
+};

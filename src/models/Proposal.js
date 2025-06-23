@@ -6,9 +6,14 @@ const proposalSchema = new mongoose.Schema({
     unique: true,
     required: true
   },
-  rfq: {
+  request: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'RFQ',
+    ref: 'Request',
+    required: true
+  },
+  buyer: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Company',
     required: true
   },
   supplier: {
@@ -18,54 +23,32 @@ const proposalSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['draft', 'submitted', 'under_review', 'selected', 'rejected'],
-    default: 'draft'
+    enum: ['Draft', 'Submitted', 'Under Review', 'Accepted', 'Rejected', 'Negotiating'],
+    default: 'Draft'
   },
-  pricing: {
-    unitPrice: { type: Number, required: true },
-    currency: { type: String, default: 'USD' },
-    priceValidUntil: Date,
-    minimumOrderQuantity: Number,
-    volumeDiscounts: [{
-      quantity: Number,
-      discountPercentage: Number
-    }]
-  },
-  terms: {
-    paymentTerms: String,
-    leadTimeDays: Number,
-    incoterm: String,
-    shippingMethod: String
-  },
-  productDetails: {
-    productName: String,
-    specifications: String,
-    packaging: String,
-    certifications: {
-      kosher: { type: Boolean, default: false },
-      organic: { type: Boolean, default: false },
-      vegan: { type: Boolean, default: false },
-      halal: { type: Boolean, default: false },
-      certificates: [{
-        name: String,
-        fileUrl: String,
-        expiryDate: Date
-      }]
-    }
-  },
-  documents: [{
-    name: String,
-    type: String,
-    url: String,
-    uploadedAt: { type: Date, default: Date.now }
+  products: [{
+    product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+    proposedPrice: Number,
+    quantity: Number,
+    notes: String
   }],
-  sampleInfo: {
-    available: { type: Boolean, default: false },
-    sent: { type: Boolean, default: false },
-    sentDate: Date,
-    trackingNumber: String
+  logistics: {
+    incoterms: String,
+    portOfLoading: String,
+    paymentTerms: String,
+    leadTime: Number, // in days
+    deliveryDate: Date
   },
-  notes: String,
+  documents: {
+    proposalDoc: String,
+    productImages: [String],
+    supplierLogo: String,
+    supplierProfileImages: [String],
+    forecastFiles: [String]
+  },
+  brandingLabel: String,
+  sellerVatNumber: String,
+  autoNumber: Number,
   createdAt: {
     type: Date,
     default: Date.now
@@ -73,17 +56,14 @@ const proposalSchema = new mongoose.Schema({
   updatedAt: {
     type: Date,
     default: Date.now
+  },
+  openComments: {
+    type: Number,
+    default: 0
   }
 });
 
-// Auto-generate Proposal ID
-proposalSchema.pre('save', async function(next) {
-  if (this.isNew && !this.proposalId) {
-    const count = await this.constructor.countDocuments();
-    this.proposalId = `PROP-${String(count + 1).padStart(5, '0')}`;
-  }
-  this.updatedAt = new Date();
-  next();
-});
+proposalSchema.index({ request: 1, supplier: 1 });
+proposalSchema.index({ buyer: 1, status: 1 });
 
 module.exports = mongoose.model('Proposal', proposalSchema);

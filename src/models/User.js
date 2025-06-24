@@ -1,79 +1,52 @@
 ﻿const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
-const userSchema = new mongoose.Schema({
-  email: { 
-    type: String, 
-    required: true, 
-    unique: true,
-    lowercase: true,
-    trim: true
-  },
-  password: { 
-    type: String, 
-    required: true 
-  },
-  name: { 
-    type: String, 
-    required: true,
-    trim: true
-  },
-  role: { 
-    type: String, 
-    enum: ['buyer', 'supplier', 'admin'],
-    required: true 
-  },
-  company: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Company' 
-  },
-  phone: {
+const userSchema = mongoose.Schema({
+  name: {
     type: String,
-    trim: true
+    required: true
   },
-  isActive: { 
-    type: Boolean, 
-    default: true 
+  email: {
+    type: String,
+    required: true,
+    unique: true
   },
-  isVerified: {
+  password: {
+    type: String,
+    required: true
+  },
+  role: {
+    type: String,
+    required: true,
+    enum: ['buyer', 'seller', 'admin', 'contractor', 'agent'],
+    default: 'buyer'
+  },
+  company: {
+    type: String
+  },
+  isActive: {
     type: Boolean,
-    default: false
-  },
-  preferences: {
-    notifications: {
-      email: { type: Boolean, default: true },
-      inApp: { type: Boolean, default: true }
-    },
-    language: { type: String, default: 'en' },
-    timezone: { type: String, default: 'UTC' }
-  },
-  lastLogin: {
-    type: Date
-  },
-  resetToken: String,
-  resetTokenExpiry: Date,
-  createdAt: { 
-    type: Date, 
-    default: Date.now 
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
+    default: true
   }
+}, {
+  timestamps: true
 });
 
-// Update timestamp on save
-userSchema.pre('save', function(next) {
-  this.updatedAt = new Date();
-  next();
-});
-
-// Remove sensitive data when converting to JSON
-userSchema.methods.toJSON = function() {
-  const user = this.toObject();
-  delete user.password;
-  delete user.resetToken;
-  delete user.resetTokenExpiry;
-  return user;
+// Match password
+userSchema.methods.matchPassword = async function(enteredPassword) {
+  return await bcrypt.compare(enteredPassword, this.password);
 };
 
-module.exports = mongoose.model('User', userSchema);
+// Encrypt password before saving
+userSchema.pre('save', async function(next) {
+  if (!this.isModified('password')) {
+    next();
+  }
+
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
+});
+
+const User = mongoose.model('User', userSchema);
+
+module.exports = User;

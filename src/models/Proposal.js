@@ -1,28 +1,6 @@
-const mongoose = require('mongoose');
+﻿const mongoose = require('mongoose');
 
-const proposalItemSchema = new mongoose.Schema({
-  productId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Product'
-  },
-  productName: String,
-  quantity: Number,
-  unit: String,
-  unitPrice: {
-    type: Number,
-    required: true
-  },
-  totalPrice: Number,
-  packaging: String,
-  deliveryTerms: String,
-  notes: String
-});
-
-const proposalSchema = new mongoose.Schema({
-  proposalNumber: {
-    type: String,
-    unique: true
-  },
+const proposalSchema = mongoose.Schema({
   rfq: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'RFQ',
@@ -30,58 +8,116 @@ const proposalSchema = new mongoose.Schema({
   },
   supplier: {
     type: mongoose.Schema.Types.ObjectId,
+    ref: 'Company',
+    required: true
+  },
+  submittedBy: {
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
-  supplierCompany: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Company'
-  },
-  items: [proposalItemSchema],
-  totalAmount: {
-    type: Number,
-    required: true
-  },
-  currency: {
+  referenceNumber: {
     type: String,
-    default: 'USD'
+    unique: true
   },
-  validUntil: {
-    type: Date,
-    required: true
+  products: [{
+    rfqProductIndex: Number,
+    product: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Product'
+    },
+    alternativeProduct: {
+      name: String,
+      description: String
+    },
+    quantity: Number,
+    unit: String,
+    unitPrice: {
+      type: Number,
+      required: true
+    },
+    totalPrice: Number,
+    currency: {
+      type: String,
+      default: 'USD'
+    },
+    notes: String
+  }],
+  pricing: {
+    subtotal: Number,
+    taxes: Number,
+    shipping: Number,
+    otherCharges: [{
+      description: String,
+      amount: Number
+    }],
+    total: {
+      type: Number,
+      required: true
+    },
+    currency: {
+      type: String,
+      default: 'USD'
+    }
   },
-  deliveryDate: Date,
-  paymentTerms: String,
-  shippingTerms: String,
-  additionalTerms: String,
+  terms: {
+    paymentTerms: String,
+    deliveryTerms: String,
+    validityPeriod: Number,
+    leadTime: Number,
+    warranty: String
+  },
   attachments: [{
     name: String,
     url: String,
     type: String
   }],
+  notes: String,
   status: {
     type: String,
-    enum: ['draft', 'submitted', 'under_review', 'accepted', 'rejected', 'expired'],
+    enum: ['draft', 'submitted', 'under_review', 'accepted', 'rejected', 'withdrawn'],
     default: 'draft'
   },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  }
+  submittedAt: Date,
+  reviewedAt: Date,
+  reviewNotes: String
+}, {
+  timestamps: true
 });
 
-// Generate proposal number
+// Auto-generate reference number
 proposalSchema.pre('save', async function(next) {
-  if (!this.proposalNumber) {
+  if (!this.referenceNumber) {
     const count = await this.constructor.countDocuments();
-    this.proposalNumber = `PROP-${new Date().getFullYear()}-${String(count + 1).padStart(5, '0')}`;
+    this.referenceNumber = `PROP-${new Date().getFullYear()}-${String(count + 1).padStart(5, '0')}`;
   }
   next();
 });
 
+// Calculate total before saving
+proposalSchema.pre('save', function(next) {
+  if (this.products && this.products.length > 0) {
+    const subtotal = this.products.reduce((sum, item) => {
+      item.totalPrice = item.quantity * item.unitPrice;
+      return sum + item.totalPrice;
+    }, 0);
+    
+    this.pricing.subtotal = subtotal;
+    
+    const otherChargesTotal = this.pricing.otherCharges?.reduce((sum, charge) => sum + charge.amount, 0) || 0;
+    
+    this.pricing.total = subtotal + 
+                        (this.pricing.taxes || 0) + 
+                        (this.pricing.shipping || 0) + 
+                        otherChargesTotal;
+  }
+  next();
+});
+
+// Indexes
+proposalSchema.index({ rfq: 1, supplier: 1 });
+proposalSchema.index({ status: 1 });
+
 const Proposal = mongoose.model('Proposal', proposalSchema);
+
 module.exports = Proposal;

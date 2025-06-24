@@ -1,6 +1,6 @@
 ﻿const mongoose = require('mongoose');
 
-const companySchema = new mongoose.Schema({
+const companySchema = mongoose.Schema({
   name: {
     type: String,
     required: true,
@@ -8,24 +8,16 @@ const companySchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['buyer', 'supplier'],
-    required: true
+    required: true,
+    enum: ['buyer', 'supplier', 'both']
   },
   email: {
     type: String,
     required: true,
-    lowercase: true,
-    trim: true
+    unique: true,
+    lowercase: true
   },
   phone: {
-    type: String,
-    trim: true
-  },
-  website: {
-    type: String,
-    trim: true
-  },
-  country: {
     type: String,
     required: true
   },
@@ -33,56 +25,69 @@ const companySchema = new mongoose.Schema({
     street: String,
     city: String,
     state: String,
+    country: {
+      type: String,
+      required: true
+    },
     zipCode: String
   },
   description: {
     type: String,
     maxlength: 1000
   },
-  logo: {
-    type: String // URL to logo image
-  },
+  website: String,
+  logo: String,
   categories: [{
     type: String
   }],
   certifications: {
-    kosher: { type: Boolean, default: false },
-    organic: { type: Boolean, default: false },
-    iso: { type: Boolean, default: false },
+    kosher: {
+      certified: { type: Boolean, default: false },
+      certifier: String,
+      expiryDate: Date
+    },
+    organic: {
+      certified: { type: Boolean, default: false },
+      certifier: String,
+      expiryDate: Date
+    },
+    halal: {
+      certified: { type: Boolean, default: false },
+      certifier: String,
+      expiryDate: Date
+    },
     haccp: { type: Boolean, default: false },
-    other: [String]
+    iso22000: { type: Boolean, default: false },
+    brc: { type: Boolean, default: false },
+    fda: { type: Boolean, default: false }
   },
   documents: [{
+    type: {
+      type: String,
+      enum: ['certificate', 'license', 'insurance', 'other']
+    },
     name: String,
-    type: String,
     url: String,
     uploadedAt: { type: Date, default: Date.now }
   }],
-  settings: {
-    currency: { type: String, default: 'USD' },
-    language: { type: String, default: 'en' },
-    timezone: { type: String, default: 'UTC' }
-  },
   status: {
     type: String,
-    enum: ['pending', 'active', 'suspended'],
+    enum: ['pending', 'active', 'suspended', 'inactive'],
     default: 'pending'
   },
   verifiedAt: Date,
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  }
+  users: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }]
+}, {
+  timestamps: true
 });
 
-// Update timestamp on save
-companySchema.pre('save', function(next) {
-  this.updatedAt = new Date();
-  next();
-});
+// Indexes for search
+companySchema.index({ name: 'text', description: 'text' });
+companySchema.index({ country: 1, categories: 1 });
 
-module.exports = mongoose.model('Company', companySchema);
+const Company = mongoose.model('Company', companySchema);
+
+module.exports = Company;

@@ -1,95 +1,126 @@
 ﻿const mongoose = require('mongoose');
 
-const productSchema = new mongoose.Schema({
-  productId: {
-    type: String,
-    unique: true,
-    sparse: true
-  },
-  productCode: Number,
+const productSchema = mongoose.Schema({
   name: {
     type: String,
-    required: true
+    required: true,
+    trim: true
   },
   supplier: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Company'
+    ref: 'Company',
+    required: true
   },
-  buyer: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Company'
-  },
-  category: String,
-  status: {
+  category: {
     type: String,
-    enum: ['active', 'inactive', 'pending', 'discontinued'],
-    default: 'active'
+    required: true
   },
+  subcategory: String,
+  description: {
+    type: String,
+    required: true
+  },
+  specifications: {
+    brand: String,
+    origin: String,
+    ingredients: [String],
+    allergens: [String],
+    shelfLife: String,
+    storageConditions: String,
+    nutritionalInfo: {
+      calories: Number,
+      protein: Number,
+      carbohydrates: Number,
+      fat: Number,
+      fiber: Number,
+      sodium: Number
+    }
+  },
+  packaging: [{
+    type: {
+      type: String,
+      required: true
+    },
+    size: {
+      type: String,
+      required: true
+    },
+    unit: {
+      type: String,
+      required: true
+    },
+    price: {
+      type: Number,
+      required: true
+    },
+    moq: {
+      type: Number,
+      default: 1
+    }
+  }],
   pricing: {
-    unitPrice: Number,
-    cartonPrice: Number,
     currency: {
       type: String,
       default: 'USD'
     },
-    incoterms: String,
-    paymentTerms: String
-  },
-  packaging: {
-    unitsPerCarton: Number,
-    grossWeight: Number,
-    netWeight: Number,
-    unitOfMeasure: String
-  },
-  logistics: {
-    moq: Number,
-    containers20ft: Number,
-    containers40ft: Number,
-    pallets20ft: Number,
-    pallets40ft: Number,
-    totalUnits20ft: Number,
-    totalUnits40ft: Number,
-    preferredPort: String
-  },
-  specifications: {
-    hsTariffCode: String,
-    shelfLife: Number,
-    minTemp: Number,
-    maxTemp: Number,
-    supplierProductCode: String,
-    buyerProductCode: String
+    basePrice: Number,
+    tiers: [{
+      minQuantity: Number,
+      maxQuantity: Number,
+      price: Number
+    }]
   },
   certifications: {
-    kosher: Boolean,
-    organic: Boolean,
-    halal: Boolean,
-    vegan: Boolean,
-    other: [String]
+    kosher: { type: Boolean, default: false },
+    organic: { type: Boolean, default: false },
+    halal: { type: Boolean, default: false },
+    nonGMO: { type: Boolean, default: false },
+    glutenFree: { type: Boolean, default: false },
+    vegan: { type: Boolean, default: false }
   },
-  images: [String],
-  privateLabelImages: [String],
-  description: String,
-  stage: String,
-  createdAt: {
-    type: Date,
-    default: Date.now
+  images: [{
+    url: String,
+    isPrimary: { type: Boolean, default: false }
+  }],
+  documents: [{
+    type: {
+      type: String,
+      enum: ['datasheet', 'certificate', 'sample', 'other']
+    },
+    name: String,
+    url: String
+  }],
+  leadTime: {
+    production: Number,
+    shipping: Number
   },
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  }
+  minimumOrderQuantity: {
+    type: Number,
+    default: 1
+  },
+  status: {
+    type: String,
+    enum: ['draft', 'active', 'inactive', 'discontinued'],
+    default: 'active'
+  },
+  featured: {
+    type: Boolean,
+    default: false
+  },
+  views: {
+    type: Number,
+    default: 0
+  },
+  tags: [String]
+}, {
+  timestamps: true
 });
 
-// Update timestamp on save
-productSchema.pre('save', function(next) {
-  this.updatedAt = new Date();
-  next();
-});
+// Indexes
+productSchema.index({ name: 'text', description: 'text', tags: 'text' });
+productSchema.index({ supplier: 1, status: 1 });
+productSchema.index({ category: 1, subcategory: 1 });
 
-// Indexes for search
-productSchema.index({ name: 'text', description: 'text' });
-productSchema.index({ category: 1 });
-productSchema.index({ supplier: 1 });
-productSchema.index({ status: 1 });
+const Product = mongoose.model('Product', productSchema);
 
-module.exports = mongoose.model('Product', productSchema);
+module.exports = Product;

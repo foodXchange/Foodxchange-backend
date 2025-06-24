@@ -181,5 +181,9 @@
   "bugs": {
     "url": "https://github.com/foodXchange/Foodxchange-backend/issues"
   },
-  "homepage": "https://github.com/foodXchange/Foodxchange-backend#readme"
+  "homepage": "https://github.com/foodXchange/Foodxchange-backend#readme",
+  "devDependencies": {
+    "@types/bull": "^3.15.9",
+    "@types/redis": "^4.0.10"
+  }
 }

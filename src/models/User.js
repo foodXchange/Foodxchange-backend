@@ -1,52 +1,96 @@
-﻿const mongoose = require('mongoose');
+const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
-const userSchema = mongoose.Schema({
-  name: {
-    type: String,
-    required: true
-  },
+const userSchema = new mongoose.Schema({
   email: {
     type: String,
     required: true,
-    unique: true
+    unique: true,
+    lowercase: true,
+    trim: true
   },
   password: {
     type: String,
-    required: true
+    required: true,
+    minlength: 6
   },
   role: {
     type: String,
-    required: true,
     enum: ['buyer', 'seller', 'admin', 'contractor', 'agent'],
-    default: 'buyer'
+    required: true
+  },
+  profile: {
+    firstName: String,
+    lastName: String,
+    phone: String,
+    avatar: String,
+    bio: String
   },
   company: {
-    type: String
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Company'
   },
-  isActive: {
-    type: Boolean,
-    default: true
-  }
+  preferences: {
+    notifications: {
+      email: { type: Boolean, default: true },
+      sms: { type: Boolean, default: false },
+      push: { type: Boolean, default: true }
+    },
+    language: { type: String, default: 'en' },
+    timezone: { type: String, default: 'UTC' }
+  },
+  verification: {
+    email: { type: Boolean, default: false },
+    phone: { type: Boolean, default: false },
+    company: { type: Boolean, default: false }
+  },
+  lastLogin: Date,
+  isActive: { type: Boolean, default: true },
+  loginAttempts: { type: Number, default: 0 },
+  lockUntil: Date
 }, {
-  timestamps: true
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
-// Match password
-userSchema.methods.matchPassword = async function(enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
+// Virtual for full name
+userSchema.virtual('fullName').get(function() {
+  return {this.profile.firstName} {this.profile.lastName}.trim();
+});
+
+// Hash password before saving
+userSchema.pre('save', async function(next) {
+  if (!this.isModified('password')) return next();
+  this.password = await bcrypt.hash(this.password, 12);
+  next();
+});
+
+// Compare password method
+userSchema.methods.comparePassword = async function(candidatePassword) {
+  return await bcrypt.compare(candidatePassword, this.password);
 };
 
-// Encrypt password before saving
-userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) {
-    next();
-  }
-
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
+// Check if account is locked
+userSchema.virtual('isLocked').get(function() {
+  return !!(this.lockUntil && this.lockUntil > Date.now());
 });
 
-const User = mongoose.model('User', userSchema);
+// Increment login attempts
+userSchema.methods.incLoginAttempts = function() {
+  if (this.lockUntil && this.lockUntil < Date.now()) {
+    return this.updateOne({
+      {unset: { loginAttempts: 1, lockUntil: 1 }}
+    });
+  }
+  
+  const updates = { {inc: { loginAttempts: 1 } };
+  
+  if (this.loginAttempts + 1 >= 5 && !this.isLocked) {
+    updates.lockUntil = Date.now() + 2 * 60 * 60 * 1000; // 2 hours
+  }
+  
+  return this.updateOne(updates);
+};
 
-module.exports = User;
+module.exports = mongoose.model('User', userSchema);

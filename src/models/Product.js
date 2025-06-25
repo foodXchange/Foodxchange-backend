@@ -1,126 +1,130 @@
-﻿const mongoose = require('mongoose');
+const mongoose = require('mongoose');
 
-const productSchema = mongoose.Schema({
+const productSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
     trim: true
   },
+  description: String,
+  category: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Category',
+    required: true
+  },
+  subcategory: String,
   supplier: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Company',
     required: true
   },
-  category: {
-    type: String,
-    required: true
-  },
-  subcategory: String,
-  description: {
-    type: String,
-    required: true
-  },
   specifications: {
     brand: String,
-    origin: String,
-    ingredients: [String],
-    allergens: [String],
-    shelfLife: String,
-    storageConditions: String,
-    nutritionalInfo: {
-      calories: Number,
-      protein: Number,
-      carbohydrates: Number,
-      fat: Number,
-      fiber: Number,
-      sodium: Number
+    model: String,
+    sku: String,
+    weight: {
+      value: Number,
+      unit: { type: String, enum: ['g', 'kg', 'lb', 'oz'] }
+    },
+    dimensions: {
+      length: Number,
+      width: Number,
+      height: Number,
+      unit: { type: String, enum: ['cm', 'in', 'mm'] }
+    },
+    packaging: {
+      type: String,
+      unitsPerCase: Number,
+      caseWeight: Number,
+      caseSize: String
     }
   },
-  packaging: [{
-    type: {
-      type: String,
-      required: true
-    },
-    size: {
-      type: String,
-      required: true
-    },
-    unit: {
-      type: String,
-      required: true
-    },
-    price: {
-      type: Number,
-      required: true
-    },
-    moq: {
-      type: Number,
-      default: 1
-    }
+  nutritionalInfo: {
+    calories: Number,
+    protein: Number,
+    carbohydrates: Number,
+    fat: Number,
+    fiber: Number,
+    sodium: Number,
+    sugar: Number
+  },
+  allergens: [{
+    type: String,
+    enum: ['milk', 'eggs', 'fish', 'shellfish', 'nuts', 'peanuts', 'wheat', 'soy', 'sesame']
+  }],
+  dietaryAttributes: [{
+    type: String,
+    enum: ['organic', 'kosher', 'halal', 'vegan', 'vegetarian', 'gluten-free', 'non-gmo']
   }],
   pricing: {
-    currency: {
-      type: String,
-      default: 'USD'
-    },
     basePrice: Number,
-    tiers: [{
+    currency: { type: String, default: 'USD' },
+    minimumOrder: {
+      quantity: Number,
+      unit: String
+    },
+    bulkPricing: [{
       minQuantity: Number,
-      maxQuantity: Number,
       price: Number
     }]
   },
-  certifications: {
-    kosher: { type: Boolean, default: false },
-    organic: { type: Boolean, default: false },
-    halal: { type: Boolean, default: false },
-    nonGMO: { type: Boolean, default: false },
-    glutenFree: { type: Boolean, default: false },
-    vegan: { type: Boolean, default: false }
+  availability: {
+    inStock: { type: Boolean, default: true },
+    stockQuantity: Number,
+    leadTime: {
+      min: Number,
+      max: Number,
+      unit: { type: String, enum: ['days', 'weeks'], default: 'days' }
+    },
+    seasonality: {
+      available: { type: Boolean, default: true },
+      season: String,
+      months: [Number] // 1-12 for Jan-Dec
+    }
   },
   images: [{
     url: String,
-    isPrimary: { type: Boolean, default: false }
+    alt: String,
+    isPrimary: Boolean
   }],
   documents: [{
-    type: {
-      type: String,
-      enum: ['datasheet', 'certificate', 'sample', 'other']
-    },
     name: String,
+    type: { type: String, enum: ['spec_sheet', 'safety_data', 'certificate', 'brochure'] },
     url: String
   }],
-  leadTime: {
-    production: Number,
-    shipping: Number
+  compliance: {
+    certifications: [String],
+    regulatoryInfo: String,
+    countryApprovals: [String]
   },
-  minimumOrderQuantity: {
-    type: Number,
-    default: 1
+  seo: {
+    metaTitle: String,
+    metaDescription: String,
+    keywords: [String]
   },
-  status: {
-    type: String,
-    enum: ['draft', 'active', 'inactive', 'discontinued'],
-    default: 'active'
+  analytics: {
+    views: { type: Number, default: 0 },
+    inquiries: { type: Number, default: 0 },
+    orders: { type: Number, default: 0 }
   },
-  featured: {
-    type: Boolean,
-    default: false
-  },
-  views: {
-    type: Number,
-    default: 0
-  },
-  tags: [String]
+  isActive: { type: Boolean, default: true },
+  isFeatured: { type: Boolean, default: false }
 }, {
-  timestamps: true
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
-// Indexes
-productSchema.index({ name: 'text', description: 'text', tags: 'text' });
-productSchema.index({ supplier: 1, status: 1 });
-productSchema.index({ category: 1, subcategory: 1 });
+// Text search index
+productSchema.index({
+  name: 'text',
+  description: 'text',
+  'specifications.brand': 'text'
+});
 
-const Product = mongoose.model('Product', productSchema);
+// Compound indexes for efficient queries
+productSchema.index({ category: 1, isActive: 1 });
+productSchema.index({ supplier: 1, isActive: 1 });
+productSchema.index({ 'pricing.basePrice': 1 });
 
-module.exports = Product;
+module.exports = mongoose.model('Product', productSchema);

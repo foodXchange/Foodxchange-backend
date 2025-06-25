@@ -1,168 +1,354 @@
-﻿const mongoose = require('mongoose');
+const mongoose = require('mongoose');
 
-const orderSchema = mongoose.Schema({
-  orderNumber: {
-    type: String,
-    unique: true
+const orderSchema = new mongoose.Schema({
+  orderNumber: { 
+    type: String, 
+    unique: true, 
+    required: true 
   },
-  buyer: {
+  buyer: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User', 
+    required: true 
+  },
+  buyerCompany: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Company',
     required: true
   },
-  supplier: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Company',
-    required: true
+  supplier: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'Company', 
+    required: true 
   },
-  rfq: {
+  supplierContact: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'RFQ'
+    ref: 'User'
   },
+  rfq: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'RFQ' 
+  }, // Optional, if order came from RFQ
   proposal: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Proposal'
-  },
+    ref: 'RFQ'
+  }, // Reference to specific proposal if from RFQ
+  
   items: [{
-    product: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Product'
+    itemId: { type: String, required: true },
+    product: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: 'Product' 
     },
-    name: String,
-    quantity: {
-      type: Number,
-      required: true
+    name: { type: String, required: true },
+    description: String,
+    sku: String,
+    category: String,
+    
+    quantity: { 
+      type: Number, 
+      required: true,
+      min: 1
     },
-    unit: String,
-    unitPrice: {
-      type: Number,
-      required: true
+    unit: { type: String, required: true },
+    
+    pricing: {
+      unitPrice: { type: Number, required: true },
+      totalPrice: { type: Number, required: true },
+      currency: { type: String, default: 'USD' },
+      discount: {
+        amount: Number,
+        percentage: Number,
+        reason: String
+      }
     },
-    totalPrice: Number,
-    specifications: String
+    
+    specifications: [{
+      attribute: String,
+      value: String,
+      verified: Boolean
+    }],
+    
+    compliance: {
+      certifications: [String],
+      documents: [String],
+      verified: Boolean,
+      verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      verifiedAt: Date
+    }
   }],
+  
   pricing: {
-    subtotal: Number,
-    taxes: Number,
-    shipping: Number,
-    otherCharges: [{
+    subtotal: { type: Number, required: true },
+    taxes: {
+      amount: Number,
+      rate: Number,
+      breakdown: [{
+        type: String, // VAT, Sales Tax, etc.
+        rate: Number,
+        amount: Number
+      }]
+    },
+    shipping: {
+      amount: Number,
+      method: String,
+      carrier: String
+    },
+    fees: [{
+      type: String,
       description: String,
       amount: Number
     }],
-    total: {
-      type: Number,
-      required: true
-    },
-    currency: {
+    discounts: [{
       type: String,
-      default: 'USD'
-    }
+      description: String,
+      amount: Number
+    }],
+    total: { type: Number, required: true },
+    currency: { type: String, default: 'USD' }
   },
-  payment: {
-    terms: String,
-    method: String,
-    status: {
-      type: String,
-      enum: ['pending', 'partial', 'paid', 'overdue'],
-      default: 'pending'
-    },
-    dueDate: Date,
-    paidAmount: {
-      type: Number,
-      default: 0
-    },
-    transactions: [{
-      amount: Number,
-      date: Date,
-      reference: String,
-      method: String
-    }]
-  },
+  
   delivery: {
     address: {
+      contactName: String,
+      company: String,
       street: String,
+      street2: String,
       city: String,
       state: String,
       country: String,
-      zipCode: String
-    },
-    contactPerson: {
-      name: String,
+      postalCode: String,
       phone: String,
       email: String
     },
-    scheduledDate: Date,
-    actualDate: Date,
-    trackingNumber: String,
+    requestedDate: Date,
+    confirmedDate: Date,
+    shippedDate: Date,
+    deliveredDate: Date,
+    
+    method: {
+      type: String,
+      enum: ['ground', 'air', 'sea', 'express', 'pickup', 'custom']
+    },
     carrier: String,
+    service: String, // Next day, 2-day, standard, etc.
+    
+    tracking: {
+      number: String,
+      url: String,
+      updates: [{
+        status: String,
+        location: String,
+        timestamp: Date,
+        description: String
+      }]
+    },
+    
+    instructions: String,
+    appointmentRequired: Boolean,
+    
+    temperature: {
+      controlled: Boolean,
+      range: {
+        min: Number,
+        max: Number,
+        unit: { type: String, enum: ['F', 'C'], default: 'F' }
+      }
+    }
+  },
+  
+  payment: {
+    terms: {
+      type: String,
+      enum: ['NET15', 'NET30', 'NET60', 'COD', 'Prepaid', 'LC', 'Custom'],
+      default: 'NET30'
+    },
+    customTerms: String,
+    
+    method: {
+      type: String,
+      enum: ['bank_transfer', 'credit_card', 'check', 'letter_of_credit', 'escrow']
+    },
+    
+    dueDate: Date,
+    paidDate: Date,
+    
+    invoices: [{
+      invoiceNumber: String,
+      amount: Number,
+      issueDate: Date,
+      dueDate: Date,
+      status: {
+        type: String,
+        enum: ['draft', 'sent', 'viewed', 'paid', 'overdue', 'cancelled'],
+        default: 'draft'
+      },
+      url: String
+    }],
+    
+    transactions: [{
+      transactionId: String,
+      amount: Number,
+      date: Date,
+      method: String,
+      reference: String,
+      status: {
+        type: String,
+        enum: ['pending', 'completed', 'failed', 'refunded'],
+        default: 'pending'
+      }
+    }],
+    
     status: {
       type: String,
-      enum: ['pending', 'processing', 'shipped', 'delivered', 'returned'],
+      enum: ['pending', 'partial', 'paid', 'overdue', 'refunded'],
       default: 'pending'
     }
   },
+  
   status: {
     type: String,
-    enum: ['draft', 'confirmed', 'processing', 'shipped', 'delivered', 'completed', 'cancelled'],
-    default: 'draft'
+    enum: [
+      'pending_confirmation', 'confirmed', 'processing', 
+      'ready_to_ship', 'shipped', 'in_transit', 'delivered', 
+      'completed', 'cancelled', 'returned'
+    ],
+    default: 'pending_confirmation'
   },
-  documents: [{
-    type: {
-      type: String,
-      enum: ['invoice', 'po', 'packing_list', 'bol', 'certificate', 'other']
-    },
-    name: String,
-    url: String,
-    uploadedAt: Date
-  }],
-  notes: String,
+  
   timeline: [{
     status: String,
-    date: Date,
+    timestamp: { type: Date, default: Date.now },
     notes: String,
-    updatedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
+    updatedBy: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: 'User' 
+    },
+    automatic: { type: Boolean, default: false },
+    notificationSent: { type: Boolean, default: false }
+  }],
+  
+  documents: [{
+    name: String,
+    type: { 
+      type: String, 
+      enum: [
+        'purchase_order', 'invoice', 'receipt', 'packing_slip',
+        'bill_of_lading', 'certificate', 'contract', 'insurance',
+        'customs_docs', 'quality_report', 'other'
+      ]
+    },
+    url: String,
+    uploadedAt: { type: Date, default: Date.now },
+    uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    size: Number,
+    verified: Boolean
+  }],
+  
+  quality: {
+    inspections: [{
+      type: { 
+        type: String,
+        enum: ['incoming', 'pre_ship', 'random', 'complaint']
+      },
+      date: Date,
+      inspector: String,
+      result: {
+        type: String,
+        enum: ['passed', 'failed', 'conditional']
+      },
+      notes: String,
+      documents: [String],
+      correctionRequired: Boolean
+    }],
+    complaints: [{
+      type: String,
+      description: String,
+      reportedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      reportedAt: { type: Date, default: Date.now },
+      resolution: String,
+      resolvedAt: Date,
+      status: {
+        type: String,
+        enum: ['open', 'investigating', 'resolved', 'closed']
+      }
+    }]
+  },
+  
+  compliance: {
+    certifications: [{
+      name: String,
+      number: String,
+      authority: String,
+      validUntil: Date,
+      document: String,
+      verified: Boolean
+    }],
+    regulatoryApprovals: [String],
+    customsInfo: {
+      hsCode: String,
+      countryOfOrigin: String,
+      declarationValue: Number,
+      documents: [String]
     }
-  }]
-}, {
-  timestamps: true
-});
-
-// Auto-generate order number
-orderSchema.pre('save', async function(next) {
-  if (!this.orderNumber) {
-    const count = await this.constructor.countDocuments();
-    this.orderNumber = `ORD-${new Date().getFullYear()}-${String(count + 1).padStart(6, '0')}`;
+  },
+  
+  communication: [{
+    from: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    to: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    subject: String,
+    message: String,
+    timestamp: { type: Date, default: Date.now },
+    attachments: [String],
+    type: {
+      type: String,
+      enum: ['general', 'issue', 'update', 'request']
+    }
+  }],
+  
+  cancellation: {
+    reason: String,
+    requestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    requestedAt: Date,
+    approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    approvedAt: Date,
+    penalty: {
+      amount: Number,
+      reason: String
+    },
+    refund: {
+      amount: Number,
+      processedAt: Date,
+      transactionId: String
+    }
   }
-  next();
+}, { 
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
-// Calculate totals
+// Pre-save middleware to generate order number
 orderSchema.pre('save', function(next) {
-  if (this.items && this.items.length > 0) {
-    const subtotal = this.items.reduce((sum, item) => {
-      item.totalPrice = item.quantity * item.unitPrice;
-      return sum + item.totalPrice;
-    }, 0);
-    
-    this.pricing.subtotal = subtotal;
-    
-    const otherChargesTotal = this.pricing.otherCharges?.reduce((sum, charge) => sum + charge.amount, 0) || 0;
-    
-    this.pricing.total = subtotal + 
-                        (this.pricing.taxes || 0) + 
-                        (this.pricing.shipping || 0) + 
-                        otherChargesTotal;
+  if (this.isNew && !this.orderNumber) {
+    const timestamp = Date.now().toString().slice(-6);
+    this.orderNumber = `ORD-${timestamp}`;
   }
   next();
+});
+
+// Virtual for order age
+orderSchema.virtual('ageInDays').get(function() {
+  const now = new Date();
+  const created = new Date(this.createdAt);
+  return Math.floor((now - created) / (1000 * 60 * 60 * 24));
 });
 
 // Indexes
 orderSchema.index({ buyer: 1, status: 1 });
 orderSchema.index({ supplier: 1, status: 1 });
 orderSchema.index({ orderNumber: 1 });
+orderSchema.index({ 'delivery.requestedDate': 1 });
+orderSchema.index({ 'payment.dueDate': 1 });
 
-const Order = mongoose.model('Order', orderSchema);
-
-module.exports = Order;
+module.exports = mongoose.model('Order', orderSchema);

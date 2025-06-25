@@ -1,113 +1,137 @@
 const express = require('express');
-const dotenv = require('dotenv');
+const mongoose = require('mongoose');
 const cors = require('cors');
-const connectDB = require('./src/config/db');
-const http = require('http');
-const socketIO = require('socket.io');
-
-// Load env vars
-dotenv.config();
-
-// Connect to database
-connectDB();
+const helmet = require('helmet');
+const compression = require('compression');
+const rateLimit = require('express-rate-limit');
+const mongoSanitize = require('express-mongo-sanitize');
+const xss = require('xss-clean');
+const hpp = require('hpp');
+const winston = require('winston');
+require('dotenv').config();
 
 const app = express();
 
-// Body parser
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Configure Winston logger
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.errors({ stack: true }),
+    winston.format.json()
+  ),
+  defaultMeta: { service: 'foodxchange-api' },
+  transports: [
+    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'logs/combined.log' }),
+  ],
+});
 
-// Enable CORS
-app.use(cors());
+if (process.env.NODE_ENV !== 'production') {
+  logger.add(new winston.transports.Console({
+    format: winston.format.simple()
+  }));
+}
 
-// Mount routes
-const authRoutes = require('./src/routes/auth');
-const productRoutes = require('./src/routes/products');
-const rfqRoutes = require('./src/routes/rfqs');
-const orderRoutes = require('./src/routes/orders');
-const companyRoutes = require('./src/routes/companies');
-const requestRoutes = require('./src/routes/requests');
+// Security middleware
+app.use(helmet());
+app.use(mongoSanitize());
+app.use(xss());
+app.use(hpp());
+app.use(compression());
 
-// API routes
-app.use('/api/auth', authRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/rfqs', rfqRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/companies', companyRoutes);
+// CORS configuration
+app.use(cors({
+  origin: process.env.CORS_ORIGIN?.split(',') || 'http://localhost:3000',
+  credentials: true
+}));
 
-// Import routes
-const importRoutes = require('./src/routes/import');
-app.use('/api/import', importRoutes);
-app.use('/api/requests', requestRoutes);
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW || '15') * 60 * 1000,
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100'),
+  message: 'Too many requests from this IP, please try again later.'
+});
+app.use('/api/', limiter);
 
-// Health check
+// Body parser middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Connect to MongoDB
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(() => {
+  logger.info('Connected to MongoDB Atlas');
+})
+.catch((error) => {
+  logger.error('MongoDB connection error:', error);
+  process.exit(1);
+});
+
+// Health check endpoint
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'FoodXchange API is running!',
+  res.json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
     environment: process.env.NODE_ENV,
-    timestamp: new Date().toISOString()
+    version: require('./package.json').version
   });
 });
 
-// Error handler middleware
-app.use((err, req, res, next) => {
-  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
-  res.status(statusCode);
-  res.json({
-    message: err.message,
-    stack: process.env.NODE_ENV === 'production' ? null : err.stack
+// API routes (will be implemented in subsequent scripts)
+app.use('/api/auth', require('./src/routes/auth'));
+app.use('/api/users', require('./src/routes/users'));
+app.use('/api/companies', require('./src/routes/companies'));
+app.use('/api/products', require('./src/routes/products'));
+app.use('/api/rfqs', require('./src/routes/rfqs'));
+app.use('/api/orders', require('./src/routes/orders'));
+app.use('/api/analytics', require('./src/routes/analytics'));
+
+// Error handling middleware
+app.use((error, req, res, next) => {
+  logger.error(error.stack);
+  
+  if (error.name === 'ValidationError') {
+    return res.status(400).json({
+      success: false,
+      message: 'Validation Error',
+      errors: Object.values(error.errors).map(err => err.message)
+    });
+  }
+  
+  if (error.name === 'CastError') {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid ID format'
+    });
+  }
+  
+  res.status(error.status || 500).json({
+    success: false,
+    message: process.env.NODE_ENV === 'production' 
+      ? 'Something went wrong!' 
+      : error.message
   });
 });
 
 // 404 handler
-app.use((req, res) => {
-  res.status(404).json({ message: 'Route not found' });
+app.use('*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: 'Route not found'
+  });
 });
 
 const PORT = process.env.PORT || 5000;
 
-// Create HTTP server and Socket.IO
-const server = http.createServer(app);
-const io = socketIO(server, {
-  cors: {
-    origin: "http://localhost:3000",
-    methods: ["GET", "POST"]
-  }
+app.listen(PORT, () => {
+  logger.info(🚀 FoodXchange API server running on port );
+  logger.info(🌟 Environment: );
+  logger.info(🔗 Health check: http://localhost:/health);
 });
 
-// Socket.IO connection handling
-io.on('connection', (socket) => {
-  console.log('New client connected');
-  
-  socket.on('disconnect', () => {
-    console.log('Client disconnected');
-  });
-});
-
-// ONLY ONE LISTEN CALL - Use server.listen, not app.listen
-server.listen(PORT, () => {
-  console.log(`
-+-----------------------------------------------+
-║          FoodXchange API Server               ║
-║                                               ║
-║  Status: Running ✅                           ║
-║  Port: ${PORT}                                  ║
-║  Environment: ${process.env.NODE_ENV || 'development'}                    ║
-║  Database: MongoDB                            ║
-║                                               ║
-║  API Endpoints:                               ║
-║  - /api/auth     (Authentication)             ║
-║  - /api/products (Product catalog)            ║
-║  - /api/rfqs     (Request for quotations)     ║
-║  - /api/orders   (Order management)           ║
-║  - /api/companies (Company profiles)          ║
-║  - /api/import   (Data import)                ║
-║                                               ║
-║  WebSocket: Socket.IO enabled                 ║
-║                                               ║
-+-----------------------------------------------+
-  `);
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📡 API Base URL: http://localhost:${PORT}/api/`);
-  console.log(`🔌 Socket.IO enabled for real-time features`);
-});
+module.exports = app;

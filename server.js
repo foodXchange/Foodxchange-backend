@@ -22,16 +22,11 @@ const logger = winston.createLogger({
   ),
   defaultMeta: { service: 'foodxchange-api' },
   transports: [
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' }),
+    new winston.transports.Console({
+      format: winston.format.simple()
+    })
   ],
 });
-
-if (process.env.NODE_ENV !== 'production') {
-  logger.add(new winston.transports.Console({
-    format: winston.format.simple()
-  }));
-}
 
 // Security middleware
 app.use(helmet());
@@ -48,8 +43,8 @@ app.use(cors({
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW || '15') * 60 * 1000,
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100'),
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,
   message: 'Too many requests from this IP, please try again later.'
 });
 app.use('/api/', limiter);
@@ -59,17 +54,20 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => {
-  logger.info('Connected to MongoDB Atlas');
-})
-.catch((error) => {
-  logger.error('MongoDB connection error:', error);
-  process.exit(1);
-});
+if (process.env.MONGODB_URI) {
+  mongoose.connect(process.env.MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => {
+    logger.info('Connected to MongoDB');
+  })
+  .catch((error) => {
+    logger.error('MongoDB connection error:', error);
+  });
+} else {
+  logger.warn('MONGODB_URI not set - database connection skipped');
+}
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -77,19 +75,26 @@ app.get('/health', (req, res) => {
     status: 'OK',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    environment: process.env.NODE_ENV,
-    version: require('./package.json').version
+    environment: process.env.NODE_ENV || 'development',
+    version: '2.0.0'
   });
 });
 
-// API routes (will be implemented in subsequent scripts)
-app.use('/api/auth', require('./src/routes/auth'));
-app.use('/api/users', require('./src/routes/users'));
-app.use('/api/companies', require('./src/routes/companies'));
-app.use('/api/products', require('./src/routes/products'));
-app.use('/api/rfqs', require('./src/routes/rfqs'));
-app.use('/api/orders', require('./src/routes/orders'));
-app.use('/api/analytics', require('./src/routes/analytics'));
+// Basic API routes (placeholder)
+app.get('/api', (req, res) => {
+  res.json({
+    message: 'FoodXchange API v2.0 - Ready for AI integration',
+    timestamp: new Date().toISOString(),
+    endpoints: [
+      'GET /health - Health check',
+      'GET /api - This endpoint',
+      'AI endpoints coming soon...'
+    ]
+  });
+});
+
+// AI Routes placeholder (will be added by AI integration script)
+// app.use('/api/ai', require('./src/routes/ai/aiRoutes'));
 
 // Error handling middleware
 app.use((error, req, res, next) => {
@@ -129,9 +134,11 @@ app.use('*', (req, res) => {
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  logger.info(🚀 FoodXchange API server running on port );
-  logger.info(🌟 Environment: );
-  logger.info(🔗 Health check: http://localhost:/health);
+  logger.info(`🚀 FoodXchange API server running on port ${PORT}`);
+  logger.info(`🌟 Environment: ${process.env.NODE_ENV}`);
+  logger.info(`🔗 Health check: http://localhost:${PORT}/health`);
 });
 
 module.exports = app;
+
+

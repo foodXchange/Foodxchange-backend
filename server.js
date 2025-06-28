@@ -1,125 +1,57 @@
-const express = require('express');
-const mongoose = require('mongoose');
+﻿const express = require('express');
 const cors = require('cors');
-const helmet = require('helmet');
-const compression = require('compression');
-const rateLimit = require('express-rate-limit');
-const mongoSanitize = require('express-mongo-sanitize');
-const xss = require('xss-clean');
-const hpp = require('hpp');
-const winston = require('winston');
+const mongoose = require('mongoose');
 require('dotenv').config();
 
 const app = express();
 
-// Configure Winston logger
-const logger = winston.createLogger({
-  level: 'info',
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.errors({ stack: true }),
-    winston.format.json()
-  ),
-  defaultMeta: { service: 'foodxchange-api' },
-  transports: [
-    new winston.transports.Console({
-      format: winston.format.simple()
-    })
-  ],
-});
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Security middleware
-app.use(helmet());
-app.use(mongoSanitize());
-app.use(xss());
-app.use(hpp());
-app.use(compression());
+// Import routes
+const aiRoutes = require('./routes/ai');
 
-// CORS configuration
-app.use(cors({
-  origin: process.env.CORS_ORIGIN?.split(',') || 'http://localhost:3000',
-  credentials: true
-}));
+// MongoDB connection
+const connectDB = async () => {
+  try {
+    const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/foodxchange';
+    await mongoose.connect(mongoURI);
+    console.log('✅ MongoDB connected successfully');
+  } catch (error) {
+    console.error('❌ MongoDB connection error:', error);
+    process.exit(1);
+  }
+};
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
-  message: 'Too many requests from this IP, please try again later.'
-});
-app.use('/api/', limiter);
-
-// Body parser middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Connect to MongoDB
-if (process.env.MONGODB_URI) {
-  mongoose.connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(() => {
-    logger.info('Connected to MongoDB');
-  })
-  .catch((error) => {
-    logger.error('MongoDB connection error:', error);
-  });
-} else {
-  logger.warn('MONGODB_URI not set - database connection skipped');
-}
+// Connect to database
+connectDB();
 
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({
-    status: 'OK',
+    status: 'ok',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    environment: process.env.NODE_ENV || 'development',
-    version: '2.0.0'
+    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
-// Basic API routes (placeholder)
-app.get('/api', (req, res) => {
+// Use routes
+app.use('/api/ai', aiRoutes);
+
+// Default route
+app.get('/', (req, res) => {
   res.json({
-    message: 'FoodXchange API v2.0 - Ready for AI integration',
-    timestamp: new Date().toISOString(),
-    endpoints: [
-      'GET /health - Health check',
-      'GET /api - This endpoint',
-      'AI endpoints coming soon...'
-    ]
-  });
-});
-
-// AI Routes placeholder (will be added by AI integration script)
-// app.use('/api/ai', require('./src/routes/ai/aiRoutes'));
-
-// Error handling middleware
-app.use((error, req, res, next) => {
-  logger.error(error.stack);
-  
-  if (error.name === 'ValidationError') {
-    return res.status(400).json({
-      success: false,
-      message: 'Validation Error',
-      errors: Object.values(error.errors).map(err => err.message)
-    });
-  }
-  
-  if (error.name === 'CastError') {
-    return res.status(400).json({
-      success: false,
-      message: 'Invalid ID format'
-    });
-  }
-  
-  res.status(error.status || 500).json({
-    success: false,
-    message: process.env.NODE_ENV === 'production' 
-      ? 'Something went wrong!' 
-      : error.message
+    message: 'FoodXchange Backend API',
+    version: '2.0.0',
+    status: 'running',
+    endpoints: {
+      health: '/health',
+      ai: '/api/ai/*'
+    }
   });
 });
 
@@ -127,18 +59,27 @@ app.use((error, req, res, next) => {
 app.use('*', (req, res) => {
   res.status(404).json({
     success: false,
-    message: 'Route not found'
+    message: 'Route not found',
+    path: req.originalUrl,
+    availableRoutes: ['/', '/health', '/api/ai/status']
   });
 });
 
-const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-  logger.info(`🚀 FoodXchange API server running on port ${PORT}`);
-  logger.info(`🌟 Environment: ${process.env.NODE_ENV}`);
-  logger.info(`🔗 Health check: http://localhost:${PORT}/health`);
+// Error handler
+app.use((error, req, res, next) => {
+  console.error('Error:', error);
+  res.status(500).json({
+    success: false,
+    message: 'Internal server error',
+    error: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
+  });
 });
 
-module.exports = app;
-
-
+// Start server
+const PORT = process.env.PORT || 5001;
+app.listen(PORT, () => {
+  console.log(`🚀 FoodXchange Backend running on port ${PORT}`);
+  console.log(`📊 Health check: http://localhost:${PORT}/health`);
+  console.log(`🤖 AI endpoints: http://localhost:${PORT}/api/ai/status`);
+  console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
+});

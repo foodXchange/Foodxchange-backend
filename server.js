@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 require('dotenv').config();
@@ -12,6 +12,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Import routes
 const aiRoutes = require('./routes/ai');
+const rfqRoutes = require('./routes/rfq');
 
 // MongoDB connection
 const connectDB = async () => {
@@ -41,6 +42,7 @@ app.get('/health', (req, res) => {
 
 // Use routes
 app.use('/api/ai', aiRoutes);
+app.use('/api/rfq', rfqRoutes);
 
 // Default route
 app.get('/', (req, res) => {
@@ -83,3 +85,5 @@ app.listen(PORT, () => {
   console.log(`🤖 AI endpoints: http://localhost:${PORT}/api/ai/status`);
   console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
+
+

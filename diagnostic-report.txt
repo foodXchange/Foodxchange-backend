@@ -1,0 +1,37 @@
+=== FoodXchange Error Diagnostic Report ===
+Generated: 06/28/2025 23:04:05
+
+=== Node.js Version ===
+v22.15.1
+
+=== NPM Version ===  
+11.4.0
+
+=== Frontend Directory ===
+C:\Users\foodz\Documents\GitHub\Development\foodxchange-app C:\Users\foodz\Documents\GitHub\Development\foodxchange-app\node_modules C:\Users\foodz\Documents\GitHub\Development\foodxchange-app\public C:\Users\foodz\Documents\GitHub\Development\foodxchange-app\scripts C:\Users\foodz\Documents\GitHub\Development\foodxchange-app\src C:\Users\foodz\Documents\GitHub\Development\foodxchange-app\.env C:\Users\foodz\Documents\GitHub\Development\foodxchange-app\.env.development C:\Users\foodz\Documents\GitHub\Development\foodxchange-app\.env.local C:\Users\foodz\Documents\GitHub\Development\foodxchange-app\.gitignore C:\Users\foodz\Documents\GitHub\Development\foodxchange-app\package-lock.json C:\Users\foodz\Documents\GitHub\Development\foodxchange-app\package.json C:\Users\foodz\Documents\GitHub\Development\foodxchange-app\README.md C:\Users\foodz\Documents\GitHub\Development\foodxchange-app\tailwind.config.js C:\Users\foodz\Documents\GitHub\Development\foodxchange-app\tsconfig.json
+
+=== Backend Directory ===
+C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\controllers C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\data C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\docs C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\logs C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\middleware C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\models C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\node_modules C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\routes C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\scripts C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\services C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\src C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\temp C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\tests C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\uploads C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\utils C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\.env C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\.env.ai C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\.env.backup.20250628_023108 C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\.env.backup.20250628_024218 C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\.env.example C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\.env.example.sellers C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\.env.template C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\.gitignore C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\check-db.js C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\checkBuyers.js C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\COMPLETE-PROJECT-OVERVIEW-20250628-164602.md C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\COMPLETE-PROJECT-OVERVIEW-20250628-164622.md C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\createAccounts.js C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\createUserAccounts.js C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\debugLogin.js C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\ENVIRONMENT-SNAPSHOT-20250628-164606.json C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\ENVIRONMENT-SNAPSHOT-20250628-164627.json C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\import-data.bat C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\importSampleProducts.js C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\LICENSE C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\listBuyers.js C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\package-lock.json C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\package-updates.json C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\package.json C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\README.md C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\resetPasswords.js C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\seed-simple.js C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\seedRFQs.js C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\seedUsers.js C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\server-update-instructions.txt C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\server.backup.js C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\server.before-fix.js C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\server.js C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\server.js.backup C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\server.js.backup.20250628_030103 C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\simple-server.js C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\simpleLoginTest.js C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\simpleTest.js C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\startServer.js C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\TECHNICAL-SPECIFICATIONS-20250628-164603.md C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\TECHNICAL-SPECIFICATIONS-20250628-164624.md C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\test-azure-services.ps1 C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\test-backend.js C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\testAPI.js C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\testAPI.ps1 C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\testAPIFixed.js C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\testAuth.js C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\testUsers.js C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\testUsersUpdated.js C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\ULTIMATE-HANDOFF-MESSAGE-20250628-164607.md C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\ULTIMATE-HANDOFF-MESSAGE-20250628-164628.md
+
+=== Port Usage ===
+
+
+=== MongoDB Service ===
+ SERVICE_NAME: MongoDB          TYPE               : 10  WIN32_OWN_PROCESS           STATE              : 4  RUNNING                                  (STOPPABLE, NOT_PAUSABLE, ACCEPTS_PRESHUTDOWN)         WIN32_EXIT_CODE    : 0  (0x0)         SERVICE_EXIT_CODE  : 0  (0x0)         CHECKPOINT         : 0x0         WAIT_HINT          : 0x0
+
+=== Recent PowerShell History ===
+
+  Id     Duration CommandLine
+  --     -------- -----------
+  13        0.023 $global:FXPaths.Backend = "C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend"
+  14        0.027 # Test it works
+  15        0.002 fxf
+  16        0.002 fxf
+  17        0.009 pwd
+  18        0.016 fxb  
+  19        0.001 pwd
+  20        2.461 fxdiag
+  21        0.158 fxstart
+  22        0.011 # Create a comprehensive error report
+
+

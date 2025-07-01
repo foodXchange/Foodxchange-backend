@@ -1,0 +1,27 @@
+// Add this to your server.js file after other imports:
+
+const mongoose = require('mongoose');
+
+// MongoDB connection
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/foodxchange', {
+      useNewUrlParser: true,
+      useUnifiedTopology: true
+    });
+    console.log('✅ MongoDB connected');
+  } catch (error) {
+    console.error('❌ MongoDB connection failed:', error);
+    process.exit(1);
+  }
+};
+
+// Connect to database
+connectDB();
+
+// Import models to register them
+require('./models');
+
+// Add before your existing routes:
+const adminRoutes = require('./routes/admin');
+app.use('/api/admin', adminRoutes);

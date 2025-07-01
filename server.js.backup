@@ -1,123 +1,109 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
-const compression = require('compression');
 const rateLimit = require('express-rate-limit');
-const mongoSanitize = require('express-mongo-sanitize');
-const xss = require('xss-clean');
-const hpp = require('hpp');
-const winston = require('winston');
 require('dotenv').config();
 
 const app = express();
 
-// Configure Winston logger
-const logger = winston.createLogger({
-  level: 'info',
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.errors({ stack: true }),
-    winston.format.json()
-  ),
-  defaultMeta: { service: 'foodxchange-api' },
-  transports: [
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' }),
-  ],
-});
-
-if (process.env.NODE_ENV !== 'production') {
-  logger.add(new winston.transports.Console({
-    format: winston.format.simple()
-  }));
-}
-
 // Security middleware
 app.use(helmet());
-app.use(mongoSanitize());
-app.use(xss());
-app.use(hpp());
-app.use(compression());
-
-// CORS configuration
-app.use(cors({
-  origin: process.env.CORS_ORIGIN?.split(',') || 'http://localhost:3000',
-  credentials: true
-}));
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW || '15') * 60 * 1000,
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100'),
-  message: 'Too many requests from this IP, please try again later.'
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100 // limit each IP to 100 requests per windowMs
 });
-app.use('/api/', limiter);
+app.use(limiter);
 
-// Body parser middleware
+// CORS configuration
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true
+}));
+
+// Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => {
-  logger.info('Connected to MongoDB Atlas');
-})
-.catch((error) => {
-  logger.error('MongoDB connection error:', error);
-  process.exit(1);
-});
+// MongoDB connection
+const connectDB = async () => {
+  try {
+    await     });
+    console.log('✅ MongoDB connected successfully');
+  } catch (error) {
+    console.error('❌ MongoDB connection failed:', error);
+    process.exit(1); // Exit if database connection fails
+  }
+};
 
+// Import models to register schemas
+require('./models');
+
+// Routes
 // Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'OK',
+app.get('/api/health', (req, res) => {
+  const dbStatus =     message: 'FoodXchange Backend API is running',
+    database: dbStatus,
     timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    environment: process.env.NODE_ENV,
-    version: require('./package.json').version
+    uptime: process.uptime()
   });
 });
 
-// API routes (will be implemented in subsequent scripts)
-app.use('/api/auth', require('./src/routes/auth'));
-app.use('/api/users', require('./src/routes/users'));
-app.use('/api/companies', require('./src/routes/companies'));
-app.use('/api/products', require('./src/routes/products'));
-app.use('/api/rfqs', require('./src/routes/rfqs'));
-app.use('/api/orders', require('./src/routes/orders'));
-app.use('/api/analytics', require('./src/routes/analytics'));
+// Demo authentication endpoint
+app.post('/api/auth/login', (req, res) => {
+  const { email, password } = req.body;
+  
+  // Demo login
+  if (email === 'demo@foodxchange.com' && password === 'demo123') {
+    res.json({
+      success: true,
+      data: {
+        token: 'demo-token-' + Date.now(),
+        user: {
+          id: 'demo-user',
+          email: email,
+          name: 'Demo User',
+          role: 'buyer'
+        }
+      }
+    });
+  }
+  // Admin login
+  else if (email === 'admin@foodxchange.com' && password === 'admin123') {
+    res.json({
+      success: true,
+      data: {
+        token: 'admin-token-' + Date.now(),
+        user: {
+          id: 'admin-user',
+          email: email,
+          name: 'Admin User',
+          role: 'admin'
+        }
+      }
+    });
+  }
+  // Invalid credentials
+  else {
+    res.status(401).json({
+      success: false,
+      message: 'Invalid credentials'
+    });
+  }
+});
 
-// AI Routes
-app.use('/api/ai', require('./src/routes/ai/aiRoutes'));
+// Admin routes
+const adminRoutes = require('./routes/admin');
+app.use('/api/admin', adminRoutes);
 
 // Error handling middleware
-app.use((error, req, res, next) => {
-  logger.error(error.stack);
-  
-  if (error.name === 'ValidationError') {
-    return res.status(400).json({
-      success: false,
-      message: 'Validation Error',
-      errors: Object.values(error.errors).map(err => err.message)
-    });
-  }
-  
-  if (error.name === 'CastError') {
-    return res.status(400).json({
-      success: false,
-      message: 'Invalid ID format'
-    });
-  }
-  
-  res.status(error.status || 500).json({
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({
     success: false,
-    message: process.env.NODE_ENV === 'production' 
-      ? 'Something went wrong!' 
-      : error.message
+    message: 'Something went wrong!',
+    error: process.env.NODE_ENV === 'development' ? err.message : {}
   });
 });
 
@@ -125,27 +111,46 @@ app.use((error, req, res, next) => {
 app.use('*', (req, res) => {
   res.status(404).json({
     success: false,
-    message: 'Route not found'
+    message: 'API endpoint not found',
+    path: req.originalUrl
   });
 });
 
-// Initialize AI services
-const aiService = require('./src/services/ai/azureAIService');
-(async () => {
-  try {
-    await aiService.initialize();
-    console.log('🧠 Azure AI services initialized successfully');
-  } catch (error) {
-    console.error('❌ Failed to initialize AI services:', error);
-  }
-})();
-
+// Start server
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
- logger.info(`🚀 FoodXchange API server running on port ${PORT}`);
-logger.info(`🌟 Environment: ${process.env.NODE_ENV}`);
-logger.info(`🔗 Health check: http://localhost:${PORT}/health`);
+const startServer = async () => {
+  try {
+    // Connect to database first
+    await connectDB();
+    // Add MongoDB connection
+// Add MongoDB connection
+
+// Connect to MongoDB
+
+// Add admin routes
+const adminRoutes = require('./routes/admin');
+app.use('/api/admin', adminRoutes);
+    // Then start the server
+    app.listen(PORT, () => {
+      console.log(`🚀 FoodXchange Backend running on port ${PORT}`);
+      console.log(`📡 API Health: http://localhost:${PORT}/api/health`);
+      console.log(`🔧 Admin API: http://localhost:${PORT}/api/admin/health`);
+      console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`📊 MongoDB: ${    console.error('❌ Server startup failed:', error);
+    process.exit(1);
+  }
+};
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('🛑 SIGTERM received, shutting down gracefully...');
+  await 
+process.on('SIGINT', async () => {
+  console.log('🛑 SIGINT received, shutting down gracefully...');
+  await 
+// Start the server
+startServer();
 
 module.exports = app;
 

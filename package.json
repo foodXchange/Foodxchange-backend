@@ -6,7 +6,9 @@
     "test:watch": "jest --watch",
     "start": "node server.js",
     "test": "jest",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "admin:seed": "node scripts/seedAdminData.js",
+    "admin:setup": "node scripts/setupAdmin.js"
   },
   "dependencies": {
     "@azure/ai-form-recognizer": "^5.0.0",
@@ -20,14 +22,15 @@
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
-    "express": "^4.18.2",
+    "express": "^4.21.2",
     "express-rate-limit": "^6.10.0",
     "express-validator": "^7.0.1",
     "helmet": "^7.0.0",
     "jsonwebtoken": "^9.0.2",
     "langchain": "^0.1.25",
-    "mongoose": "^7.5.0",
+    "mongoose": "^7.8.7",
     "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.14.1",
     "node-cron": "^3.0.2",
     "openai": "^4.28.0"
   },

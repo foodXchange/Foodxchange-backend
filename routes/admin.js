@@ -176,7 +176,7 @@ router.post('/reports', async (req, res) => {
     const reportData = {
       type,
       generated_at: new Date(),
-      data: { message: Report of type \ generated successfully }
+      data: {message: "Report of type generated successfully"}
     };
     res.json(reportData);
   } catch (error) {

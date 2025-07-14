@@ -167,6 +167,18 @@ foodxchange-backend/
 - Redis 7.x (optional, falls back to memory cache)
 - Azure account (for AI features)
 
+### Redis Setup (Windows)
+1. **Download Redis**: Download from [Redis Windows releases](https://github.com/microsoftarchive/redis/releases)
+2. **Install Redis**: Install to `C:\Program Files\Redis\`
+3. **Start Redis**: Use the provided batch script:
+   ```bash
+   # Start Redis only
+   start-redis.bat
+   
+   # Or start Redis + Backend together
+   start-all.bat
+   ```
+
 ### Installation
 
 1. **Clone the repository**

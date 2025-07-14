@@ -251,12 +251,13 @@ const parseConfig = () => {
     });
     
     return config;
-  } catch (error) {
+  } catch (error: any) {
     if (error instanceof z.ZodError) {
       console.error('Configuration validation failed:', error.errors);
       throw new Error(`Invalid configuration: ${error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')}`);
     }
-    throw error;
+    console.error('Configuration validation failed:', error.message || error);
+    throw new Error(`Configuration error: ${error.message || 'Unknown error'}`);
   }
 };
 

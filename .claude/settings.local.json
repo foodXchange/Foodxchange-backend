@@ -26,7 +26,10 @@
       "Bash(cp:*)",
       "Bash(\"C:\\Program Files\\Redis\\redis-server.exe\")",
       "Bash(npm run typecheck:*)",
-      "Bash(gh repo view:*)"
+      "Bash(gh repo view:*)",
+      "Bash(npm run build:*)",
+      "Bash(echo)",
+      "Bash(cmd /c:*)"
     ],
     "deny": []
   }

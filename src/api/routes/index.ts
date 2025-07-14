@@ -1,16 +1,17 @@
-// File: src/api/routes/index.js
-const express = require('express');
-const router = express.Router();
+// File: src/api/routes/index.ts
+import { Router, Request, Response } from 'express';
+
+const router = Router();
 
 // Import route modules
-const authRoutes = require('./auth');
-const rfqRoutes = require('./rfq');
-const complianceRoutes = require('./compliance');
-const supplierRoutes = require('./supplier');
-const orderRoutes = require('./order');
+import authRoutes from './auth';
+import rfqRoutes from './rfq';
+import complianceRoutes from './compliance';
+import supplierRoutes from './supplier';
+import orderRoutes from './order';
 
 // API version and info
-router.get('/', (req, res) => {
+router.get('/', (req: Request, res: Response) => {
   res.json({
     name: 'FoodXchange API',
     version: '1.0.0',
@@ -35,4 +36,4 @@ router.use('/compliance', complianceRoutes);
 router.use('/suppliers', supplierRoutes);
 router.use('/orders', orderRoutes);
 
-module.exports = router;
+export default router;

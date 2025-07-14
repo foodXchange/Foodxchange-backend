@@ -19,7 +19,13 @@
       "Bash(git checkout:*)",
       "Bash(git stash:*)",
       "Bash(git pull:*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(ls:*)",
+      "Bash(redis-cli:*)",
+      "Bash(where:*)",
+      "Bash(cp:*)",
+      "Bash(\"C:\\Program Files\\Redis\\redis-server.exe\")",
+      "Bash(npm run typecheck:*)"
     ],
     "deny": []
   }

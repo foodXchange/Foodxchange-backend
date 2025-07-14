@@ -15,6 +15,7 @@ import orderRoutes from './marketplace/orderRoutes';
 import sampleRoutes from './marketplace/sampleRoutes';
 import supplierRoutes from './marketplace/supplierRoutes';
 import importRoutes from './import';
+import trackingRoutes from './tracking';
 
 const logger = new Logger('Routes');
 
@@ -35,6 +36,7 @@ export const configureRoutes = (app: Express): void => {
     { path: '/samples', router: sampleRoutes, name: 'Sample Requests' },
     { path: '/suppliers', router: supplierRoutes, name: 'Suppliers' },
     { path: '/import', router: importRoutes, name: 'Import' },
+    { path: '/tracking', router: trackingRoutes, name: 'Tracking' },
   ];
 
   // Register each route

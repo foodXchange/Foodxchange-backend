@@ -1,0 +1,32 @@
+# Linguist overrides
+*.js linguist-detectable=false
+*.jsx linguist-detectable=false
+*.ts linguist-detectable=true
+*.tsx linguist-detectable=true
+
+# Set TypeScript as primary language
+*.ts linguist-language=TypeScript
+*.tsx linguist-language=TypeScript
+
+# Mark generated files
+*.min.js linguist-generated=true
+*.d.ts linguist-generated=true
+node_modules/* linguist-vendored
+dist/* linguist-generated=true
+build/* linguist-generated=true
+
+# Ensure proper line endings
+* text=auto
+*.ts text eol=lf
+*.tsx text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary

@@ -9,6 +9,8 @@ import rfqRoutes from './rfq';
 import complianceRoutes from './compliance';
 import supplierRoutes from './supplier';
 import orderRoutes from './order';
+import aiRoutes from './ai';
+import recommendationRoutes from './recommendations';
 
 // API version and info
 router.get('/', (req: Request, res: Response) => {
@@ -21,7 +23,9 @@ router.get('/', (req: Request, res: Response) => {
       rfqs: '/api/rfqs',
       compliance: '/api/compliance',
       suppliers: '/api/suppliers',
-      orders: '/api/orders'
+      orders: '/api/orders',
+      ai: '/api/ai',
+      recommendations: '/api/recommendations'
     },
     documentation: '/api/docs',
     websocket: `ws://localhost:${process.env.WS_PORT || 3001}/ws`,
@@ -35,5 +39,7 @@ router.use('/rfqs', rfqRoutes);
 router.use('/compliance', complianceRoutes);
 router.use('/suppliers', supplierRoutes);
 router.use('/orders', orderRoutes);
+router.use('/ai', aiRoutes);
+router.use('/recommendations', recommendationRoutes);
 
 export default router;

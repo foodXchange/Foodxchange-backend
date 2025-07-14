@@ -8,7 +8,7 @@ import { asyncHandler } from '../utils/asyncHandler';
 import { ApiError } from '../core/errors';
 import { Logger } from '../core/logging/logger';
 import { CacheService } from '../infrastructure/cache/CacheService';
-import { MetricsService } from '../services/metrics/MetricsService';
+import { MetricsService } from '../infrastructure/monitoring/MetricsService';
 
 const router = Router();
 const logger = new Logger('TrackingRoutes');

@@ -29,7 +29,10 @@
       "Bash(gh repo view:*)",
       "Bash(npm run build:*)",
       "Bash(echo)",
-      "Bash(cmd /c:*)"
+      "Bash(cmd /c:*)",
+      "Bash(node:*)",
+      "Bash(wmic process where:*)",
+      "Bash(rm:*)"
     ],
     "deny": []
   }

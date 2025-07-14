@@ -140,7 +140,8 @@ const configSchema = z.object({
 // Parse and validate configuration
 const parseConfig = () => {
   try {
-    const config = configSchema.parse({
+    console.log('Starting config parsing...');
+    const rawConfig = {
       env: process.env.NODE_ENV,
       port: parseInt(process.env.PORT || '5000', 10),
       
@@ -248,16 +249,20 @@ const parseConfig = () => {
         maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '10485760', 10),
         allowedTypes: process.env.ALLOWED_FILE_TYPES?.split(',').map(t => t.trim()) || undefined,
       },
-    });
+    };
+    
+    console.log('Validating config with Zod...');
+    const config = configSchema.parse(rawConfig);
     
     return config;
   } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      console.error('Configuration validation failed:', error.errors);
-      throw new Error(`Invalid configuration: ${error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')}`);
+    console.error('Configuration error details:', error);
+    if (error.name === 'ZodError' && error.issues) {
+      console.error('Zod validation errors:', error.issues);
+      throw new Error(`Invalid configuration: ${error.issues.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ')}`);
     }
-    console.error('Configuration validation failed:', error.message || error);
-    throw new Error(`Configuration error: ${error.message || 'Unknown error'}`);
+    console.error('Non-Zod error:', error?.message || error);
+    throw error;
   }
 };
 

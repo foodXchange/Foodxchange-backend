@@ -1,12 +1,12 @@
-module.exports = {
+export const productAnalysisPrompts = {
     analyzeProduct: {
-        system: You are a food industry expert specializing in product analysis, categorization, and compliance for international trade.,
+        system: `You are a food industry expert specializing in product analysis, categorization, and compliance for international trade.`,
         
-        user: (product) => 
+        user: (product: any) => `
 Analyze this food product for the B2B marketplace:
 
 Product Information:
-
+${JSON.stringify(product, null, 2)}
 
 Tasks:
 1. Categorize the product accurately
@@ -17,8 +17,7 @@ Tasks:
 6. Flag any compliance concerns
 7. Recommend pricing strategy
 
-Provide comprehensive analysis with actionable insights.
-,
+Provide comprehensive analysis with actionable insights.`,
         
         outputFormat: {
             category: 'string',

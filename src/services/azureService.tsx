@@ -45,7 +45,7 @@ class AzureService {
     
     try {
       const containerClient = this.blobServiceClient.getContainerClient(this.containerName);
-      const blobName = ${Date.now()}-;
+      const blobName = `${Date.now()}-${fileName}`;
       const blockBlobClient = containerClient.getBlockBlobClient(blobName);
       
       await blockBlobClient.upload(fileBuffer, fileBuffer.length, {

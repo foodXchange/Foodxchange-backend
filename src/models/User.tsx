@@ -56,7 +56,7 @@ const userSchema = new mongoose.Schema({
 
 // Virtual for full name
 userSchema.virtual('fullName').get(function() {
-  return {this.profile.firstName} {this.profile.lastName}.trim();
+  return `${this.profile.firstName} ${this.profile.lastName}`.trim();
 });
 
 // Hash password before saving
@@ -80,11 +80,11 @@ userSchema.virtual('isLocked').get(function() {
 userSchema.methods.incLoginAttempts = function() {
   if (this.lockUntil && this.lockUntil < Date.now()) {
     return this.updateOne({
-      {unset: { loginAttempts: 1, lockUntil: 1 }}
+      $unset: { loginAttempts: 1, lockUntil: 1 }
     });
   }
   
-  const updates = { {inc: { loginAttempts: 1 } };
+  const updates: any = { $inc: { loginAttempts: 1 } };
   
   if (this.loginAttempts + 1 >= 5 && !this.isLocked) {
     updates.lockUntil = Date.now() + 2 * 60 * 60 * 1000; // 2 hours

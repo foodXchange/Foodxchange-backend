@@ -1,5 +1,0 @@
-// Add this to your server.js file in the routes section:
-
-// Seller routes
-const sellerRoutes = require('./src/routes/sellers/sellerRoutes');
-app.use('/api/sellers', sellerRoutes);

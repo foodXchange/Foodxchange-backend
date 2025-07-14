@@ -1,12 +1,12 @@
-module.exports = {
+export const supplierMatchingPrompts = {
     matchSuppliers: {
-        system: You are an expert B2B food trade analyst specializing in supplier-buyer matching for the Israeli-European market.,
+        system: `You are an expert B2B food trade analyst specializing in supplier-buyer matching for the Israeli-European market.`,
         
-        user: (requirements) => 
+        user: (requirements: any) => `
 Analyze these buyer requirements and suggest the best matching suppliers:
 
 Buyer Requirements:
-
+${JSON.stringify(requirements, null, 2)}
 
 Consider:
 1. Product specifications and quality requirements
@@ -17,8 +17,7 @@ Consider:
 6. Historical performance and reliability
 
 Provide a ranked list of suppliers with matching scores and detailed reasoning.
-Format the response as a JSON array with supplier matches.
-,
+Format the response as a JSON array with supplier matches.`,
         
         functions: [{
             name: 'match_suppliers',

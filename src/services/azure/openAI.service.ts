@@ -54,7 +54,7 @@ export interface NegotiationInsights {
   timing: string;
 }
 
-class OpenAIService {
+export class OpenAIService {
   private client: OpenAIClient | null = null;
   private isInitialized = false;
   private readonly deploymentId: string;

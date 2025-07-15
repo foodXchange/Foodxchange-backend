@@ -7,7 +7,7 @@ import { Router, Request, Response } from 'express';
 import { body, param, query, validationResult } from 'express-validator';
 import { RecommendationEngine, RFQRequirements, UserBehaviorData } from '../../services/ai/RecommendationEngine';
 import { MatchingAlgorithms, BuyerRequirements, SupplierProfile, ProductProfile } from '../../services/ai/MatchingAlgorithms';
-import { authenticate } from '../../middleware/auth';
+import { protect } from '../../middleware/auth';
 import { authorize } from '../../middleware/authorize';
 import { asyncHandler } from '../../utils/asyncHandler';
 import { ApiError } from '../../core/errors';
@@ -40,7 +40,7 @@ const validateRequest = (req: Request, res: Response, next: any) => {
  */
 router.post(
   '/products',
-  authenticate,
+  protect,
   [
     body('productCategory').notEmpty().withMessage('Product category is required'),
     body('specifications').optional().isObject(),
@@ -132,7 +132,7 @@ router.post(
  */
 router.post(
   '/suppliers',
-  authenticate,
+  protect,
   [
     body('productCategory').notEmpty().withMessage('Product category is required'),
     body('requirements').optional().isObject(),
@@ -191,7 +191,7 @@ router.post(
  */
 router.get(
   '/similar-products/:productId',
-  authenticate,
+  protect,
   [
     param('productId').isMongoId().withMessage('Invalid product ID'),
     query('limit').optional().isInt({ min: 1, max: 20 })
@@ -239,7 +239,7 @@ router.get(
  */
 router.get(
   '/personalized',
-  authenticate,
+  protect,
   [
     query('limit').optional().isInt({ min: 1, max: 50 })
   ],
@@ -297,7 +297,7 @@ router.get(
  */
 router.post(
   '/advanced-matching',
-  authenticate,
+  protect,
   [
     body('requirements').isObject().withMessage('Requirements object is required'),
     body('suppliers').optional().isArray(),
@@ -369,7 +369,7 @@ router.post(
  */
 router.post(
   '/feedback',
-  authenticate,
+  protect,
   [
     body('recommendationId').notEmpty().withMessage('Recommendation ID is required'),
     body('action').isIn(['view', 'click', 'purchase', 'reject']).withMessage('Invalid action'),
@@ -413,7 +413,7 @@ router.post(
  */
 router.get(
   '/analytics',
-  authenticate,
+  protect,
   authorize(['buyer', 'admin']),
   asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user._id;

@@ -325,3 +325,15 @@ export const createAuthError = (
 ): AuthenticationError => {
   return new AuthenticationError(message, code);
 };
+
+// Add ApiError as an alias for compatibility
+export class ApiError extends BaseError {
+  constructor(
+    message: string,
+    statusCode: number = 500,
+    code: ErrorCode = ErrorCode.INTERNAL_SERVER_ERROR,
+    context?: Record<string, any>
+  ) {
+    super(message, code, statusCode, true, context);
+  }
+}

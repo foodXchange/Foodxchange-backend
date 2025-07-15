@@ -5,7 +5,7 @@
 
 import { Logger } from '../../core/logging/logger';
 import { CacheService } from '../../infrastructure/cache/CacheService';
-import { OpenAIService } from '../azure/openAI.service';
+import { OpenAIWrapper } from './OpenAIWrapper';
 import { MetricsService } from '../../infrastructure/monitoring/MetricsService';
 
 export interface RecommendationScore {
@@ -65,13 +65,13 @@ export class RecommendationEngine {
   private static instance: RecommendationEngine;
   private logger: Logger;
   private cache: CacheService;
-  private openAI: OpenAIService;
+  private openAI: any; // OpenAIService
   private metrics: MetricsService;
 
   private constructor() {
     this.logger = new Logger('RecommendationEngine');
     this.cache = CacheService.getInstance();
-    this.openAI = OpenAIService.getInstance();
+    this.openAI = OpenAIWrapper.getInstance().getService();
     this.metrics = MetricsService.getInstance();
   }
 

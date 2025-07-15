@@ -33,7 +33,8 @@
       "Bash(node:*)",
       "Bash(wmic process where:*)",
       "Bash(rm:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(npm run start:*)"
     ],
     "deny": []
   }

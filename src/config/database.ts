@@ -14,7 +14,7 @@ const connectDB = async () => {
       wtimeoutMS: 2500,
       retryWrites: true,
       retryReads: true,
-      compressors: ['snappy', 'zlib'],
+      compressors: ['snappy', 'zlib'] as ('none' | 'snappy' | 'zlib' | 'zstd')[],
       readPreference: 'secondaryPreferred' as const
     };
 

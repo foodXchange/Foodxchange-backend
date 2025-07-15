@@ -6,6 +6,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { z, ZodError, ZodSchema } from 'zod';
 import { ValidationError } from '../core/errors';
+import rateLimit from 'express-rate-limit';
+import { User } from '../models/User';
 
 interface ValidationSchemas {
   body?: ZodSchema;
@@ -66,11 +68,54 @@ export const commonSchemas = {
   // MongoDB ObjectId
   objectId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid ObjectId'),
   
-  // Email
-  email: z.string().email().toLowerCase(),
+  // Enhanced Email validation
+  email: z.string()
+    .email('Please enter a valid email address')
+    .toLowerCase()
+    .refine(email => {
+      const domain = email.split('@')[1];
+      const forbiddenDomains = ['tempmail.com', '10minutemail.com', 'guerrillamail.com'];
+      return !forbiddenDomains.includes(domain);
+    }, 'Temporary email addresses are not allowed'),
   
-  // Phone
-  phone: z.string().regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone number'),
+  // Enhanced Phone validation
+  phone: z.string()
+    .regex(/^\+?[1-9]\d{1,14}$/, 'Please enter a valid phone number in international format')
+    .min(10, 'Phone number must be at least 10 digits')
+    .max(15, 'Phone number cannot exceed 15 digits'),
+  
+  // Password validation with strength requirements
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters long')
+    .regex(/^(?=.*[a-z])/, 'Password must contain at least one lowercase letter')
+    .regex(/^(?=.*[A-Z])/, 'Password must contain at least one uppercase letter')
+    .regex(/^(?=.*\d)/, 'Password must contain at least one number')
+    .regex(/^(?=.*[!@#$%^&*(),.?":{}|<>])/, 'Password must contain at least one special character')
+    .refine(password => {
+      const commonPasswords = ['password', '123456', 'qwerty', 'abc123', 'password123'];
+      return !commonPasswords.includes(password.toLowerCase());
+    }, 'Password is too common, please choose a stronger password'),
+  
+  // Company name validation
+  companyName: z.string()
+    .min(2, 'Company name must be at least 2 characters long')
+    .max(100, 'Company name cannot exceed 100 characters')
+    .regex(/^[a-zA-Z0-9\s\-&.,()]+$/, 'Company name contains invalid characters'),
+  
+  // Company size validation
+  companySize: z.enum(['1-10', '11-50', '50-200', '200+'], {
+    errorMap: () => ({ message: 'Company size must be one of: 1-10, 11-50, 50-200, 200+' })
+  }),
+  
+  // Industry validation
+  industry: z.string()
+    .min(2, 'Industry must be at least 2 characters long')
+    .max(50, 'Industry cannot exceed 50 characters'),
+  
+  // Business type validation
+  businessType: z.enum(['restaurant', 'distributor', 'manufacturer', 'retailer', 'other'], {
+    errorMap: () => ({ message: 'Business type must be one of: restaurant, distributor, manufacturer, retailer, other' })
+  }),
   
   // URL
   url: z.string().url(),
@@ -106,3 +151,158 @@ export const validationMiddleware = {
   params: (schema: ZodSchema) => validate({ params: schema }),
   headers: (schema: ZodSchema) => validate({ headers: schema }),
 };
+
+// Enhanced validation middleware with specific requirements
+export const enhancedValidate = {
+  // User login validation
+  userLogin: validate({
+    body: z.object({
+      email: commonSchemas.email,
+      password: z.string().min(1, 'Password is required'),
+      rememberMe: z.boolean().optional().default(false)
+    })
+  }),
+  
+  // User registration validation
+  userRegister: validate({
+    body: z.object({
+      email: commonSchemas.email.refine(async (email) => {
+        const existingUser = await User.findOne({ email });
+        return !existingUser;
+      }, 'Email already exists'),
+      password: commonSchemas.password,
+      firstName: z.string()
+        .min(2, 'First name must be at least 2 characters long')
+        .max(50, 'First name cannot exceed 50 characters')
+        .regex(/^[a-zA-Z\s\-']+$/, 'First name contains invalid characters'),
+      lastName: z.string()
+        .min(2, 'Last name must be at least 2 characters long')
+        .max(50, 'Last name cannot exceed 50 characters')
+        .regex(/^[a-zA-Z\s\-']+$/, 'Last name contains invalid characters'),
+      role: z.enum(['buyer', 'seller', 'contractor', 'agent'], {
+        errorMap: () => ({ message: 'Role must be one of: buyer, seller, contractor, agent' })
+      }),
+      company: commonSchemas.companyName,
+      businessType: commonSchemas.businessType,
+      phone: commonSchemas.phone.optional(),
+      acceptTerms: z.boolean().refine(val => val === true, 'You must accept the terms and conditions')
+    })
+  }),
+  
+  // User profile update validation
+  userUpdate: validate({
+    body: z.object({
+      firstName: z.string()
+        .min(2, 'First name must be at least 2 characters long')
+        .max(50, 'First name cannot exceed 50 characters')
+        .regex(/^[a-zA-Z\s\-']+$/, 'First name contains invalid characters')
+        .optional(),
+      lastName: z.string()
+        .min(2, 'Last name must be at least 2 characters long')
+        .max(50, 'Last name cannot exceed 50 characters')
+        .regex(/^[a-zA-Z\s\-']+$/, 'Last name contains invalid characters')
+        .optional(),
+      phone: commonSchemas.phone.optional(),
+      bio: z.string()
+        .max(500, 'Bio cannot exceed 500 characters')
+        .optional(),
+      avatar: commonSchemas.url.optional(),
+      website: commonSchemas.url.optional()
+    })
+  }),
+  
+  // Company update validation
+  companyUpdate: validate({
+    body: z.object({
+      companyName: commonSchemas.companyName,
+      companySize: commonSchemas.companySize,
+      industry: commonSchemas.industry,
+      businessType: commonSchemas.businessType,
+      website: commonSchemas.url.optional(),
+      description: z.string()
+        .max(1000, 'Description cannot exceed 1000 characters')
+        .optional(),
+      address: z.object({
+        street: z.string().min(1, 'Street address is required'),
+        city: z.string().min(1, 'City is required'),
+        state: z.string().optional(),
+        zipCode: z.string().min(1, 'ZIP code is required'),
+        country: z.string().min(2, 'Country is required')
+      }).optional()
+    })
+  }),
+  
+  // Password change validation
+  userChangePassword: validate({
+    body: z.object({
+      currentPassword: z.string().min(1, 'Current password is required'),
+      newPassword: commonSchemas.password,
+      confirmPassword: z.string().min(1, 'Password confirmation is required')
+    }).refine(data => data.newPassword === data.confirmPassword, {
+      message: 'Password confirmation does not match',
+      path: ['confirmPassword']
+    }).refine(data => data.currentPassword !== data.newPassword, {
+      message: 'New password must be different from current password',
+      path: ['newPassword']
+    })
+  })
+};
+
+// Rate limiting middleware
+export const rateLimiters = {
+  // Authentication endpoints (stricter)
+  auth: rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5, // limit each IP to 5 requests per windowMs
+    message: {
+      success: false,
+      error: {
+        code: 'RATE_LIMIT_EXCEEDED',
+        message: 'Too many authentication attempts. Please try again later.',
+        statusCode: 429
+      }
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: (req) => {
+      // Skip rate limiting for trusted IPs (if needed)
+      const trustedIPs = process.env.TRUSTED_IPS?.split(',') || [];
+      return trustedIPs.includes(req.ip);
+    }
+  }),
+  
+  // General API endpoints
+  general: rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+    message: {
+      success: false,
+      error: {
+        code: 'RATE_LIMIT_EXCEEDED',
+        message: 'Too many requests. Please try again later.',
+        statusCode: 429
+      }
+    },
+    standardHeaders: true,
+    legacyHeaders: false
+  }),
+  
+  // Password reset (very strict)
+  passwordReset: rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 3, // limit each IP to 3 password reset requests per hour
+    message: {
+      success: false,
+      error: {
+        code: 'RATE_LIMIT_EXCEEDED',
+        message: 'Too many password reset attempts. Please try again later.',
+        statusCode: 429
+      }
+    },
+    standardHeaders: true,
+    legacyHeaders: false
+  })
+};
+
+// Backward compatibility - export enhanced validate as main validate
+export { enhancedValidate as validate };

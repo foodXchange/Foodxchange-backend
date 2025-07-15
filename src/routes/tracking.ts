@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { body, param, query, validationResult } from 'express-validator';
 import { Sample, SampleWorkflowStage } from '../models/sample.model';
 import { Order, LineItemStatus, ShipmentStatus } from '../models/order.model';
-import { authenticate } from '../middleware/auth';
+import { protect } from '../middleware/auth';
 import { authorize } from '../middleware/authorize';
 import { asyncHandler } from '../utils/asyncHandler';
 import { ApiError } from '../core/errors';
@@ -31,7 +31,7 @@ const validateRequest = (req: Request, res: Response, next: NextFunction) => {
  */
 router.post(
   '/samples/:id/events',
-  authenticate,
+  protect,
   [
     param('id').isMongoId().withMessage('Invalid sample ID'),
     body('stage').isIn(Object.values(SampleWorkflowStage)).withMessage('Invalid workflow stage'),
@@ -115,7 +115,7 @@ router.post(
  */
 router.get(
   '/samples/:id/status',
-  authenticate,
+  protect,
   [
     param('id').isMongoId().withMessage('Invalid sample ID'),
     query('includeTimeline').optional().isBoolean().toBoolean()
@@ -180,7 +180,7 @@ router.get(
  */
 router.post(
   '/orders/:id/shipments',
-  authenticate,
+  protect,
   authorize('supplier', 'admin'),
   [
     param('id').isMongoId().withMessage('Invalid order ID'),
@@ -271,7 +271,7 @@ router.post(
  */
 router.get(
   '/orders/:id/lines',
-  authenticate,
+  protect,
   [
     param('id').isMongoId().withMessage('Invalid order ID'),
     query('lineItemId').optional().isMongoId()
@@ -369,7 +369,7 @@ router.get(
  */
 router.post(
   '/orders/:orderId/shipments/:shipmentId/temperature',
-  authenticate,
+  protect,
   [
     param('orderId').isMongoId().withMessage('Invalid order ID'),
     param('shipmentId').isMongoId().withMessage('Invalid shipment ID'),
@@ -434,7 +434,7 @@ router.post(
  */
 router.post(
   '/orders/:orderId/lines/:lineItemId/status',
-  authenticate,
+  protect,
   authorize('supplier', 'admin'),
   [
     param('orderId').isMongoId().withMessage('Invalid order ID'),

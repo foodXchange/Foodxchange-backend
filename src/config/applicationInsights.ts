@@ -8,7 +8,7 @@ export interface TelemetryClient {
   trackDependency(dependency: { name: string; data: string; duration: number; success: boolean; dependencyTypeName?: string }): void;
   trackException(exception: { exception: Error; properties?: Record<string, string> }): void;
   trackMetric(metric: { name: string; value: number; properties?: Record<string, string> }): void;
-  trackTrace(trace: { message: string; severity?: appInsights.Contracts.SeverityLevel; properties?: Record<string, string> }): void;
+  trackTrace(trace: { message: string; severity?: any; properties?: Record<string, string> }): void;
   flush(): void;
 }
 
@@ -35,7 +35,6 @@ class ApplicationInsightsService {
 
       // Configure auto-collection
       appInsights
-        .setAutoDependencyCorrelation(true)
         .setAutoCollectRequests(true)
         .setAutoCollectPerformance(true, true)
         .setAutoCollectExceptions(true)

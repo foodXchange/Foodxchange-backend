@@ -1,9 +1,10 @@
-﻿const jwt = require('jsonwebtoken');
-const asyncHandler = require('express-async-handler');
-const User = require('../models/User');
+import jwt from 'jsonwebtoken';
+import { Request, Response, NextFunction } from 'express';
+import { User } from '../models/User';
+import { AuthenticationError, AuthorizationError } from '../core/errors';
 
-const protect = asyncHandler(async (req, res, next) => {
-  let token;
+export const protect = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  let token: string | undefined;
 
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     try {
@@ -11,55 +12,46 @@ const protect = asyncHandler(async (req, res, next) => {
       token = req.headers.authorization.split(' ')[1];
 
       // Verify token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as any;
 
       // Get user from the token
       req.user = await User.findById(decoded._id || decoded.id).select('-password');
 
       if (!req.user) {
-        res.status(401);
-        throw new Error('User not found');
+        throw new AuthenticationError('User not found');
       }
 
       next();
     } catch (error) {
-      console.error(error);
-      res.status(401);
-      throw new Error('Not authorized');
+      throw new AuthenticationError('Not authorized');
     }
   }
 
   if (!token) {
-    res.status(401);
-    throw new Error('Not authorized, no token');
+    throw new AuthenticationError('Not authorized, no token');
   }
-});
+};
 
 // Admin middleware
-const admin = (req, res, next) => {
+export const admin = (req: Request, res: Response, next: NextFunction): void => {
   if (req.user && req.user.role === 'admin') {
     next();
   } else {
-    res.status(401);
-    throw new Error('Not authorized as an admin');
+    throw new AuthorizationError('Not authorized as an admin');
   }
 };
 
 // Authorize specific roles
-const authorize = (...roles) => {
-  return (req, res, next) => {
+export const authorize = (...roles: string[]) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user) {
-      res.status(401);
-      throw new Error('Not authorized, no user');
+      throw new AuthenticationError('Not authorized, no user');
     }
 
     if (!roles.includes(req.user.role)) {
-      res.status(403);
-      throw new Error(`User role ${req.user.role} is not authorized to access this route`);
+      throw new AuthorizationError(`User role ${req.user.role} is not authorized to access this route`);
     }
 
     next();
   };
 };
-
-module.exports = { protect, admin, authorize };

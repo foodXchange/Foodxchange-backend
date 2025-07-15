@@ -34,6 +34,18 @@ const orderSchema = new mongoose.Schema({
     ref: 'RFQ'
   }, // Reference to specific proposal if from RFQ
   
+  // Agent tracking
+  facilitatedByAgent: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Agent'
+  },
+  agentLead: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'AgentLead'
+  },
+  agentCommissionPaid: { type: Boolean, default: false },
+  agentCommissionAmount: Number,
+  
   items: [{
     itemId: { type: String, required: true },
     product: { 

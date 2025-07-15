@@ -1,6 +1,7 @@
 const RFQ = require('../models/RFQ');
 const User = require('../models/User');
 const Product = require('../models/Product');
+const leadDistributionService = require('../services/leadDistributionService');
 
 // Create new RFQ
 exports.createRFQ = async (req, res) => {
@@ -23,6 +24,18 @@ exports.createRFQ = async (req, res) => {
     
     rfq.matchedSuppliers = suppliers.map(s => s._id);
     await rfq.save();
+
+    // Create agent lead from RFQ if published
+    if (rfq.status === 'published' || rfq.status === 'active') {
+      try {
+        const lead = await leadDistributionService.createLeadFromRFQ(rfq);
+        await leadDistributionService.matchAgentsToLead(lead._id);
+        console.log(`Created lead ${lead.leadNumber} from RFQ ${rfq.rfqNumber}`);
+      } catch (leadError) {
+        console.error('Error creating lead from RFQ:', leadError);
+        // Don't fail the RFQ creation if lead creation fails
+      }
+    }
 
     res.status(201).json(rfq);
   } catch (error) {
@@ -88,6 +101,17 @@ exports.updateRFQStatus = async (req, res) => {
 
     rfq.status = status;
     await rfq.save();
+
+    // Create agent lead if status changed to published
+    if ((status === 'published' || status === 'active') && rfq.status !== status) {
+      try {
+        const lead = await leadDistributionService.createLeadFromRFQ(rfq);
+        await leadDistributionService.matchAgentsToLead(lead._id);
+        console.log(`Created lead ${lead.leadNumber} from RFQ ${rfq.rfqNumber} after status update`);
+      } catch (leadError) {
+        console.error('Error creating lead from RFQ:', leadError);
+      }
+    }
 
     res.json(rfq);
   } catch (error) {

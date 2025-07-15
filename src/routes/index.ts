@@ -18,6 +18,8 @@ import importRoutes from './import';
 import trackingRoutes from './tracking';
 import recommendationRoutes from '../api/routes/recommendations';
 import aiRoutes from '../api/routes/ai';
+import agentRoutes from './agentRoutes';
+import webhookRoutes from './webhookRoutes';
 
 const logger = new Logger('Routes');
 
@@ -41,6 +43,8 @@ export const configureRoutes = (app: Express): void => {
     { path: '/tracking', router: trackingRoutes, name: 'Tracking' },
     { path: '/recommendations', router: recommendationRoutes, name: 'AI Recommendations' },
     { path: '/ai', router: aiRoutes, name: 'AI Services' },
+    { path: '/agents', router: agentRoutes, name: 'Agent Management' },
+    { path: '/webhooks', router: webhookRoutes, name: 'Webhook Endpoints' },
   ];
 
   // Register each route

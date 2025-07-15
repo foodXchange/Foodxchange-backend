@@ -35,6 +35,9 @@ import { correlationIdMiddleware } from './middleware/correlationId';
 // Route imports
 import { configureRoutes } from './routes';
 
+// WebSocket services
+import agentWebSocketService from './services/websocket/agentWebSocketService';
+
 // Initialize logger
 const logger = new Logger('Server');
 
@@ -228,6 +231,9 @@ export class Server {
 
     // Attach io instance to app for use in controllers
     this.app.set('io', this.io);
+    
+    // Initialize agent WebSocket service
+    agentWebSocketService.initialize(this.io);
 
     logger.info('WebSocket configured');
   }

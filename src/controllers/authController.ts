@@ -16,7 +16,7 @@ const generateToken = (userId, role, rememberMe) => {
 // Register new user
 const register = async (req, res) => {
   try {
-    const { email, password, name, role, companyName, companyType } = req.body;
+    const { email, password, name, role, companyName, companyType, profile } = req.body;
     
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -48,10 +48,35 @@ const register = async (req, res) => {
       name,
       role,
       company: companyId,
+      profile: profile || {
+        firstName: name ? name.split(' ')[0] : '',
+        lastName: name ? name.split(' ').slice(1).join(' ') : '',
+        phone: req.body.phone || ''
+      },
       isActive: true
     });
     
     await user.save();
+    
+    // If agent role, create agent profile
+    if (role === 'agent') {
+      const Agent = require('../models/Agent');
+      const agent = new Agent({
+        userId: user._id,
+        personalInfo: {
+          firstName: profile?.firstName || name?.split(' ')[0] || '',
+          lastName: profile?.lastName || name?.split(' ').slice(1).join(' ') || '',
+          email: email,
+          phone: profile?.phone || req.body.phone || ''
+        },
+        status: 'pending',
+        onboarding: {
+          step: 'personal_info',
+          startedAt: new Date()
+        }
+      });
+      await agent.save();
+    }
     
     // Generate token
     const token = generateToken(user._id, user.role, false);

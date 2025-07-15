@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FoodXchange Agent WebSocket Test</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .panel {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .message {
+            padding: 10px;
+            margin: 5px 0;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .new-lead {
+            background-color: #cce5ff;
+            border-left: 4px solid #004085;
+        }
+        .commission {
+            background-color: #d1ecf1;
+            border-left: 4px solid #0c5460;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .timer {
+            font-size: 18px;
+            font-weight: bold;
+            color: #dc3545;
+        }
+        #messages {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 FoodXchange Agent WebSocket Test</h1>
+    
+    <div class="container">
+        <div class="panel">
+            <h2>Connection</h2>
+            <div id="status" class="status disconnected">Disconnected</div>
+            
+            <input type="text" id="agentToken" placeholder="Agent JWT Token" />
+            <button id="connectBtn" onclick="connect()">Connect</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled>Disconnect</button>
+            
+            <h3>Agent Info</h3>
+            <div id="agentInfo">Not connected</div>
+            
+            <h3>Lead Actions</h3>
+            <div id="leadActions">
+                <select id="leadSelect" disabled>
+                    <option value="">Select a lead...</option>
+                </select>
+                <button id="acceptBtn" onclick="acceptLead()" disabled>Accept Lead</button>
+                <button id="declineBtn" onclick="declineLead()" disabled>Decline Lead</button>
+            </div>
+            
+            <h3>Test Actions</h3>
+            <button onclick="updateStatus('online')">Set Online</button>
+            <button onclick="updateStatus('busy')">Set Busy</button>
+            <button onclick="updateStatus('offline')">Set Offline</button>
+            <button onclick="sendLocation()">Send Location</button>
+        </div>
+        
+        <div class="panel">
+            <h2>Real-time Messages</h2>
+            <div id="messages"></div>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+        let agentId = null;
+        let availableLeads = new Map();
+        let timers = new Map();
+
+        function connect() {
+            const token = document.getElementById('agentToken').value;
+            if (!token) {
+                alert('Please enter an agent JWT token');
+                return;
+            }
+
+            // Connect to agent namespace
+            socket = io('http://localhost:5001/agents', {
+                auth: {
+                    token: token
+                }
+            });
+
+            socket.on('connect', () => {
+                updateStatus('Connected', true);
+                document.getElementById('connectBtn').disabled = true;
+                document.getElementById('disconnectBtn').disabled = false;
+                document.getElementById('leadSelect').disabled = false;
+                addMessage('✅ Connected to agent WebSocket', 'connected');
+            });
+
+            socket.on('disconnect', () => {
+                updateStatus('Disconnected', false);
+                document.getElementById('connectBtn').disabled = false;
+                document.getElementById('disconnectBtn').disabled = true;
+                document.getElementById('leadSelect').disabled = true;
+                addMessage('❌ Disconnected from WebSocket', 'disconnected');
+            });
+
+            socket.on('connect_error', (error) => {
+                updateStatus('Connection Error', false);
+                addMessage(`❌ Connection error: ${error.message}`, 'error');
+            });
+
+            // Agent-specific events
+            socket.on('connected', (data) => {
+                agentId = data.agentId;
+                document.getElementById('agentInfo').innerHTML = `
+                    <strong>Agent ID:</strong> ${data.agentId}<br>
+                    <strong>Name:</strong> ${data.agent.name}<br>
+                    <strong>Tier:</strong> ${data.agent.tier}<br>
+                    <strong>Status:</strong> ${data.agent.status}
+                `;
+                addMessage(`Agent connected: ${data.agent.name}`, 'info');
+            });
+
+            // New lead notification
+            socket.on('new_lead_available', (data) => {
+                const lead = data.lead;
+                availableLeads.set(lead.id, lead);
+                
+                addMessage(`
+                    🔔 NEW LEAD AVAILABLE!<br>
+                    <strong>${lead.title}</strong><br>
+                    Lead #: ${lead.leadNumber}<br>
+                    Location: ${lead.location}<br>
+                    Value: $${lead.estimatedValue.amount} ${lead.estimatedValue.currency}<br>
+                    Urgency: ${lead.urgency}<br>
+                    Match Score: ${lead.matchScore}%<br>
+                    <span class="timer" id="timer-${lead.id}">Time remaining: ${formatTime(lead.timeRemaining)}</span>
+                `, 'new-lead');
+                
+                updateLeadSelect();
+                
+                // Start local timer
+                startTimer(lead.id, lead.offerExpiresAt);
+            });
+
+            // Lead timer updates
+            socket.on('lead_timer_update', (data) => {
+                const timerElement = document.getElementById(`timer-${data.leadId}`);
+                if (timerElement) {
+                    timerElement.textContent = `Time remaining: ${formatTime(data.timeRemaining)}`;
+                }
+            });
+
+            // Lead expired
+            socket.on('lead_offer_expired', (data) => {
+                availableLeads.delete(data.leadId);
+                updateLeadSelect();
+                addMessage(`⏰ Lead offer expired: ${data.leadId}`, 'warning');
+                stopTimer(data.leadId);
+            });
+
+            // Commission updates
+            socket.on('commission_update', (data) => {
+                const commission = data.commission;
+                addMessage(`
+                    💰 COMMISSION UPDATE!<br>
+                    Type: ${commission.type}<br>
+                    Amount: $${commission.amount}<br>
+                    Status: ${commission.status}<br>
+                    Deal Value: $${commission.dealValue}<br>
+                    Lead #: ${commission.leadNumber}
+                `, 'commission');
+            });
+
+            // Order updates
+            socket.on('order_update', (data) => {
+                const order = data.order;
+                addMessage(`
+                    📦 ORDER UPDATE!<br>
+                    Order #: ${order.orderNumber}<br>
+                    Status: ${order.previousStatus} → ${order.newStatus}<br>
+                    Commission Paid: ${order.commissionPaid ? 'Yes' : 'No'}
+                `, 'order');
+            });
+
+            // Lead status updates
+            socket.on('lead_status_update', (data) => {
+                addMessage(`Lead ${data.leadId} status updated by agent ${data.agentId}: ${data.action}`, 'info');
+            });
+        }
+
+        function disconnect() {
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+                agentId = null;
+                availableLeads.clear();
+                updateLeadSelect();
+            }
+        }
+
+        function updateStatus(text, isConnected) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = text;
+            statusDiv.className = `status ${isConnected ? 'connected' : 'disconnected'}`;
+        }
+
+        function addMessage(content, type = '') {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.innerHTML = `
+                <small>${new Date().toLocaleTimeString()}</small><br>
+                ${content}
+            `;
+            messagesDiv.insertBefore(messageDiv, messagesDiv.firstChild);
+            
+            // Keep only last 50 messages
+            while (messagesDiv.children.length > 50) {
+                messagesDiv.removeChild(messagesDiv.lastChild);
+            }
+        }
+
+        function updateLeadSelect() {
+            const select = document.getElementById('leadSelect');
+            select.innerHTML = '<option value="">Select a lead...</option>';
+            
+            availableLeads.forEach((lead, id) => {
+                const option = document.createElement('option');
+                option.value = id;
+                option.textContent = `${lead.leadNumber} - ${lead.title}`;
+                select.appendChild(option);
+            });
+            
+            document.getElementById('acceptBtn').disabled = availableLeads.size === 0;
+            document.getElementById('declineBtn').disabled = availableLeads.size === 0;
+        }
+
+        function acceptLead() {
+            const leadId = document.getElementById('leadSelect').value;
+            if (!leadId) {
+                alert('Please select a lead');
+                return;
+            }
+            
+            socket.emit('lead_response', {
+                leadId: leadId,
+                action: 'accept'
+            });
+            
+            availableLeads.delete(leadId);
+            updateLeadSelect();
+            addMessage(`✅ Accepted lead: ${leadId}`, 'success');
+        }
+
+        function declineLead() {
+            const leadId = document.getElementById('leadSelect').value;
+            if (!leadId) {
+                alert('Please select a lead');
+                return;
+            }
+            
+            const reason = prompt('Reason for declining:');
+            if (!reason) return;
+            
+            socket.emit('lead_response', {
+                leadId: leadId,
+                action: 'decline',
+                reason: reason
+            });
+            
+            availableLeads.delete(leadId);
+            updateLeadSelect();
+            addMessage(`❌ Declined lead: ${leadId} - Reason: ${reason}`, 'warning');
+        }
+
+        function updateStatus(status) {
+            if (!socket) {
+                alert('Not connected');
+                return;
+            }
+            
+            socket.emit('update_status', status);
+            addMessage(`Status updated to: ${status}`, 'info');
+        }
+
+        function sendLocation() {
+            if (!socket) {
+                alert('Not connected');
+                return;
+            }
+            
+            // Get browser location
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((position) => {
+                    const location = {
+                        coordinates: {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude,
+                            accuracy: position.coords.accuracy
+                        }
+                    };
+                    
+                    socket.emit('location_update', location);
+                    addMessage(`📍 Location sent: ${location.coordinates.lat}, ${location.coordinates.lng}`, 'info');
+                }, (error) => {
+                    addMessage(`❌ Location error: ${error.message}`, 'error');
+                });
+            } else {
+                alert('Geolocation is not supported by this browser');
+            }
+        }
+
+        function formatTime(milliseconds) {
+            const seconds = Math.floor(milliseconds / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            
+            if (hours > 0) {
+                return `${hours}h ${minutes % 60}m`;
+            } else if (minutes > 0) {
+                return `${minutes}m ${seconds % 60}s`;
+            } else {
+                return `${seconds}s`;
+            }
+        }
+
+        function startTimer(leadId, expiresAt) {
+            const intervalId = setInterval(() => {
+                const remaining = new Date(expiresAt) - Date.now();
+                const timerElement = document.getElementById(`timer-${leadId}`);
+                
+                if (remaining <= 0) {
+                    clearInterval(intervalId);
+                    if (timerElement) {
+                        timerElement.textContent = 'EXPIRED';
+                        timerElement.style.color = '#6c757d';
+                    }
+                } else if (timerElement) {
+                    timerElement.textContent = `Time remaining: ${formatTime(remaining)}`;
+                }
+            }, 1000);
+            
+            timers.set(leadId, intervalId);
+        }
+
+        function stopTimer(leadId) {
+            const intervalId = timers.get(leadId);
+            if (intervalId) {
+                clearInterval(intervalId);
+                timers.delete(leadId);
+            }
+        }
+
+        // Test data - you'll need to get a real JWT token from agent registration
+        document.getElementById('agentToken').value = 'YOUR_AGENT_JWT_TOKEN_HERE';
+    </script>
+</body>
+</html>

@@ -1,6 +1,9 @@
 ﻿const Order = require('../models/Order');
 const Proposal = require('../models/Proposal');
 const RFQ = require('../models/RFQ');
+const AgentLead = require('../models/AgentLead');
+const AgentCommission = require('../models/AgentCommission');
+const commissionCalculationService = require('../services/commissionCalculationService');
 
 // Create order from accepted proposal
 const createOrder = async (req, res) => {
@@ -59,6 +62,52 @@ const createOrder = async (req, res) => {
     
     // Update RFQ status
     await RFQ.findByIdAndUpdate(proposal.rfq._id, { status: 'finalized' });
+    
+    // Check if this order was facilitated by an agent
+    if (proposal.rfq) {
+      const agentLead = await AgentLead.findOne({
+        'source.sourceId': proposal.rfq._id,
+        'source.type': 'rfq',
+        status: { $in: ['quoted', 'negotiating', 'closed_won'] },
+        'assignment.activeAgent': { $exists: true }
+      });
+      
+      if (agentLead && agentLead.assignment.activeAgent) {
+        // Update order with agent information
+        order.facilitatedByAgent = agentLead.assignment.activeAgent;
+        order.agentLead = agentLead._id;
+        await order.save();
+        
+        // Calculate and create commission
+        try {
+          const commissionResult = await commissionCalculationService.calculateCommission({
+            agentId: agentLead.assignment.activeAgent,
+            leadId: agentLead._id,
+            orderId: order._id,
+            dealValue: order.pricing.total,
+            currency: order.pricing.currency
+          });
+          
+          // Update order with commission amount
+          order.agentCommissionAmount = commissionResult.totalAmount;
+          await order.save();
+          
+          // Update lead status to closed won
+          agentLead.status = 'closed_won';
+          agentLead.closedAt = new Date();
+          agentLead.financial.dealValue = {
+            amount: order.pricing.total,
+            currency: order.pricing.currency
+          };
+          await agentLead.save();
+          
+          console.log(`Commission calculated for agent: ${commissionResult.totalAmount}`);
+        } catch (commissionError) {
+          console.error('Error calculating agent commission:', commissionError);
+          // Don't fail the order creation if commission calculation fails
+        }
+      }
+    }
     
     res.status(201).json({
       message: 'Order created successfully',
@@ -149,8 +198,36 @@ const updateOrderStatus = async (req, res) => {
       return res.status(404).json({ error: 'Order not found' });
     }
     
+    const previousStatus = order.status;
     order.status = status;
     await order.save();
+    
+    // Process agent commission when order is completed
+    if (status === 'completed' && previousStatus !== 'completed' && 
+        order.facilitatedByAgent && !order.agentCommissionPaid) {
+      try {
+        // Mark commission as paid
+        await AgentCommission.updateMany(
+          {
+            agentId: order.facilitatedByAgent,
+            'relatedEntities.orderId': order._id,
+            status: 'approved'
+          },
+          {
+            status: 'paid',
+            'lifecycle.paidAt': new Date(),
+            'payment.processing.processedAt': new Date()
+          }
+        );
+        
+        order.agentCommissionPaid = true;
+        await order.save();
+        
+        console.log(`Agent commission marked as paid for order ${order.orderNumber}`);
+      } catch (commissionError) {
+        console.error('Error processing agent commission payment:', commissionError);
+      }
+    }
     
     res.json({
       message: 'Order status updated successfully',

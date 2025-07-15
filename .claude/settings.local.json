@@ -32,7 +32,8 @@
       "Bash(cmd /c:*)",
       "Bash(node:*)",
       "Bash(wmic process where:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(mv:*)"
     ],
     "deny": []
   }

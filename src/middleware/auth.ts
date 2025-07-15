@@ -11,10 +11,15 @@ const protect = asyncHandler(async (req, res, next) => {
       token = req.headers.authorization.split(' ')[1];
 
       // Verify token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
 
       // Get user from the token
-      req.user = await User.findById(decoded.id).select('-password');
+      req.user = await User.findById(decoded._id || decoded.id).select('-password');
+
+      if (!req.user) {
+        res.status(401);
+        throw new Error('User not found');
+      }
 
       next();
     } catch (error) {
@@ -40,4 +45,21 @@ const admin = (req, res, next) => {
   }
 };
 
-module.exports = { protect, admin };
+// Authorize specific roles
+const authorize = (...roles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      res.status(401);
+      throw new Error('Not authorized, no user');
+    }
+
+    if (!roles.includes(req.user.role)) {
+      res.status(403);
+      throw new Error(`User role ${req.user.role} is not authorized to access this route`);
+    }
+
+    next();
+  };
+};
+
+module.exports = { protect, admin, authorize };

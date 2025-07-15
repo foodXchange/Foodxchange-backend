@@ -5,6 +5,7 @@ import supplierRoutes from './suppliers';
 import rfqRoutes from './rfqs';
 import orderRoutes from './orders';
 import publicRoutes from './public';
+import monitoringRoutes from './monitoring';
 import { apiVersionMiddleware } from '../../../middleware/apiVersion';
 
 const router = Router();
@@ -21,5 +22,8 @@ router.use('/users', userRoutes);
 router.use('/suppliers', supplierRoutes);
 router.use('/rfqs', rfqRoutes);
 router.use('/orders', orderRoutes);
+
+// Monitoring routes (admin access required)
+router.use('/monitoring', monitoringRoutes);
 
 export default router;

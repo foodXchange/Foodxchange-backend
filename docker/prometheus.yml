@@ -1,0 +1,47 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  - job_name: 'foodxchange-backend'
+    static_configs:
+      - targets: ['foodxchange-backend:9090']
+    scrape_interval: 15s
+    metrics_path: '/api/v1/monitoring/metrics'
+    scheme: 'http'
+
+  - job_name: 'foodxchange-health'
+    static_configs:
+      - targets: ['foodxchange-backend:5000']
+    scrape_interval: 30s
+    metrics_path: '/health'
+    scheme: 'http'
+
+  - job_name: 'mongodb'
+    static_configs:
+      - targets: ['mongo:27017']
+    scrape_interval: 30s
+    metrics_path: '/metrics'
+    scheme: 'http'
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 30s
+    metrics_path: '/metrics'
+    scheme: 'http'
+
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx:80']
+    scrape_interval: 30s
+    metrics_path: '/metrics'
+    scheme: 'http'
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

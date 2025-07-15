@@ -1,8 +1,17 @@
-# Multi-stage Docker build for FoodXchange Backend
+# Multi-stage Dockerfile for FoodXchange Backend
+FROM node:20-alpine AS base
 
-# Stage 1: Build
-FROM node:18-alpine AS builder
+# Install system dependencies
+RUN apk add --no-cache \
+    dumb-init \
+    curl \
+    tzdata \
+    && rm -rf /var/cache/apk/*
 
+# Set timezone
+ENV TZ=UTC
+
+# Create app directory
 WORKDIR /app
 
 # Copy package files
@@ -11,38 +20,50 @@ COPY package*.json ./
 # Install dependencies
 RUN npm ci --only=production && npm cache clean --force
 
-# Copy source code
+# Development stage
+FROM base AS development
+ENV NODE_ENV=development
+RUN npm ci
 COPY . .
+EXPOSE 5000
+CMD ["npm", "run", "dev"]
 
-# Build the application
+# Build stage
+FROM base AS build
+ENV NODE_ENV=production
+RUN npm ci
+COPY . .
 RUN npm run build
 
-# Stage 2: Production
-FROM node:18-alpine AS production
+# Production stage
+FROM base AS production
+ENV NODE_ENV=production
+ENV PORT=5000
+ENV HOST=0.0.0.0
 
 # Create non-root user
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nodejs -u 1001
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
 
-WORKDIR /app
+# Copy built application
+COPY --from=build --chown=nodejs:nodejs /app/dist ./dist
+COPY --from=build --chown=nodejs:nodejs /app/node_modules ./node_modules
+COPY --from=build --chown=nodejs:nodejs /app/package*.json ./
 
-# Copy built application from builder stage
-COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
-COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
+# Create required directories
+RUN mkdir -p logs uploads && \
+    chown -R nodejs:nodejs /app
 
-# Create directories for uploads and logs
-RUN mkdir -p uploads logs && chown -R nodejs:nodejs uploads logs
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:5000/health || exit 1
 
 # Switch to non-root user
 USER nodejs
 
-# Expose the port
-EXPOSE 5000
+# Expose ports
+EXPOSE 5000 9090
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:5000/health/quick', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
-
-# Start the application
-CMD ["node", "dist/src/server.js"]
+# Start application with dumb-init for proper signal handling
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node", "dist/src/server-optimized.js"]

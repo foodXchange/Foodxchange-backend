@@ -39,7 +39,9 @@
       "Bash(docker-compose:*)",
       "Bash(mongo:*)",
       "Bash(mongosh:*)",
-      "Bash(touch:*)"
+      "Bash(touch:*)",
+      "Bash(cat:*)",
+      "Bash(timeout 10 npm run dev)"
     ],
     "deny": []
   }

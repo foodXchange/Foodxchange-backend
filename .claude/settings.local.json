@@ -38,7 +38,8 @@
       "Bash(docker:*)",
       "Bash(docker-compose:*)",
       "Bash(mongo:*)",
-      "Bash(mongosh:*)"
+      "Bash(mongosh:*)",
+      "Bash(touch:*)"
     ],
     "deny": []
   }

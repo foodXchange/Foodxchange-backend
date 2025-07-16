@@ -32,7 +32,7 @@ export interface RealTimeEvent {
 
 export class RealTimeStatusService {
   private io: SocketServer;
-  private redisClient: Redis;
+  private redisClient!: Redis;
   private userSessions: Map<string, UserPresence> = new Map();
   private roomSubscriptions: Map<string, Set<string>> = new Map();
 
@@ -581,5 +581,3 @@ export class RealTimeStatusService {
     return subscribers ? Array.from(subscribers) : [];
   }
 }
-
-export { RealTimeStatusService };

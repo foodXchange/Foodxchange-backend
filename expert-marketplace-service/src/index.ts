@@ -37,11 +37,7 @@ const startServer = async (): Promise<void> => {
     await advancedCacheService.warmCache();
     
     // Initialize notification service with real-time support
-    const enhancedNotificationService = new (class extends notificationService.constructor {
-      constructor() {
-        super(realTimeService);
-      }
-    })();
+    // const enhancedNotificationService = notificationService;
 
     // Graceful shutdown
     const gracefulShutdown = async (signal: string): Promise<void> => {

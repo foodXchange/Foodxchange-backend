@@ -4,11 +4,6 @@ import cors from 'cors';
 import mongoSanitize from 'express-mongo-sanitize';
 import xss from 'xss';
 import crypto from 'crypto';
-import { Logger } from '../core/logging/logger';
-import { MetricsService } from '../core/metrics/MetricsService';
-
-const logger = new Logger('SecurityMiddleware');
-const metricsService = new MetricsService();
 
 // CORS configuration
 export const corsOptions = {
@@ -28,8 +23,7 @@ export const corsOptions = {
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      logger.warn('CORS blocked request from origin:', origin);
-      metricsService.incrementCounter('cors_blocked_requests_total', { origin });
+      console.warn('CORS blocked request from origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },

@@ -1,13 +1,12 @@
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import { Logger } from '../core/logging/logger';
 
 // Setup test environment
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 'test-jwt-secret';
+process.env.JWT_REFRESH_SECRET = 'test-jwt-refresh-secret';
+process.env.BCRYPT_ROUNDS = '10';
 process.env.MONGODB_URI = 'mongodb://localhost:27017/foodxchange-test';
-
-const logger = new Logger('TestSetup');
 
 let mongoServer: MongoMemoryServer;
 
@@ -21,9 +20,9 @@ beforeAll(async () => {
     // Connect to test database
     await mongoose.connect(mongoUri);
     
-    logger.info('Connected to test database');
+    console.log('Connected to test database');
   } catch (error) {
-    logger.error('Failed to setup test database:', error);
+    console.error('Failed to setup test database:', error);
     process.exit(1);
   }
 });
@@ -47,9 +46,9 @@ afterAll(async () => {
     if (mongoServer) {
       await mongoServer.stop();
     }
-    logger.info('Test database connection closed');
+    console.log('Test database connection closed');
   } catch (error) {
-    logger.error('Failed to close test database:', error);
+    console.error('Failed to close test database:', error);
   }
 });
 

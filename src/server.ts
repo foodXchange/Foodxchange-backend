@@ -1,332 +1,251 @@
-/**
- * Enterprise-grade Server Configuration
- * FoodXchange B2B Commerce Platform
- */
-
-import 'reflect-metadata'; // Required for dependency injection
-import express, { Express } from 'express';
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import morgan from 'morgan';
+import compression from 'compression';
+import cookieParser from 'cookie-parser';
+import dotenv from 'dotenv';
+import mongoose from 'mongoose';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
-import helmet from 'helmet';
-import compression from 'compression';
-import morgan from 'morgan';
-import cors from 'cors';
 import rateLimit from 'express-rate-limit';
-import mongoSanitize from 'express-mongo-sanitize';
+import swaggerUi from 'swagger-ui-express';
+import swaggerJsdoc from 'swagger-jsdoc';
 
-// Core imports
-import { config, isProduction, isDevelopment } from './core/config';
-import corsConfig from '../config/cors.config';
-import { Logger, requestLogger, logUnhandledErrors } from './core/logging/logger';
-import { errorHandler, asyncHandler } from './core/errors';
-import { Container, bootstrap, ServiceTokens } from './core/di/Container';
+// Load environment variables
+dotenv.config();
 
-// Infrastructure imports
-import { DatabaseService } from './infrastructure/database/DatabaseService';
-import { CacheService } from './infrastructure/cache/CacheService';
-import { MetricsService } from './infrastructure/monitoring/MetricsService';
-import { AzureAIService } from './infrastructure/azure/ai/AzureAIService';
+// Import middleware
+import { errorHandler } from './middleware/errorHandler';
+import { correlationId } from './middleware/correlationId';
+import { responseFormatter } from './middleware/responseFormatter';
+import { requestLogger } from './middleware/requestLogger';
+import { performanceMonitor } from './middleware/performance';
 
-// Middleware imports
-import { authMiddleware } from './middleware/auth';
-import { validationMiddleware } from './middleware/validation';
-import { correlationIdMiddleware } from './middleware/correlationId';
+// Import routes
+import authRoutes from './routes/auth';
+import productRoutes from './routes/products';
+import rfqRoutes from './routes/rfqs';
+import orderRoutes from './routes/orders';
+import complianceRoutes from './routes/compliance/complianceRoutes';
+import analyticsRoutes from './routes/analytics/analyticsRoutes';
+import apiKeyRoutes from './routes/apiKeys';
+import tenantRoutes from './routes/tenant';
 
-// Route imports
-import { configureRoutes } from './routes';
+const app = express();
+const PORT = process.env.PORT || 5000;
+const NODE_ENV = process.env.NODE_ENV || 'development';
 
-// WebSocket services
-import agentWebSocketService from './services/websocket/agentWebSocketService';
-
-// Initialize logger
-const logger = new Logger('Server');
-
-export class Server {
-  private app: Express;
-  private httpServer: any;
-  private io: SocketIOServer;
-  private port: number;
-  private isInitialized = false;
-
-  constructor() {
-    this.app = express();
-    this.httpServer = createServer(this.app);
-    this.io = new SocketIOServer(this.httpServer, {
-      cors: corsConfig as any,
-    });
-    this.port = config.port;
+// Create HTTP server and Socket.IO instance
+const server = createServer(app);
+const io = new SocketIOServer(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    methods: ['GET', 'POST'],
+    credentials: true
   }
+});
 
-  // Initialize all services
-  private async initializeServices(): Promise<void> {
-    logger.info('Initializing services...');
-
-    // Bootstrap dependency injection container
-    await bootstrap([
-      // Core services
-      { provide: ServiceTokens.Config, useValue: config },
-      { provide: ServiceTokens.Logger, useFactory: () => new Logger('App') },
-      
-      // Infrastructure services
-      { provide: ServiceTokens.Database, useFactory: () => DatabaseService.getInstance() },
-      { provide: ServiceTokens.Cache, useFactory: () => CacheService.getInstance() },
-      { provide: ServiceTokens.Metrics, useFactory: () => MetricsService.getInstance() },
-      { provide: ServiceTokens.AzureAI, useFactory: () => AzureAIService.getInstance() },
-    ]);
-
-    // Initialize database
-    const database = await Container.getInstance().resolve<DatabaseService>(ServiceTokens.Database);
-    await database.connect();
-    await database.ensureIndexes();
-
-    // Initialize Azure AI if configured
-    const azureAI = await Container.getInstance().resolve<AzureAIService>(ServiceTokens.AzureAI);
-    await azureAI.initialize();
-
-    logger.info('All services initialized successfully');
-  }
-
-  // Configure Express middleware
-  private configureMiddleware(): void {
-    // Security middleware
-    this.app.use(helmet({
-      contentSecurityPolicy: isProduction() ? undefined : false,
-      crossOriginEmbedderPolicy: false,
-    }));
-
-    // CORS
-    this.app.use(cors(corsConfig));
-
-    // Compression
-    this.app.use(compression());
-
-    // Rate limiting
-    const limiter = rateLimit({
-      windowMs: config.security.rateLimiting.windowMs,
-      max: config.security.rateLimiting.max,
-      message: 'Too many requests from this IP, please try again later.',
-      standardHeaders: true,
-      legacyHeaders: false,
-    });
-    this.app.use('/api/', limiter);
-
-    // Body parsing
-    this.app.use(express.json({ limit: '10mb' }));
-    this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-    // MongoDB injection prevention
-    this.app.use(mongoSanitize());
-
-    // Logging
-    if (isDevelopment()) {
-      this.app.use(morgan('dev'));
-    } else {
-      this.app.use(morgan('combined'));
-    }
-
-    // Custom middleware
-    this.app.use(correlationIdMiddleware);
-    this.app.use(requestLogger);
-
-    // Trust proxy
-    this.app.set('trust proxy', 1);
-
-    logger.info('Middleware configured');
-  }
-
-  // Configure routes
-  private configureRoutes(): void {
-    // Health check endpoint
-    this.app.get('/health', asyncHandler(async (req, res) => {
-      const [database, cache, azureAI] = await Promise.all([
-        Container.getInstance().resolve<DatabaseService>(ServiceTokens.Database).then(db => db.healthCheck()),
-        Container.getInstance().resolve<CacheService>(ServiceTokens.Cache).then(c => c.healthCheck()),
-        Container.getInstance().resolve<AzureAIService>(ServiceTokens.AzureAI).then(ai => ai.healthCheck()),
-      ]);
-
-      const healthy = database.healthy && cache.healthy;
-      const status = healthy ? 200 : 503;
-
-      res.status(status).json({
-        status: healthy ? 'healthy' : 'unhealthy',
-        timestamp: new Date().toISOString(),
-        services: {
-          database,
-          cache,
-          azureAI,
-        },
-        version: process.env.npm_package_version || '1.0.0',
-        environment: config.env,
-      });
-    }));
-
-    // Metrics endpoint
-    this.app.get('/metrics', asyncHandler(async (req, res) => {
-      const metrics = await Container.getInstance().resolve<MetricsService>(ServiceTokens.Metrics);
-      res.set('Content-Type', 'text/plain');
-      res.send(metrics.exportPrometheus());
-    }));
-
-    // API routes
-    configureRoutes(this.app);
-
-    // 404 handler
-    this.app.use('*', (req, res) => {
-      res.status(404).json({
-        success: false,
-        message: `Route ${req.originalUrl} not found`,
-        method: req.method,
-        timestamp: new Date().toISOString(),
-      });
-    });
-
-    // Error handler (must be last)
-    this.app.use(errorHandler);
-
-    logger.info('Routes configured');
-  }
-
-  // Configure WebSocket
-  private configureWebSocket(): void {
-    this.io.use(async (socket, next) => {
-      try {
-        // Authenticate WebSocket connection
-        const token = socket.handshake.auth.token;
-        if (!token) {
-          return next(new Error('Authentication required'));
-        }
-
-        // Verify token and attach user to socket
-        // TODO: Implement token verification
-        socket.data.userId = 'user-id'; // Replace with actual user ID
-        
-        next();
-      } catch (error) {
-        next(error);
-      }
-    });
-
-    this.io.on('connection', (socket) => {
-      const userId = socket.data.userId;
-      logger.info('WebSocket client connected', { socketId: socket.id, userId });
-
-      // Join user-specific room
-      socket.join(`user:${userId}`);
-
-      // Handle events
-      socket.on('subscribe', (channel: string) => {
-        socket.join(channel);
-        logger.debug('Client subscribed to channel', { socketId: socket.id, channel });
-      });
-
-      socket.on('unsubscribe', (channel: string) => {
-        socket.leave(channel);
-        logger.debug('Client unsubscribed from channel', { socketId: socket.id, channel });
-      });
-
-      socket.on('disconnect', () => {
-        logger.info('WebSocket client disconnected', { socketId: socket.id, userId });
-      });
-    });
-
-    // Attach io instance to app for use in controllers
-    this.app.set('io', this.io);
-    
-    // Initialize agent WebSocket service
-    agentWebSocketService.initialize(this.io);
-
-    logger.info('WebSocket configured');
-  }
-
-  // Graceful shutdown
-  private setupGracefulShutdown(): void {
-    const shutdown = async (signal: string) => {
-      logger.info(`${signal} received, starting graceful shutdown...`);
-
-      // Stop accepting new connections
-      this.httpServer.close(() => {
-        logger.info('HTTP server closed');
-      });
-
-      // Close WebSocket connections
-      this.io.close(() => {
-        logger.info('WebSocket server closed');
-      });
-
-      try {
-        // Disconnect from database
-        const database = await Container.getInstance().resolve<DatabaseService>(ServiceTokens.Database);
-        await database.disconnect();
-
-        // Stop metrics collection
-        const metrics = await Container.getInstance().resolve<MetricsService>(ServiceTokens.Metrics);
-        metrics.stop();
-
-        logger.info('Graceful shutdown completed');
-        process.exit(0);
-      } catch (error) {
-        logger.error('Error during shutdown', error);
-        process.exit(1);
-      }
-    };
-
-    process.on('SIGTERM', () => shutdown('SIGTERM'));
-    process.on('SIGINT', () => shutdown('SIGINT'));
-  }
-
-  // Start the server
-  public async start(): Promise<void> {
-    try {
-      if (this.isInitialized) {
-        logger.warn('Server already initialized');
-        return;
-      }
-
-      logger.info('Starting FoodXchange server...');
-
-      // Setup error handling
-      logUnhandledErrors();
-
-      // Initialize services
-      await this.initializeServices();
-
-      // Configure server
-      this.configureMiddleware();
-      this.configureRoutes();
-      this.configureWebSocket();
-      this.setupGracefulShutdown();
-
-      // Start listening
-      this.httpServer.listen(this.port, () => {
-        logger.info('='.repeat(60));
-        logger.info('🚀 FoodXchange Server Started Successfully!');
-        logger.info('='.repeat(60));
-        logger.info(`📍 Server URL: http://localhost:${this.port}`);
-        logger.info(`🏥 Health Check: http://localhost:${this.port}/health`);
-        logger.info(`📊 Metrics: http://localhost:${this.port}/metrics`);
-        logger.info(`🔌 WebSocket: ws://localhost:${this.port}`);
-        logger.info(`🌍 Environment: ${config.env}`);
-        logger.info(`📘 TypeScript: Active`);
-        logger.info(`🔐 Security: Enhanced`);
-        logger.info(`🚀 Performance: Optimized`);
-        logger.info('='.repeat(60));
-      });
-
-      this.isInitialized = true;
-    } catch (error) {
-      logger.error('Failed to start server', error);
+// MongoDB Connection
+const connectDB = async (): Promise<void> => {
+  try {
+    const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/foodxchange';
+    await mongoose.connect(MONGODB_URI);
+    console.log('✅ MongoDB connected successfully');
+  } catch (error) {
+    console.error('❌ MongoDB connection failed:', error);
+    if (NODE_ENV === 'production') {
       process.exit(1);
     }
   }
-}
+};
 
-// Create and start server if this is the main module
-if (require.main === module) {
-  const server = new Server();
-  server.start().catch((error) => {
-    logger.error('Fatal error starting server', error);
-    process.exit(1);
+// Swagger configuration
+const swaggerOptions = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'FoodXchange API',
+      version: '1.0.0',
+      description: 'Multi-sided B2B food commerce platform API',
+      contact: {
+        name: 'FoodXchange Team',
+        email: 'support@foodxchange.com'
+      }
+    },
+    servers: [
+      {
+        url: `http://localhost:${PORT}`,
+        description: 'Development server'
+      }
+    ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT'
+        }
+      }
+    }
+  },
+  apis: ['./src/routes/*.ts', './src/controllers/*.ts']
+};
+
+const swaggerSpec = swaggerJsdoc(swaggerOptions);
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: {
+    error: 'Too many requests from this IP, please try again later.',
+    retryAfter: 900
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// Global middleware
+app.use(helmet());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true
+}));
+app.use(compression());
+app.use(cookieParser());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(morgan(NODE_ENV === 'production' ? 'combined' : 'dev'));
+
+// Custom middleware
+app.use(correlationId);
+app.use(responseFormatter);
+app.use(requestLogger);
+app.use(performanceMonitor);
+
+// Apply rate limiting to API routes
+app.use('/api', limiter);
+
+// API documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+// Health check route
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    environment: NODE_ENV,
+    version: '1.0.0',
+    uptime: process.uptime(),
+    memory: process.memoryUsage()
   });
-}
+});
 
-export default Server;
+// API info route
+app.get('/api', (req, res) => {
+  res.json({
+    name: 'FoodXchange API',
+    version: '1.0.0',
+    description: 'Multi-sided B2B food commerce platform API',
+    documentation: `/api-docs`,
+    endpoints: {
+      auth: '/api/auth',
+      products: '/api/products',
+      rfqs: '/api/rfqs',
+      orders: '/api/orders',
+      compliance: '/api/compliance',
+      analytics: '/api/analytics',
+      apiKeys: '/api/api-keys',
+      tenant: '/api/tenant'
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Mount API routes
+app.use('/api/auth', authRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/rfqs', rfqRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/compliance', complianceRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/api-keys', apiKeyRoutes);
+app.use('/api/tenant', tenantRoutes);
+
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id);
+  
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+  });
+});
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({
+    error: 'Route not found',
+    path: req.originalUrl,
+    method: req.method,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Global error handler
+app.use(errorHandler);
+
+// Initialize database and start server
+const startServer = async (): Promise<void> => {
+  try {
+    await connectDB();
+    
+    server.listen(PORT, () => {
+      console.log(`
+🚀 FoodXchange Backend Server Started!
+📍 Port: ${PORT}
+🌍 Environment: ${NODE_ENV}
+💻 API Base: http://localhost:${PORT}/api
+🏥 Health Check: http://localhost:${PORT}/health
+📚 API Documentation: http://localhost:${PORT}/api-docs
+⚡ Socket.IO: Enabled
+🔒 Security: Helmet, CORS, Rate Limiting
+📊 Monitoring: Morgan, Performance Tracking
+      `);
+    });
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
+// Graceful shutdown
+const gracefulShutdown = (signal: string): void => {
+  console.log(`${signal} signal received: closing HTTP server`);
+  server.close(() => {
+    console.log('HTTP server closed');
+    mongoose.connection.close(false, () => {
+      console.log('MongoDB connection closed');
+      process.exit(0);
+    });
+  });
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
+// Start the server
+startServer();
+
+export default app;

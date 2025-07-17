@@ -1,10 +1,25 @@
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
 import { User } from '../models/User';
-import { AuthenticationError, AuthorizationError } from '../core/errors';
-import { Logger } from '../core/logging/logger';
 
-const logger = new Logger('AuthMiddleware');
+interface AuthenticatedRequest extends Request {
+  user?: any;
+  userId?: string;
+}
+
+class AuthenticationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AuthenticationError';
+  }
+}
+
+class AuthorizationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AuthorizationError';
+  }
+}
 
 // Extend Request interface to include user
 declare global {
@@ -16,86 +31,97 @@ declare global {
   }
 }
 
-export const protect = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  let token: string | undefined;
+export const protect = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    let token: string | undefined;
 
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-    try {
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
       // Get token from header
       token = req.headers.authorization.split(' ')[1];
 
+      if (!token) {
+        return res.status(401).json({ error: 'No token provided' });
+      }
+
       // Verify token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as any;
+      const JWT_SECRET = process.env.JWT_SECRET;
+      if (!JWT_SECRET) {
+        console.error('JWT_SECRET is not defined');
+        return res.status(500).json({ error: 'Server configuration error' });
+      }
+
+      const decoded = jwt.verify(token, JWT_SECRET) as any;
 
       // Get user from the token
       const user = await User.findById(decoded.userId).select('-password -refreshToken');
 
       if (!user) {
-        logger.warn('Authentication failed: User not found', {
-          userId: decoded.userId,
-          token: token.substring(0, 10) + '...'
+        console.warn('Authentication failed: User not found', {
+          userId: decoded.userId
         });
-        throw new AuthenticationError('User not found');
+        return res.status(401).json({ error: 'User not found' });
       }
 
       // Check if account is active
       if (user.accountStatus !== 'active') {
-        logger.warn('Authentication failed: Account not active', {
+        console.warn('Authentication failed: Account not active', {
           userId: user._id.toString(),
           accountStatus: user.accountStatus
         });
-        throw new AuthenticationError('Account is not active');
+        return res.status(401).json({ error: 'Account is not active' });
       }
 
-      // Check if account is locked
-      if (user.isAccountLocked()) {
-        logger.warn('Authentication failed: Account locked', {
+      // Check if account is locked (if method exists)
+      if (user.isAccountLocked && user.isAccountLocked()) {
+        console.warn('Authentication failed: Account locked', {
           userId: user._id.toString()
         });
-        throw new AuthenticationError('Account is locked');
+        return res.status(401).json({ error: 'Account is locked' });
       }
 
       req.user = user;
       req.userId = user._id.toString();
       next();
-    } catch (error: any) {
-      logger.error('Authentication error:', error);
-      if (error instanceof jwt.TokenExpiredError) {
-        throw new AuthenticationError('Token expired');
-      } else if (error instanceof jwt.JsonWebTokenError) {
-        throw new AuthenticationError('Invalid token');
-      } else {
-        throw new AuthenticationError('Not authorized');
-      }
+    } else {
+      return res.status(401).json({ error: 'Not authorized, no token' });
     }
-  } else {
-    throw new AuthenticationError('Not authorized, no token');
+  } catch (error: any) {
+    console.error('Authentication error:', error);
+    if (error instanceof jwt.TokenExpiredError) {
+      return res.status(401).json({ error: 'Token expired' });
+    } else if (error instanceof jwt.JsonWebTokenError) {
+      return res.status(401).json({ error: 'Invalid token' });
+    } else {
+      return res.status(401).json({ error: 'Not authorized' });
+    }
   }
 };
 
 // Admin middleware
-export const admin = (req: Request, res: Response, next: NextFunction): void => {
+export const admin = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
   if (req.user && req.user.role === 'admin') {
     next();
   } else {
-    throw new AuthorizationError('Not authorized as an admin');
+    res.status(403).json({ error: 'Not authorized as an admin' });
   }
 };
 
 // Authorize specific roles
 export const authorize = (...roles: string[]) => {
-  return (req: Request, res: Response, next: NextFunction): void => {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {
-      throw new AuthenticationError('Not authorized, no user');
+      return res.status(401).json({ error: 'Not authorized, no user' });
     }
 
     if (!roles.includes(req.user.role)) {
-      logger.warn('Authorization failed: Insufficient role', {
+      console.warn('Authorization failed: Insufficient role', {
         userId: req.user._id.toString(),
         userRole: req.user.role,
         requiredRoles: roles
       });
-      throw new AuthorizationError(`User role ${req.user.role} is not authorized to access this route`);
+      return res.status(403).json({ 
+        error: `User role ${req.user.role} is not authorized to access this route` 
+      });
     }
 
     next();
@@ -103,22 +129,25 @@ export const authorize = (...roles: string[]) => {
 };
 
 // Optional authentication middleware (for routes that work with or without auth)
-export const optionalAuth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const optionalAuth = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   let token: string | undefined;
 
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     try {
       token = req.headers.authorization.split(' ')[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as any;
-      const user = await User.findById(decoded.userId).select('-password -refreshToken');
-      
-      if (user && user.accountStatus === 'active' && !user.isAccountLocked()) {
-        req.user = user;
-        req.userId = user._id.toString();
+      const JWT_SECRET = process.env.JWT_SECRET;
+      if (JWT_SECRET) {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        const user = await User.findById(decoded.userId).select('-password -refreshToken');
+        
+        if (user && user.accountStatus === 'active' && (!user.isAccountLocked || !user.isAccountLocked())) {
+          req.user = user;
+          req.userId = user._id.toString();
+        }
       }
     } catch (error) {
       // Silently fail for optional auth
-      logger.debug('Optional auth failed:', error);
+      console.debug('Optional auth failed:', error);
     }
   }
 
@@ -126,26 +155,26 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
 };
 
 // Email verification required middleware
-export const requireEmailVerification = (req: Request, res: Response, next: NextFunction): void => {
+export const requireEmailVerification = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
   if (!req.user) {
-    throw new AuthenticationError('Not authorized, no user');
+    return res.status(401).json({ error: 'Not authorized, no user' });
   }
 
   if (!req.user.isEmailVerified) {
-    throw new AuthorizationError('Email verification required');
+    return res.status(403).json({ error: 'Email verification required' });
   }
 
   next();
 };
 
 // Company verification required middleware
-export const requireCompanyVerification = (req: Request, res: Response, next: NextFunction): void => {
+export const requireCompanyVerification = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
   if (!req.user) {
-    throw new AuthenticationError('Not authorized, no user');
+    return res.status(401).json({ error: 'Not authorized, no user' });
   }
 
   if (!req.user.companyVerified) {
-    throw new AuthorizationError('Company verification required');
+    return res.status(403).json({ error: 'Company verification required' });
   }
 
   next();

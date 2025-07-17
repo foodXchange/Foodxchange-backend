@@ -8,18 +8,13 @@
     
     // Modules
     "module": "commonjs",
-    "rootDir": "./",
+    "rootDir": "./src",
     "moduleResolution": "node",
     "allowImportingTsExtensions": false,
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@core/*": ["src/core/*"],
-      "@infrastructure/*": ["src/infrastructure/*"],
-      "@domain/*": ["src/domain/*"],
-      "@shared/*": ["shared/*"],
-      "@config/*": ["src/core/config/*"],
-      "@errors/*": ["src/core/errors/*"],
+      "@config/*": ["src/config/*"],
       "@middleware/*": ["src/middleware/*"],
       "@routes/*": ["src/routes/*"],
       "@services/*": ["src/services/*"],
@@ -35,27 +30,27 @@
     "removeComments": true,
     "preserveConstEnums": true,
     "sourceMap": true,
-    "inlineSources": true,
+    "inlineSources": false,
     "declaration": true,
     "declarationMap": true,
     
-    // Type Checking - Temporary relaxed for build fix
-    "strict": false,
-    "noImplicitAny": false,
-    "strictNullChecks": false,
-    "strictFunctionTypes": false,
-    "strictBindCallApply": false,
+    // Type Checking - Progressively enable strict mode
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
     "strictPropertyInitialization": false,
-    "noImplicitThis": false,
-    "useUnknownInCatchVariables": false,
-    "alwaysStrict": false,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
+    "noImplicitThis": true,
+    "useUnknownInCatchVariables": true,
+    "alwaysStrict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "exactOptionalPropertyTypes": false,
-    "noImplicitReturns": false,
-    "noFallthroughCasesInSwitch": false,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": false,
-    "noImplicitOverride": false,
+    "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": false,
     
     // Interop Constraints
@@ -67,14 +62,12 @@
     "skipLibCheck": true,
     
     // Advanced
-    "allowJs": true,
+    "allowJs": false,
     "checkJs": false,
     "maxNodeModuleJsDepth": 1
   },
   "include": [
-    "src/**/*",
-    "shared/**/*",
-    "types/**/*"
+    "src/**/*"
   ],
   "exclude": [
     "node_modules",
@@ -83,18 +76,8 @@
     "logs",
     "**/*.spec.ts",
     "**/*.test.ts",
-    "shared/api-client.ts",
-    "src/App.ts",
-    "src/App.css",
-    "src/features/**/*",
-    "src/components/**/*",
-    "src/controllers/agentController.ts",
     "src/test-ai-services.ts",
-    "src/utils/import/DataImporter.ts",
-    "src/services/websocket/websocket-service.ts",
-    "src/controllers/ai.controller.ts",
-    "src/controllers/ai/**/*",
-    "src/utils/ai/aiUtils.ts"
+    "src/utils/import/DataImporter.ts"
   ],
   "ts-node": {
     "require": ["tsconfig-paths/register"],

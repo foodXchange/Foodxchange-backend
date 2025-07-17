@@ -7,7 +7,7 @@ import {
   tenantFeatures 
 } from '../middleware/tenantIsolation';
 import { TenantController } from '../controllers/TenantController';
-import { validateRequest } from '../middleware/validation';
+import { validateRequest } from '../middleware/advancedValidation';
 import { body, param, query } from 'express-validator';
 
 const router = express.Router();

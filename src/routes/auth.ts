@@ -9,7 +9,7 @@ import {
   logoutAll 
 } from '../controllers/auth.controller';
 import { protect } from '../middleware/auth';
-import { validateRequest } from '../middleware/validation';
+import { validateRequest } from '../middleware/advancedValidation';
 import { body } from 'express-validator';
 
 const router = express.Router();

@@ -3,7 +3,7 @@ import { Request, Response } from 'express';
 import { twoFactorAuthService } from '../../services/auth/TwoFactorAuthService';
 import { protect } from '../../middleware/auth';
 import { require2FAFor } from '../../middleware/twoFactorAuth';
-import { validateRequest } from '../../middleware/validation';
+import { validateRequest } from '../../middleware/advancedValidation';
 import { body, query } from 'express-validator';
 import { Logger } from '../../core/logging/logger';
 

@@ -1,11 +1,8 @@
 import { Request, Response } from 'express';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
+import * as bcrypt from 'bcryptjs';
+import * as jwt from 'jsonwebtoken';
+import * as crypto from 'crypto';
 import { User } from '../models/User';
-import { Logger } from '../core/logging/logger';
-
-const logger = new Logger('AuthController');
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const JWT_EXPIRE = process.env.JWT_EXPIRE || '15m'; // Short-lived access token
 const REFRESH_TOKEN_EXPIRE = process.env.REFRESH_TOKEN_EXPIRE || '7d';
@@ -40,7 +37,7 @@ const generateTokenPair = async (userId: string) => {
 // @access  Public
 export const register = async (req: Request, res: Response) => {
   try {
-    const { email, password, name, company, role } = req.body;
+    const { email, password, firstName, lastName, company, role } = req.body;
 
     // Check if user exists
     const existingUser = await User.findOne({ email });
@@ -58,7 +55,8 @@ export const register = async (req: Request, res: Response) => {
     const user = await User.create({
       email,
       password: hashedPassword,
-      name,
+      firstName,
+      lastName,
       company,
       role: role || 'buyer'
     });
@@ -125,7 +123,7 @@ export const login = async (req: Request, res: Response) => {
       if (user.failedLoginAttempts >= 5) {
         user.accountStatus = 'locked';
         user.accountLockedAt = new Date(Date.now() + 30 * 60 * 1000); // Lock for 30 minutes
-        logger.warn('Account locked due to failed login attempts', {
+        console.warn('Account locked due to failed login attempts', {
           userId: user._id.toString(),
           email: user.email,
           failedAttempts: user.failedLoginAttempts
@@ -156,7 +154,7 @@ export const login = async (req: Request, res: Response) => {
     // Generate token pair
     const tokens = await generateTokenPair(user._id.toString());
 
-    logger.info('User logged in successfully', {
+    console.log('User logged in successfully', {
       userId: user._id.toString(),
       email: user.email,
       loginCount: user.loginCount
@@ -291,7 +289,7 @@ export const refreshToken = async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
-    logger.error('Refresh token error:', error);
+    console.error('Refresh token error:', error);
     res.status(500).json({
       success: false,
       error: error.message || 'Error refreshing token'
@@ -309,7 +307,7 @@ export const logout = async (req: any, res: Response) => {
       refreshToken: undefined
     });
     
-    logger.info('User logged out successfully', {
+    console.log('User logged out successfully', {
       userId: req.userId
     });
     
@@ -318,7 +316,7 @@ export const logout = async (req: any, res: Response) => {
       message: 'Logged out successfully'
     });
   } catch (error: any) {
-    logger.error('Logout error:', error);
+    console.error('Logout error:', error);
     res.status(500).json({
       success: false,
       error: error.message || 'Error logging out'
@@ -337,7 +335,7 @@ export const logoutAll = async (req: any, res: Response) => {
       $inc: { loginCount: 1 } // This effectively invalidates all existing tokens
     });
     
-    logger.info('User logged out from all devices', {
+    console.log('User logged out from all devices', {
       userId: req.userId
     });
     
@@ -346,7 +344,7 @@ export const logoutAll = async (req: any, res: Response) => {
       message: 'Logged out from all devices successfully'
     });
   } catch (error: any) {
-    logger.error('Logout all error:', error);
+    console.error('Logout all error:', error);
     res.status(500).json({
       success: false,
       error: error.message || 'Error logging out from all devices'

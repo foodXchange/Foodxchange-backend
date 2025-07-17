@@ -1,7 +1,7 @@
 import express from 'express';
 import { Request, Response, NextFunction } from 'express';
 import { auth } from '../../middleware/auth';
-import { validateRequest } from '../../middleware/validation';
+import { validateRequest } from '../../middleware/advancedValidation';
 import { Logger } from '../../core/logging/logger';
 import { apiResponse } from '../../utils/apiResponse';
 import EnhancedRFQService from '../../services/marketplace/EnhancedRFQService';

@@ -3,7 +3,7 @@
  * Enterprise-grade configuration with validation and type safety
  */
 
-import dotenv from 'dotenv';
+import * as dotenv from 'dotenv';
 import { z } from 'zod';
 
 // Load environment variables

@@ -41,7 +41,18 @@
       "Bash(mongosh:*)",
       "Bash(touch:*)",
       "Bash(cat:*)",
-      "Bash(timeout 10 npm run dev)"
+      "Bash(timeout 10 npm run dev)",
+      "Bash(chmod:*)",
+      "Bash(powershell:*)",
+      "Bash(az bicep build:*)",
+      "Bash(timeout 15 npx tsx src/index.ts)",
+      "Bash(npx tsx:*)",
+      "Bash(timeout 10 npx tsx src/index.ts)",
+      "Bash(pkill:*)",
+      "Bash(kill:*)",
+      "Bash(npm audit:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(tail:*)"
     ],
     "deny": []
   }

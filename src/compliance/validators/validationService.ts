@@ -1,8 +1,8 @@
 // File: C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\src\compliance\validators\validationService.ts
 
 import { validateProductSpecification, validateFieldRealTime, ValidationHistory } from './specificationValidator';
-import { Product } from '../../../models/Product';
-import { RFQ } from '../../../models/RFQ';
+const Product = require('../../../models/Product');
+const RFQ = require('../../../models/RFQ');
 
 export interface ComplianceValidationResult {
   productId: string;

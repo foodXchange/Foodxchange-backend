@@ -1,4 +1,4 @@
-const xlsx = require('xlsx');
+const ExcelJS = require('exceljs');
 const csv = require('csv-parser');
 const fs = require('fs');
 const path = require('path');
@@ -64,14 +64,33 @@ class DataImporter {
     const Model = mongoose.model(modelName);
     
     // Read Excel file
-    const workbook = xlsx.readFile(filePath);
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(filePath);
+    
+    const worksheet = workbook.getWorksheet(1); // First worksheet
+    const sheetName = worksheet.name;
     
     // Convert to JSON
-    const jsonData = xlsx.utils.sheet_to_json(worksheet, { 
-      raw: false,
-      defval: null 
+    const jsonData = [];
+    const headers = [];
+    
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) {
+        // First row contains headers
+        row.eachCell((cell) => {
+          headers.push(cell.value);
+        });
+      } else {
+        // Data rows
+        const rowData = {};
+        row.eachCell((cell, colNumber) => {
+          const header = headers[colNumber - 1];
+          if (header) {
+            rowData[header] = cell.value;
+          }
+        });
+        jsonData.push(rowData);
+      }
     });
     
     console.log(`?? Found ${jsonData.length} rows in Excel sheet: ${sheetName}`);
@@ -190,10 +209,14 @@ class DataImporter {
       const firstLine = await this.getFirstLine(filePath);
       headers = firstLine.split(',').map(h => h.trim().replace(/"/g, ''));
     } else if (ext === '.xlsx' || ext === '.xls') {
-      const workbook = xlsx.readFile(filePath);
-      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = xlsx.utils.sheet_to_json(worksheet, { header: 1 });
-      headers = jsonData[0] || [];
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.readFile(filePath);
+      const worksheet = workbook.getWorksheet(1);
+      const firstRow = worksheet.getRow(1);
+      headers = [];
+      firstRow.eachCell((cell) => {
+        headers.push(cell.value);
+      });
     }
     
     return {

@@ -249,6 +249,44 @@ resource autoScaleSettings 'Microsoft.Insights/autoscalesettings@2022-10-01' = {
               cooldown: 'PT5M'
             }
           }
+          // Scale out when request queue length > 50
+          {
+            metricTrigger: {
+              metricName: 'HttpQueueLength'
+              metricResourceUri: appServicePlan.id
+              timeGrain: 'PT1M'
+              statistic: 'Average'
+              timeWindow: 'PT5M'
+              timeAggregation: 'Average'
+              operator: 'GreaterThan'
+              threshold: 50
+            }
+            scaleAction: {
+              direction: 'Increase'
+              type: 'ChangeCount'
+              value: '2'
+              cooldown: 'PT3M'
+            }
+          }
+          // Scale out when response time > 2000ms
+          {
+            metricTrigger: {
+              metricName: 'AverageResponseTime'
+              metricResourceUri: appServicePlan.id
+              timeGrain: 'PT1M'
+              statistic: 'Average'
+              timeWindow: 'PT5M'
+              timeAggregation: 'Average'
+              operator: 'GreaterThan'
+              threshold: 2000
+            }
+            scaleAction: {
+              direction: 'Increase'
+              type: 'ChangeCount'
+              value: '1'
+              cooldown: 'PT5M'
+            }
+          }
           // Scale in when CPU < 30%
           {
             metricTrigger: {

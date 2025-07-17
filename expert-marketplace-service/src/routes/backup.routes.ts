@@ -1,24 +1,13 @@
 import { Router } from 'express';
 import { backupController } from '../controllers/BackupController';
-import { auth } from '../middleware/auth.middleware';
+import { authenticateToken, requireRole } from '../middleware/auth.middleware';
 import { productionSecurityMiddleware } from '../middleware/productionSecurity';
 
 const router = Router();
 
 // All backup routes require authentication and admin role
-router.use(auth);
-router.use((req, res, next) => {
-  if (req.user?.role !== 'admin') {
-    return res.status(403).json({
-      success: false,
-      error: {
-        message: 'Admin access required',
-        code: 'INSUFFICIENT_PERMISSIONS'
-      }
-    });
-  }
-  next();
-});
+router.use(authenticateToken);
+router.use(requireRole('admin'));
 
 // Create backup
 router.post('/create', 

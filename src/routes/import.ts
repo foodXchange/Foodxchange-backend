@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const xlsx = require('xlsx');
+const ExcelJS = require('exceljs');
 const fs = require('fs');
 const Product = require('../../models/Product');
 
@@ -41,9 +41,28 @@ router.post('/simple', upload.single('file'), async (req, res) => {
       }
     } else {
       // For Excel files
-      const workbook = xlsx.readFile(req.file.path);
-      const sheetName = workbook.SheetNames[0];
-      data = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.readFile(req.file.path);
+      const worksheet = workbook.getWorksheet(1);
+      const sheetName = worksheet.name;
+      
+      const headers = [];
+      worksheet.getRow(1).eachCell((cell) => {
+        headers.push(cell.value);
+      });
+      
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber > 1) { // Skip header row
+          const rowData = {};
+          row.eachCell((cell, colNumber) => {
+            const header = headers[colNumber - 1];
+            if (header) {
+              rowData[header] = cell.value;
+            }
+          });
+          data.push(rowData);
+        }
+      });
     }
 
     console.log(`Found ${data.length} rows to import`);

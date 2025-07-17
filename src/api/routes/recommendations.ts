@@ -4,6 +4,7 @@
  */
 
 import { Router, Request, Response } from 'express';
+import { AuthRequest } from '../../middleware/auth.middleware';
 import { body, param, query, validationResult } from 'express-validator';
 import { RecommendationEngine, RFQRequirements, UserBehaviorData } from '../../services/ai/RecommendationEngine';
 import { MatchingAlgorithms, BuyerRequirements, SupplierProfile, ProductProfile } from '../../services/ai/MatchingAlgorithms';
@@ -12,13 +13,13 @@ import { authorize } from '../../middleware/authorize';
 import { asyncHandler } from '../../utils/asyncHandler';
 import { ApiError } from '../../core/errors';
 import { Logger } from '../../core/logging/logger';
-import { MetricsService } from '../../infrastructure/monitoring/MetricsService';
+import { MetricsService } from '../../core/metrics/MetricsService';
 
 const router = Router();
 const logger = new Logger('RecommendationsAPI');
 const recommendationEngine = RecommendationEngine.getInstance();
 const matchingAlgorithms = new MatchingAlgorithms();
-const metrics = MetricsService.getInstance();
+const metrics = new MetricsService();
 
 // Middleware for validation
 const validateRequest = (req: Request, res: Response, next: any) => {
@@ -53,7 +54,7 @@ router.post(
     body('limit').optional().isInt({ min: 1, max: 50 })
   ],
   validateRequest,
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (req: AuthRequest, res: Response) => {
     const startTime = Date.now();
     
     try {
@@ -139,7 +140,7 @@ router.post(
     body('limit').optional().isInt({ min: 1, max: 50 })
   ],
   validateRequest,
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (req: AuthRequest, res: Response) => {
     const startTime = Date.now();
     
     try {
@@ -197,7 +198,7 @@ router.get(
     query('limit').optional().isInt({ min: 1, max: 20 })
   ],
   validateRequest,
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (req: AuthRequest, res: Response) => {
     const { productId } = req.params;
     const limit = parseInt(req.query.limit as string) || 5;
     const userId = req.user._id;
@@ -244,7 +245,7 @@ router.get(
     query('limit').optional().isInt({ min: 1, max: 50 })
   ],
   validateRequest,
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (req: AuthRequest, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 10;
     const userId = req.user._id;
 
@@ -306,7 +307,7 @@ router.post(
     body('mode').optional().isIn(['suppliers', 'products', 'both'])
   ],
   validateRequest,
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (req: AuthRequest, res: Response) => {
     const { requirements, suppliers = [], products = [], weights, mode = 'both' } = req.body;
     const userId = req.user._id;
 
@@ -376,7 +377,7 @@ router.post(
     body('metadata').optional().isObject()
   ],
   validateRequest,
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (req: AuthRequest, res: Response) => {
     const { recommendationId, action, metadata } = req.body;
     const userId = req.user._id;
 
@@ -414,8 +415,8 @@ router.post(
 router.get(
   '/analytics',
   protect,
-  authorize(['buyer', 'admin']),
-  asyncHandler(async (req: Request, res: Response) => {
+  authorize('buyer', 'admin'),
+  asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = req.user._id;
 
     try {

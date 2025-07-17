@@ -82,6 +82,8 @@ export const createApp = async (): Promise<Application> => {
   app.use('/api/v1/experts', (await import('./routes/expert.routes')).default);
   app.use('/api/v1/search', (await import('./routes/search.routes')).default);
   app.use('/api/v1/agents', (await import('./modules/agent/routes/agent.routes')).default);
+  app.use('/api/v1/rfq', (await import('./routes/rfq.routes')).default);
+  app.use('/api/v1/backup', (await import('./routes/backup.routes')).default);
   // app.use('/api/v1/collaborations', collaborationRoutes);
   // app.use('/api/v1/payments', paymentRoutes);
 

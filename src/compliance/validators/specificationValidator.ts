@@ -88,13 +88,13 @@ export const ProductSpecification = z.object({
     nutritional: z.object({
       servingSize: z.string(),
       calories: z.number(),
-      nutrients: z.record(z.number())
+      nutrients: z.record(z.string(), z.number())
     })
   }),
   complianceRequirements: z.object({
     certifications: z.array(z.string()),
     allergenLabeling: z.array(z.string()),
-    countrySpecific: z.record(z.any())
+    countrySpecific: z.record(z.string(), z.any())
   })
 });
 
@@ -196,7 +196,7 @@ export async function validateProductSpecification(
 
   } catch (error) {
     if (error instanceof z.ZodError) {
-      error.errors.forEach(err => {
+      error.issues.forEach((err: any) => {
         errors.push({
           field: err.path.join('.'),
           message: err.message,

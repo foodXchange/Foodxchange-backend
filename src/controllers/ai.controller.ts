@@ -298,16 +298,21 @@ export const uploadFile = async (req: AuthRequest, res: Response) => {
 
     // Upload to Azure Storage
     const uploadResult = await storageService.uploadFile(
-      req.file.buffer,
       req.file.originalname,
-      req.file.mimetype
+      req.file.buffer,
+      req.file.mimetype,
+      {
+        uploadedBy: req.user?.id || 'unknown',
+        entityType: 'order',
+        entityId: 'ai-upload'
+      }
     );
 
     res.json({
       success: true,
       data: {
         url: uploadResult.url,
-        fileName: uploadResult.fileName,
+        fileName: uploadResult.blobName,
         size: req.file.size,
         mimeType: req.file.mimetype
       }

@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { AgentService } from '../services/AgentService';
 import { WhatsAppService } from '../services/WhatsAppService';
+import { AzureStorageService } from '../../../services/AzureStorageService';
 import { Logger } from '../../../utils/logger';
 import { asyncHandler } from '../../../middleware/asyncHandler';
 import { 
@@ -19,10 +20,12 @@ const logger = new Logger('AgentController');
 export class AgentController {
   private agentService: AgentService;
   private whatsAppService: WhatsAppService;
+  private storageService: AzureStorageService;
 
   constructor() {
     this.agentService = new AgentService();
     this.whatsAppService = new WhatsAppService();
+    this.storageService = AzureStorageService.getInstance();
   }
 
   /**
@@ -622,10 +625,23 @@ export class AgentController {
   });
 
   /**
-   * Placeholder for Azure Storage upload
+   * Upload file to Azure Storage
    */
   private async uploadToAzureStorage(file: Express.Multer.File): Promise<string> {
-    // This would integrate with Azure Blob Storage
-    return `https://foodxchange.blob.core.windows.net/agents/${Date.now()}-${file.originalname}`;
+    try {
+      return await this.storageService.uploadDocument(
+        file.originalname,
+        file.buffer,
+        file.mimetype,
+        {
+          uploadedAt: new Date().toISOString(),
+          originalName: file.originalname,
+          category: 'agent-document'
+        }
+      );
+    } catch (error) {
+      logger.error('Failed to upload file to Azure Storage:', error);
+      throw new Error('File upload failed');
+    }
   }
 }

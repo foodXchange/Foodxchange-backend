@@ -4,6 +4,7 @@ import { Logger } from '../utils/logger';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { CacheService } from '../services/CacheService';
 import { ExpertMatchingEngine } from '../services/ExpertMatchingEngine';
+import { AzureStorageService } from '../services/AzureStorageService';
 import { 
   ValidationError, 
   NotFoundError, 
@@ -20,10 +21,12 @@ const logger = new Logger('ExpertController');
 export class ExpertController {
   private cacheService: CacheService;
   private matchingEngine: ExpertMatchingEngine;
+  private storageService: AzureStorageService;
 
   constructor() {
     this.cacheService = new CacheService();
     this.matchingEngine = new ExpertMatchingEngine();
+    this.storageService = AzureStorageService.getInstance();
   }
 
   /**
@@ -754,11 +757,32 @@ export class ExpertController {
   });
 
   /**
-   * Placeholder for Azure Storage upload
+   * Upload file to Azure Storage
    */
   private async uploadToAzureStorage(file: Express.Multer.File): Promise<string> {
-    // This would integrate with Azure Blob Storage
-    // For now, return a mock URL
-    return `https://foodxchange.blob.core.windows.net/experts/${Date.now()}-${file.originalname}`;
+    try {
+      if (file.mimetype.startsWith('image/')) {
+        // Upload profile images to profiles container
+        return await this.storageService.uploadProfileImage(
+          Date.now().toString(), // Use timestamp as userId for now
+          file.buffer,
+          file.mimetype
+        );
+      } else {
+        // Upload documents to documents container
+        return await this.storageService.uploadDocument(
+          file.originalname,
+          file.buffer,
+          file.mimetype,
+          {
+            uploadedAt: new Date().toISOString(),
+            originalName: file.originalname
+          }
+        );
+      }
+    } catch (error) {
+      logger.error('Failed to upload file to Azure Storage:', error);
+      throw new Error('File upload failed');
+    }
   }
 }

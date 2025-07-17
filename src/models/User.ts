@@ -29,6 +29,14 @@ export interface IUser extends Document {
   lastLoginAt?: Date;
   loginCount: number;
   refreshToken?: string;
+  tokenVersion?: number;
+  
+  // Multi-tenant and Azure B2C fields
+  azureB2CId?: string;
+  azureB2CTenantId?: string;
+  displayName?: string;
+  authProvider?: 'local' | 'azure-b2c' | 'google' | 'microsoft';
+  emailVerified?: boolean;
   
   // Password reset
   passwordResetToken?: string;
@@ -166,6 +174,24 @@ const userSchema = new Schema<IUser>({
     min: 0
   },
   refreshToken: String,
+  tokenVersion: {
+    type: Number,
+    default: 0
+  },
+  
+  // Multi-tenant and Azure B2C fields
+  azureB2CId: String,
+  azureB2CTenantId: String,
+  displayName: String,
+  authProvider: {
+    type: String,
+    enum: ['local', 'azure-b2c', 'google', 'microsoft'],
+    default: 'local'
+  },
+  emailVerified: {
+    type: Boolean,
+    default: false
+  },
   
   // Password reset
   passwordResetToken: String,

@@ -1,5 +1,5 @@
 // Test AI Services
-const { initializeAIServices } = require('./services/ai');
+import { initializeAIServices } from './services/ai';
 
 async function testAIServices() {
     console.log('🧪 Testing FoodXchange AI Services...\n');

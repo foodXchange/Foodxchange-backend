@@ -1,6 +1,59 @@
-const mongoose = require('mongoose');
+import mongoose, { Document, Schema } from 'mongoose';
 
-const companySchema = new mongoose.Schema({
+export interface ICompany extends Document {
+  name: string;
+  description?: string;
+  type: 'manufacturer' | 'distributor' | 'retailer' | 'supplier' | 'service_provider';
+  industry: string;
+  address: {
+    street?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    postalCode?: string;
+    coordinates?: {
+      lat: number;
+      lng: number;
+    };
+  };
+  contact: {
+    email?: string;
+    phone?: string;
+    website?: string;
+  };
+  
+  // Multi-tenant subscription fields
+  domain?: string;
+  subscriptionTier: 'basic' | 'standard' | 'premium' | 'enterprise';
+  features: string[];
+  limits: {
+    maxUsers: number;
+    maxProducts: number;
+    maxOrders: number;
+    apiCallsPerMinute: number;
+  };
+  
+  // Subscription management
+  subscriptionId?: string;
+  subscriptionStatus: 'active' | 'inactive' | 'suspended' | 'cancelled';
+  subscriptionStartDate?: Date;
+  subscriptionEndDate?: Date;
+  billingCycle: 'monthly' | 'yearly';
+  
+  // Tenant settings
+  tenantSettings: {
+    customBranding?: boolean;
+    customDomain?: string;
+    ssoEnabled?: boolean;
+    apiAccessEnabled?: boolean;
+    webhookEndpoints?: string[];
+  };
+  
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const companySchema = new Schema<ICompany>({
   name: {
     type: String,
     required: true,
@@ -83,7 +136,49 @@ const companySchema = new mongoose.Schema({
     average: { type: Number, default: 0 },
     count: { type: Number, default: 0 }
   },
-  isActive: { type: Boolean, default: true }
+  isActive: { type: Boolean, default: true },
+  
+  // Multi-tenant subscription fields
+  domain: String,
+  subscriptionTier: {
+    type: String,
+    enum: ['basic', 'standard', 'premium', 'enterprise'],
+    default: 'basic'
+  },
+  features: [{
+    type: String,
+    default: []
+  }],
+  limits: {
+    maxUsers: { type: Number, default: 10 },
+    maxProducts: { type: Number, default: 100 },
+    maxOrders: { type: Number, default: 50 },
+    apiCallsPerMinute: { type: Number, default: 100 }
+  },
+  
+  // Subscription management
+  subscriptionId: String,
+  subscriptionStatus: {
+    type: String,
+    enum: ['active', 'inactive', 'suspended', 'cancelled'],
+    default: 'active'
+  },
+  subscriptionStartDate: Date,
+  subscriptionEndDate: Date,
+  billingCycle: {
+    type: String,
+    enum: ['monthly', 'yearly'],
+    default: 'monthly'
+  },
+  
+  // Tenant settings
+  tenantSettings: {
+    customBranding: { type: Boolean, default: false },
+    customDomain: String,
+    ssoEnabled: { type: Boolean, default: false },
+    apiAccessEnabled: { type: Boolean, default: false },
+    webhookEndpoints: [String]
+  }
 }, {
   timestamps: true,
   toJSON: { virtuals: true },
@@ -93,4 +188,10 @@ const companySchema = new mongoose.Schema({
 // Index for geospatial queries
 companySchema.index({ 'address.coordinates': '2dsphere' });
 
-module.exports = mongoose.model('Company', companySchema);
+// Index for multi-tenant queries
+companySchema.index({ domain: 1 });
+companySchema.index({ subscriptionTier: 1 });
+companySchema.index({ subscriptionStatus: 1 });
+
+export const Company = mongoose.model<ICompany>('Company', companySchema);
+export default Company;

@@ -1,57 +1,75 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
+  roots: ['<rootDir>/src'],
   testMatch: [
-    '<rootDir>/src/**/__tests__/**/*.test.ts',
-    '<rootDir>/src/**/*.test.ts',
-    '<rootDir>/src/**/*.spec.ts'
+    '**/__tests__/**/*.ts',
+    '**/?(*.)+(spec|test).ts'
   ],
+  transform: {
+    '^.+\\.ts$': 'ts-jest'
+  },
   collectCoverageFrom: [
     'src/**/*.ts',
-    '!src/**/*.d.ts',
-    '!src/__tests__/**/*',
     '!src/**/*.test.ts',
     '!src/**/*.spec.ts',
-    '!src/server.ts',
+    '!src/tests/**/*',
+    '!src/types/**/*',
+    '!src/config/**/*',
     '!src/scripts/**/*'
   ],
   coverageDirectory: 'coverage',
-  coverageReporters: ['text', 'lcov', 'html'],
+  coverageReporters: [
+    'text',
+    'lcov',
+    'html'
+  ],
   coverageThreshold: {
     global: {
-      branches: 70,
-      functions: 70,
-      lines: 70,
-      statements: 70
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
     }
   },
-  moduleNameMapping: {
-    '^@/(.*)$': '<rootDir>/src/$1',
-    '^@core/(.*)$': '<rootDir>/src/core/$1',
-    '^@infrastructure/(.*)$': '<rootDir>/src/infrastructure/$1',
-    '^@domain/(.*)$': '<rootDir>/src/domain/$1',
-    '^@shared/(.*)$': '<rootDir>/shared/$1',
-    '^@config/(.*)$': '<rootDir>/src/core/config/$1',
-    '^@errors/(.*)$': '<rootDir>/src/core/errors/$1',
-    '^@middleware/(.*)$': '<rootDir>/src/middleware/$1',
-    '^@routes/(.*)$': '<rootDir>/src/routes/$1',
-    '^@services/(.*)$': '<rootDir>/src/services/$1',
-    '^@models/(.*)$': '<rootDir>/src/models/$1',
-    '^@controllers/(.*)$': '<rootDir>/src/controllers/$1',
-    '^@utils/(.*)$': '<rootDir>/src/utils/$1',
-    '^@types/(.*)$': '<rootDir>/src/types/$1'
-  },
-  testTimeout: 10000,
+  setupFilesAfterEnv: ['<rootDir>/src/tests/setup.ts'],
+  testTimeout: 30000,
   verbose: true,
-  clearMocks: true,
-  resetMocks: true,
-  restoreMocks: true,
+  detectOpenHandles: true,
+  forceExit: true,
   maxWorkers: 4,
-  globals: {
-    'ts-jest': {
-      tsconfig: 'tsconfig.json',
-      isolatedModules: true
-    }
-  }
+  moduleNameMapping: {
+    '^@/(.*)$': '<rootDir>/src/$1'
+  },
+  globalSetup: '<rootDir>/src/tests/globalSetup.ts',
+  globalTeardown: '<rootDir>/src/tests/globalTeardown.ts',
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/dist/',
+    '/build/'
+  ],
+  moduleFileExtensions: [
+    'ts',
+    'js',
+    'json'
+  ],
+  reporters: [
+    'default',
+    [
+      'jest-junit',
+      {
+        outputDirectory: 'test-results',
+        outputName: 'junit.xml'
+      }
+    ],
+    [
+      'jest-html-reporters',
+      {
+        publicPath: 'test-results',
+        filename: 'test-report.html',
+        expand: true
+      }
+    ]
+  ],
+  testSequencer: '<rootDir>/src/tests/testSequencer.js'
 };

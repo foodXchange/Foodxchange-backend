@@ -33,16 +33,29 @@ class ApplicationInsightsService {
         appInsights.setup(instrumentationKey);
       }
 
-      // Configure auto-collection
-      appInsights
-        .setAutoCollectRequests(true)
-        .setAutoCollectPerformance(true, true)
-        .setAutoCollectExceptions(true)
-        .setAutoCollectDependencies(true)
-        .setAutoCollectConsole(true, true)
-        .setUseDiskRetryCaching(true)
-        .setSendLiveMetrics(true)
-        .setDistributedTracingMode(appInsights.DistributedTracingModes.AI_AND_W3C);
+      // Configure auto-collection with compatibility checks
+      try {
+        if (appInsights.Configuration) {
+          appInsights.Configuration
+            .setAutoCollectRequests(true)
+            .setAutoCollectPerformance(true, true)
+            .setAutoCollectExceptions(true)
+            .setAutoCollectDependencies(true)
+            .setAutoCollectConsole(true, true)
+            .setUseDiskRetryCaching(true)
+            .setSendLiveMetrics(true);
+          
+          // Set distributed tracing mode if available
+          if (appInsights.DistributedTracingModes) {
+            appInsights.Configuration.setDistributedTracingMode(appInsights.DistributedTracingModes.AI_AND_W3C);
+          }
+        } else {
+          // Fallback for newer versions
+          logger.warn('ApplicationInsights Configuration API not available, using default settings');
+        }
+      } catch (error) {
+        logger.warn('Failed to configure ApplicationInsights auto-collection:', error);
+      }
 
       // Add custom properties
       appInsights.defaultClient.commonProperties = {

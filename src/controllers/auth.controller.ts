@@ -1,14 +1,38 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { User } from '../models/User';
+import { Logger } from '../core/logging/logger';
 
+const logger = new Logger('AuthController');
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-const JWT_EXPIRE = process.env.JWT_EXPIRE || '7d';
+const JWT_EXPIRE = process.env.JWT_EXPIRE || '15m'; // Short-lived access token
+const REFRESH_TOKEN_EXPIRE = process.env.REFRESH_TOKEN_EXPIRE || '7d';
 
 // Generate JWT Token
-const generateToken = (userId: string): string => {
+const generateAccessToken = (userId: string): string => {
   return jwt.sign({ userId }, JWT_SECRET, { expiresIn: JWT_EXPIRE });
+};
+
+// Generate Refresh Token
+const generateRefreshToken = (): string => {
+  return crypto.randomBytes(32).toString('hex');
+};
+
+// Generate Token Pair
+const generateTokenPair = async (userId: string) => {
+  const accessToken = generateAccessToken(userId);
+  const refreshToken = generateRefreshToken();
+  
+  // Store refresh token in database
+  await User.findByIdAndUpdate(userId, {
+    refreshToken,
+    $inc: { loginCount: 1 },
+    lastLoginAt: new Date()
+  });
+  
+  return { accessToken, refreshToken };
 };
 
 // @desc    Register user
@@ -39,8 +63,8 @@ export const register = async (req: Request, res: Response) => {
       role: role || 'buyer'
     });
 
-    // Generate token
-    const token = generateToken(user._id.toString());
+    // Generate token pair
+    const tokens = await generateTokenPair(user._id.toString());
 
     res.status(201).json({
       success: true,
@@ -48,11 +72,13 @@ export const register = async (req: Request, res: Response) => {
         user: {
           id: user._id,
           email: user.email,
-          name: user.name,
+          firstName: user.firstName,
+          lastName: user.lastName,
           company: user.company,
           role: user.role
         },
-        token
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken
       }
     });
   } catch (error: any) {
@@ -91,18 +117,50 @@ export const login = async (req: Request, res: Response) => {
     // Check password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
+      // Increment failed login attempts
+      user.failedLoginAttempts += 1;
+      user.lastFailedLoginAt = new Date();
+      
+      // Lock account after 5 failed attempts
+      if (user.failedLoginAttempts >= 5) {
+        user.accountStatus = 'locked';
+        user.accountLockedAt = new Date(Date.now() + 30 * 60 * 1000); // Lock for 30 minutes
+        logger.warn('Account locked due to failed login attempts', {
+          userId: user._id.toString(),
+          email: user.email,
+          failedAttempts: user.failedLoginAttempts
+        });
+      }
+      
+      await user.save();
+      
       return res.status(401).json({
         success: false,
         error: 'Invalid credentials'
       });
     }
 
-    // Update last login
-    user.lastLogin = new Date();
+    // Check if account is locked
+    if (user.isAccountLocked()) {
+      return res.status(423).json({
+        success: false,
+        error: 'Account is locked due to multiple failed login attempts. Please contact support.'
+      });
+    }
+
+    // Reset failed login attempts on successful login
+    user.failedLoginAttempts = 0;
+    user.lastFailedLoginAt = undefined;
     await user.save();
 
-    // Generate token
-    const token = generateToken(user._id.toString());
+    // Generate token pair
+    const tokens = await generateTokenPair(user._id.toString());
+
+    logger.info('User logged in successfully', {
+      userId: user._id.toString(),
+      email: user.email,
+      loginCount: user.loginCount
+    });
 
     res.json({
       success: true,
@@ -110,11 +168,15 @@ export const login = async (req: Request, res: Response) => {
         user: {
           id: user._id,
           email: user.email,
-          name: user.name,
+          firstName: user.firstName,
+          lastName: user.lastName,
           company: user.company,
-          role: user.role
+          role: user.role,
+          onboardingStep: user.onboardingStep,
+          profileCompletionPercentage: user.profileCompletionPercentage
         },
-        token
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken
       }
     });
   } catch (error: any) {
@@ -191,6 +253,103 @@ export const updatePassword = async (req: any, res: Response) => {
     res.status(500).json({
       success: false,
       error: error.message || 'Error updating password'
+    });
+  }
+};
+
+// @desc    Refresh access token
+// @route   POST /api/auth/refresh
+// @access  Public
+export const refreshToken = async (req: Request, res: Response) => {
+  try {
+    const { refreshToken } = req.body;
+    
+    if (!refreshToken) {
+      return res.status(400).json({
+        success: false,
+        error: 'Refresh token is required'
+      });
+    }
+    
+    // Find user by refresh token
+    const user = await User.findOne({ refreshToken });
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid refresh token'
+      });
+    }
+    
+    // Generate new token pair
+    const tokens = await generateTokenPair(user._id.toString());
+    
+    res.json({
+      success: true,
+      data: {
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken
+      }
+    });
+  } catch (error: any) {
+    logger.error('Refresh token error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Error refreshing token'
+    });
+  }
+};
+
+// @desc    Logout user
+// @route   POST /api/auth/logout
+// @access  Private
+export const logout = async (req: any, res: Response) => {
+  try {
+    // Clear refresh token from database
+    await User.findByIdAndUpdate(req.userId, {
+      refreshToken: undefined
+    });
+    
+    logger.info('User logged out successfully', {
+      userId: req.userId
+    });
+    
+    res.json({
+      success: true,
+      message: 'Logged out successfully'
+    });
+  } catch (error: any) {
+    logger.error('Logout error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Error logging out'
+    });
+  }
+};
+
+// @desc    Logout from all devices
+// @route   POST /api/auth/logout-all
+// @access  Private
+export const logoutAll = async (req: any, res: Response) => {
+  try {
+    // Clear refresh token and increment a token version to invalidate all tokens
+    await User.findByIdAndUpdate(req.userId, {
+      refreshToken: undefined,
+      $inc: { loginCount: 1 } // This effectively invalidates all existing tokens
+    });
+    
+    logger.info('User logged out from all devices', {
+      userId: req.userId
+    });
+    
+    res.json({
+      success: true,
+      message: 'Logged out from all devices successfully'
+    });
+  } catch (error: any) {
+    logger.error('Logout all error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Error logging out from all devices'
     });
   }
 };

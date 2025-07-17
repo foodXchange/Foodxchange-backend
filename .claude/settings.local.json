@@ -52,7 +52,16 @@
       "Bash(kill:*)",
       "Bash(npm audit:*)",
       "Bash(npm uninstall:*)",
-      "Bash(tail:*)"
+      "Bash(tail:*)",
+      "Bash(wc:*)",
+      "Bash(grep:*)",
+      "Bash(az version:*)",
+      "Bash(az account:*)",
+      "Bash(az deployment sub create:*)",
+      "Bash(az login:*)",
+      "Bash(npm outdated)",
+      "Bash(npm run lint:*)",
+      "Bash(npx eslint:*)"
     ],
     "deny": []
   }

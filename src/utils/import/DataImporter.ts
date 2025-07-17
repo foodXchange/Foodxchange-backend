@@ -1,125 +1,135 @@
-const ExcelJS = require('exceljs');
+import * as ExcelJS from 'exceljs';
 const csv = require('csv-parser');
-const fs = require('fs');
-const path = require('path');
-const mongoose = require('mongoose');
+import * as fs from 'fs';
+import * as path from 'path';
+import mongoose from 'mongoose';
 
-class DataImporter {
-  constructor() {
-    this.results = [];
-    this.errors = [];
-    this.mappings = {
-      // Map common CSV headers to database fields
-      'Product Name': 'name',
-      'Product Description': 'description',
-      'Price': 'price',
-      'Unit': 'unit',
-      'MOQ': 'minOrderQuantity',
-      'Min Order Quantity': 'minOrderQuantity',
-      'Category': 'category',
-      'Supplier': 'supplier',
-      'In Stock': 'availability',
-      'Available': 'availability'
-    };
-  }
+export class DataImporter {
+  public results: any[] = [];
+  public errors: any[] = [];
+  public mappings: Record<string, string> = {
+    // Map common CSV headers to database fields
+    'Product Name': 'name',
+    'Product Description': 'description',
+    'Price': 'price',
+    'Unit': 'unit',
+    'MOQ': 'minOrderQuantity',
+    'Min Order Quantity': 'minOrderQuantity',
+    'Category': 'category',
+    'Supplier': 'supplier',
+    'In Stock': 'availability',
+    'Available': 'availability'
+  };
 
   // Detect file type and route to appropriate handler
-  async importFile(filePath, modelName = 'Product') {
+  async importFile(filePath: string, modelName: string = 'Product'): Promise<any> {
     const ext = path.extname(filePath).toLowerCase();
     
-    console.log(`?? Importing ${ext} file into ${modelName} collection...`);
+    console.log(`🔄 Importing ${ext} file into ${modelName} collection...`);
     
-    if (ext === '.csv') {
-      return await this.importCSV(filePath, modelName);
-    } else if (ext === '.xlsx' || ext === '.xls') {
-      return await this.importExcel(filePath, modelName);
-    } else {
-      throw new Error(`Unsupported file type: ${ext}`);
+    try {
+      switch (ext) {
+        case '.csv':
+          return await this.importCSV(filePath, modelName);
+        case '.xlsx':
+        case '.xls':
+          return await this.importExcel(filePath, modelName);
+        default:
+          throw new Error(`Unsupported file type: ${ext}`);
+      }
+    } catch (error) {
+      console.error('Import failed:', error);
+      throw error;
     }
   }
 
-  // Import CSV file
-  async importCSV(filePath, modelName) {
-    const Model = mongoose.model(modelName);
-    const results = [];
-    
+  async importCSV(filePath: string, modelName: string): Promise<any> {
     return new Promise((resolve, reject) => {
+      const results: any[] = [];
+      
       fs.createReadStream(filePath)
         .pipe(csv())
-        .on('data', async (row) => {
-          const mappedData = this.mapHeaders(row);
-          results.push(mappedData);
+        .on('data', (row: any) => {
+          const processedRow = this.processRow(row);
+          if (processedRow) {
+            results.push(processedRow);
+          }
         })
         .on('end', async () => {
-          console.log(`?? Found ${results.length} rows in CSV`);
-          const imported = await this.saveToDatabase(Model, results);
-          resolve(imported);
+          try {
+            const Model = mongoose.model(modelName);
+            const savedData = await this.saveToDatabase(Model, results);
+            resolve(savedData);
+          } catch (error) {
+            reject(error);
+          }
         })
         .on('error', reject);
     });
   }
 
-  // Import Excel file
-  async importExcel(filePath, modelName) {
-    const Model = mongoose.model(modelName);
-    
-    // Read Excel file
-    const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.readFile(filePath);
-    
-    const worksheet = workbook.getWorksheet(1); // First worksheet
-    const sheetName = worksheet.name;
-    
-    // Convert to JSON
-    const jsonData = [];
-    const headers = [];
-    
-    worksheet.eachRow((row, rowNumber) => {
-      if (rowNumber === 1) {
-        // First row contains headers
-        row.eachCell((cell) => {
-          headers.push(cell.value);
-        });
-      } else {
-        // Data rows
-        const rowData = {};
-        row.eachCell((cell, colNumber) => {
-          const header = headers[colNumber - 1];
-          if (header) {
-            rowData[header] = cell.value;
-          }
-        });
-        jsonData.push(rowData);
+  async importExcel(filePath: string, modelName: string): Promise<any> {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.readFile(filePath);
+      
+      const worksheet = workbook.getWorksheet(1);
+      if (!worksheet) {
+        throw new Error('No worksheet found');
       }
-    });
-    
-    console.log(`?? Found ${jsonData.length} rows in Excel sheet: ${sheetName}`);
-    
-    // Map headers and save
-    const mappedData = jsonData.map(row => this.mapHeaders(row));
-    return await this.saveToDatabase(Model, mappedData);
-  }
-
-  // Map CSV/Excel headers to database fields
-  mapHeaders(row) {
-    const mapped = {};
-    
-    for (const [header, value] of Object.entries(row)) {
-      // Clean header (remove spaces, special chars)
-      const cleanHeader = header.trim();
       
-      // Check if we have a mapping for this header
-      const dbField = this.mappings[cleanHeader] || this.camelCase(cleanHeader);
+      const jsonData: any[] = [];
+      const headers: string[] = [];
       
-      // Convert values
-      mapped[dbField] = this.convertValue(value, dbField);
+      worksheet.eachRow((row: any, rowNumber: number) => {
+        if (rowNumber === 1) {
+          // Header row
+          row.eachCell((cell: any, colNumber: number) => {
+            headers[colNumber] = cell.value?.toString() || '';
+          });
+        } else {
+          // Data row
+          const rowData: any = {};
+          row.eachCell((cell: any, colNumber: number) => {
+            const header = headers[colNumber];
+            if (header) {
+              rowData[header] = cell.value;
+            }
+          });
+          
+          const processedRow = this.processRow(rowData);
+          if (processedRow) {
+            jsonData.push(processedRow);
+          }
+        }
+      });
+      
+      const Model = mongoose.model(modelName);
+      return await this.saveToDatabase(Model, jsonData);
+    } catch (error) {
+      console.error('Excel import failed:', error);
+      throw error;
     }
-    
-    return mapped;
   }
 
-  // Convert string values to appropriate types
-  convertValue(value, field) {
+  processRow(row: any): any {
+    try {
+      const mapped: any = {};
+      
+      for (const [header, value] of Object.entries(row)) {
+        const cleanHeader = header.trim();
+        const dbField = this.mappings[cleanHeader] || this.toCamelCase(cleanHeader);
+        mapped[dbField] = this.transformValue(value, dbField);
+      }
+      
+      return mapped;
+    } catch (error) {
+      console.error('Row processing failed:', error);
+      return null;
+    }
+  }
+
+  transformValue(value: any, field: string): any {
     if (value === null || value === undefined || value === '') {
       return null;
     }
@@ -132,117 +142,163 @@ class DataImporter {
     }
 
     // Handle numeric fields
-    if (field.includes('price') || field.includes('quantity') || field.includes('Quantity')) {
-      const num = parseFloat(value.toString().replace(/[^0-9.-]/g, ''));
-      return isNaN(num) ? value : num;
+    if (field.includes('price') || field.includes('quantity') || field.includes('weight')) {
+      const numValue = parseFloat(value.toString().replace(/[^0-9.-]/g, ''));
+      return isNaN(numValue) ? null : numValue;
     }
 
     // Handle date fields
-    if (field.includes('date') || field.includes('Date')) {
-      const date = new Date(value);
-      return isNaN(date.getTime()) ? value : date;
+    if (field.includes('date') || field.includes('created') || field.includes('updated')) {
+      const dateValue = new Date(value);
+      return isNaN(dateValue.getTime()) ? null : dateValue;
     }
 
     // Handle arrays (comma-separated values)
-    if (value.toString().includes(',') && !field.includes('address')) {
-      return value.toString().split(',').map(v => v.trim());
+    if (field.includes('tags') || field.includes('categories') || field.includes('certifications')) {
+      return value.toString().split(',').map((v: string) => v.trim()).filter(Boolean);
     }
 
-    return value;
+    // Default: return as string
+    return value.toString().trim();
   }
 
-  // Convert header to camelCase
-  camelCase(str) {
-    return str
-      .replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => {
-        return index === 0 ? word.toLowerCase() : word.toUpperCase();
-      })
-      .replace(/\s+/g, '')
-      .replace(/[^a-zA-Z0-9]/g, '');
+  toCamelCase(str: string): string {
+    return str.replace(/(?:^\w|[A-Z]|\b\w)/g, (word: string, index: number) => {
+      return index === 0 ? word.toLowerCase() : word.toUpperCase();
+    }).replace(/\s+/g, '');
   }
 
-  // Save data to database
-  async saveToDatabase(Model, data) {
-    const results = {
-      success: 0,
-      failed: 0,
-      errors: []
-    };
+  async saveToDatabase(Model: any, data: any[]): Promise<any> {
+    try {
+      const batchSize = 100;
+      const results = {
+        success: 0,
+        errors: [] as any[]
+      };
 
-    // Process in batches
-    const batchSize = 100;
-    for (let i = 0; i < data.length; i += batchSize) {
-      const batch = data.slice(i, i + batchSize);
-      
-      try {
-        // Use insertMany with ordered: false to continue on error
-        const inserted = await Model.insertMany(batch, { 
-          ordered: false,
-          rawResult: true 
-        });
+      for (let i = 0; i < data.length; i += batchSize) {
+        const batch = data.slice(i, i + batchSize);
         
-        results.success += inserted.insertedCount || batch.length;
-      } catch (error) {
-        if (error.writeErrors) {
-          results.failed += error.writeErrors.length;
-          results.errors.push(...error.writeErrors.map(e => ({
-            index: e.index + i,
-            error: e.errmsg
-          })));
-        } else {
-          results.failed += batch.length;
-          results.errors.push({ error: error.message });
+        try {
+          const saved = await Model.insertMany(batch, { ordered: false });
+          results.success += saved.length;
+        } catch (error: any) {
+          // Handle partial success in batch
+          if (error.writeErrors) {
+            results.success += batch.length - error.writeErrors.length;
+            results.errors.push(...error.writeErrors.map((e: any) => ({
+              index: i + e.index,
+              error: e.errmsg || e.message
+            })));
+          } else {
+            results.errors.push({
+              batch: i / batchSize,
+              error: error.message
+            });
+          }
         }
       }
-    }
 
-    return results;
+      return results;
+    } catch (error) {
+      console.error('Database save failed:', error);
+      throw error;
+    }
   }
 
-  // Get all unique headers from file
-  async analyzeFile(filePath) {
-    const ext = path.extname(filePath).toLowerCase();
-    let headers = [];
-    
-    if (ext === '.csv') {
-      // Read first line of CSV
-      const firstLine = await this.getFirstLine(filePath);
-      headers = firstLine.split(',').map(h => h.trim().replace(/"/g, ''));
-    } else if (ext === '.xlsx' || ext === '.xls') {
-      const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.readFile(filePath);
-      const worksheet = workbook.getWorksheet(1);
-      const firstRow = worksheet.getRow(1);
-      headers = [];
-      firstRow.eachCell((cell) => {
-        headers.push(cell.value);
-      });
+  async inferSchema(filePath: string): Promise<any> {
+    try {
+      const ext = path.extname(filePath).toLowerCase();
+      
+      if (ext === '.csv') {
+        return new Promise((resolve, reject) => {
+          const firstLine = fs.readFileSync(filePath, 'utf8').split('\n')[0];
+          const headers = firstLine.split(',').map((h: string) => h.trim());
+          
+          resolve({
+            headers,
+            suggestedMapping: this.generateMapping(headers)
+          });
+        });
+      } else if (ext === '.xlsx' || ext === '.xls') {
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.readFile(filePath);
+        
+        const worksheet = workbook.getWorksheet(1);
+        if (!worksheet) {
+          throw new Error('No worksheet found');
+        }
+
+        const headers: string[] = [];
+        const firstRow = worksheet.getRow(1);
+        firstRow.eachCell((cell: any) => {
+          headers.push(cell.value?.toString() || '');
+        });
+
+        return {
+          headers,
+          suggestedMapping: this.generateMapping(headers)
+        };
+      }
+
+      throw new Error(`Unsupported file type: ${ext}`);
+    } catch (error) {
+      console.error('Schema inference failed:', error);
+      throw error;
     }
-    
-    return {
-      headers,
-      mappedFields: headers.map(h => ({
-        original: h,
-        mapped: this.mappings[h] || this.camelCase(h)
-      }))
-    };
   }
 
-  getFirstLine(filePath) {
-    return new Promise((resolve, reject) => {
-      const stream = fs.createReadStream(filePath, { encoding: 'utf8' });
-      let firstLine = '';
-      
-      stream.on('data', chunk => {
-        const lines = chunk.split('\n');
-        firstLine = lines[0];
-        stream.destroy();
-      });
-      
-      stream.on('close', () => resolve(firstLine));
-      stream.on('error', reject);
+  generateMapping(headers: string[]): Record<string, string> {
+    const mapping: Record<string, string> = {};
+    
+    headers.forEach((header: string) => {
+      const cleanHeader = header.trim();
+      mapping[cleanHeader] = this.mappings[cleanHeader] || this.toCamelCase(cleanHeader);
     });
+    
+    return mapping;
+  }
+
+  async processFiles(filePath: string): Promise<any> {
+    try {
+      const stats = fs.statSync(filePath);
+      
+      if (stats.isDirectory()) {
+        const files = fs.readdirSync(filePath);
+        const results = [];
+        
+        for (const file of files) {
+          const fullPath = path.join(filePath, file);
+          const ext = path.extname(file).toLowerCase();
+          
+          if (['.csv', '.xlsx', '.xls'].includes(ext)) {
+            try {
+              const result = await this.importFile(fullPath);
+              results.push({
+                file,
+                success: true,
+                result
+              });
+            } catch (error) {
+              results.push({
+                file,
+                success: false,
+                error: error.message
+              });
+            }
+          }
+        }
+        
+        return results;
+      } else {
+        return await this.importFile(filePath);
+      }
+    } catch (error) {
+      console.error('File processing failed:', error);
+      throw error;
+    }
   }
 }
 
-module.exports = DataImporter;
+// Export default instance
+export default new DataImporter();

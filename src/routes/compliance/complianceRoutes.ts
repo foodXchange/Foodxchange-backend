@@ -1,7 +1,11 @@
 import { Router } from 'express';
 import { asyncHandler } from '../../core/errors';
+import haccpRoutes from './haccp';
 
 const router = Router();
+
+// Mount HACCP routes
+router.use('/haccp', haccpRoutes);
 
 // Compliance routes
 router.post('/validate', asyncHandler(async (req, res) => {

@@ -1,520 +1,517 @@
-# Authentication API
+# Authentication
 
 ## Overview
-The FoodXchange authentication system uses JWT (JSON Web Tokens) with refresh token support, role-based access control, and session management via Redis. The system supports multiple user roles and includes security features like rate limiting and account lockout.
+
+The FoodXchange API uses JWT (JSON Web Tokens) for authentication. All API requests must include a valid JWT token in the Authorization header.
 
 ## Authentication Flow
 
-```mermaid
-sequenceDiagram
-    participant Client
-    participant API
-    participant Database
-    participant Redis
-    
-    Client->>API: POST /api/auth/login
-    API->>Database: Validate credentials
-    Database-->>API: User data
-    API->>Redis: Store session
-    API-->>Client: Access + Refresh tokens
-    
-    Note over Client: Use access token for API calls
-    
-    Client->>API: API request with token
-    API->>Redis: Validate session
-    API-->>Client: Protected resource
-    
-    Note over Client: When access token expires
-    
-    Client->>API: POST /api/auth/refresh
-    API->>Redis: Validate refresh token
-    API-->>Client: New access token
-```
+### 1. User Registration
 
-## Endpoints
+```http
+POST /api/v1/auth/register
+Content-Type: application/json
 
-### POST /api/auth/register
-Register a new user account.
-
-**Request:**
-```json
 {
-  "email": "user@company.com",
-  "password": "SecurePass123!",
-  "firstName": "John",
-  "lastName": "Doe",
-  "role": "buyer",
+  "email": "user@example.com",
+  "password": "securePassword123",
+  "name": "John Doe",
   "company": "Acme Food Corp",
-  "phone": "+1234567890",
-  "companyAddress": {
-    "street": "123 Main St",
-    "city": "New York",
-    "state": "NY",
-    "zipCode": "10001",
-    "country": "USA"
-  }
+  "role": "buyer"
 }
 ```
 
-**Response (201 Created):**
-```json
-{
-  "success": true,
-  "message": "User registered successfully",
-  "data": {
-    "userId": "64f5a8b9c123456789abcdef",
-    "email": "user@company.com",
-    "role": "buyer",
-    "accountStatus": "active",
-    "verificationRequired": true
-  }
-}
-```
-
-**Validation Rules:**
-- Email must be unique and valid format
-- Password: minimum 8 characters, uppercase, lowercase, number, special character
-- Role must be one of: `buyer`, `seller`, `admin`, `contractor`, `agent`
-- Company name required for business roles
-
-### POST /api/auth/login
-Authenticate user and receive access tokens.
-
-**Request:**
-```json
-{
-  "email": "user@company.com",
-  "password": "SecurePass123!",
-  "deviceId": "web-browser-12345",
-  "rememberMe": true
-}
-```
-
-**Response (200 OK):**
+**Response:**
 ```json
 {
   "success": true,
   "data": {
-    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "tokenType": "Bearer",
-    "expiresIn": 604800,
     "user": {
-      "id": "64f5a8b9c123456789abcdef",
-      "email": "user@company.com",
-      "firstName": "John",
-      "lastName": "Doe",
+      "id": "user123",
+      "email": "user@example.com",
+      "name": "John Doe",
       "role": "buyer",
-      "permissions": [
-        "read:products",
-        "write:rfq",
-        "read:orders",
-        "write:orders"
-      ],
       "company": {
-        "id": "64f5a8b9c123456789abcde0",
-        "name": "Acme Food Corp",
-        "verified": true
-      },
-      "profileCompletionPercentage": 85,
-      "lastLogin": "2024-01-15T10:30:00Z"
+        "id": "comp123",
+        "name": "Acme Food Corp"
+      }
+    },
+    "tokens": {
+      "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "expiresIn": 3600
     }
-  }
+  },
+  "message": "User registered successfully"
 }
 ```
 
-**Error Responses:**
-```json
-// Invalid credentials (401)
-{
-  "success": false,
-  "error": {
-    "code": "AUTH_INVALID_CREDENTIALS",
-    "message": "Invalid email or password",
-    "timestamp": "2024-01-15T10:30:00Z"
-  }
-}
+### 2. User Login
 
-// Account locked (423)
+```http
+POST /api/v1/auth/login
+Content-Type: application/json
+
 {
-  "success": false,
-  "error": {
-    "code": "AUTH_ACCOUNT_LOCKED",
-    "message": "Account locked due to multiple failed login attempts",
-    "retryAfter": 1800,
-    "timestamp": "2024-01-15T10:30:00Z"
-  }
+  "email": "user@example.com",
+  "password": "securePassword123"
 }
 ```
 
-### POST /api/auth/refresh
-Refresh an expired access token using a valid refresh token.
-
-**Request:**
+**Response:**
 ```json
+{
+  "success": true,
+  "data": {
+    "user": {
+      "id": "user123",
+      "email": "user@example.com",
+      "name": "John Doe",
+      "role": "buyer",
+      "company": {
+        "id": "comp123",
+        "name": "Acme Food Corp"
+      }
+    },
+    "tokens": {
+      "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "expiresIn": 3600
+    }
+  },
+  "message": "Login successful"
+}
+```
+
+### 3. Using Access Tokens
+
+Include the access token in the Authorization header for all API requests:
+
+```http
+GET /api/v1/products
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+### 4. Token Refresh
+
+When your access token expires, use the refresh token to get a new one:
+
+```http
+POST /api/v1/auth/refresh
+Content-Type: application/json
+
 {
   "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 }
 ```
 
-**Response (200 OK):**
+**Response:**
 ```json
 {
   "success": true,
   "data": {
     "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "tokenType": "Bearer",
-    "expiresIn": 604800
-  }
+    "expiresIn": 3600
+  },
+  "message": "Token refreshed successfully"
 }
 ```
 
-### POST /api/auth/logout
-Invalidate current session and tokens.
+## Two-Factor Authentication (2FA)
 
-**Headers:**
-```
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-```
+### Enable 2FA
 
-**Request:**
-```json
+```http
+POST /api/v1/auth/2fa/enable
+Authorization: Bearer <access-token>
+Content-Type: application/json
+
 {
-  "deviceId": "web-browser-12345",
-  "logoutAllDevices": false
+  "method": "totp"
 }
 ```
 
-**Response (200 OK):**
-```json
-{
-  "success": true,
-  "message": "Logged out successfully"
-}
-```
-
-### POST /api/auth/forgot-password
-Initiate password reset process.
-
-**Request:**
-```json
-{
-  "email": "user@company.com"
-}
-```
-
-**Response (200 OK):**
-```json
-{
-  "success": true,
-  "message": "Password reset instructions sent to email"
-}
-```
-
-### POST /api/auth/reset-password
-Reset password using reset token.
-
-**Request:**
-```json
-{
-  "resetToken": "abc123def456",
-  "newPassword": "NewSecurePass123!",
-  "confirmPassword": "NewSecurePass123!"
-}
-```
-
-**Response (200 OK):**
-```json
-{
-  "success": true,
-  "message": "Password reset successfully"
-}
-```
-
-### GET /api/auth/profile
-Get current user profile information.
-
-**Headers:**
-```
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-```
-
-**Response (200 OK):**
+**Response:**
 ```json
 {
   "success": true,
   "data": {
-    "id": "64f5a8b9c123456789abcdef",
-    "email": "user@company.com",
-    "firstName": "John",
-    "lastName": "Doe",
-    "role": "buyer",
-    "company": {
-      "id": "64f5a8b9c123456789abcde0",
-      "name": "Acme Food Corp",
-      "verified": true,
-      "address": {
-        "street": "123 Main St",
-        "city": "New York",
-        "state": "NY",
-        "zipCode": "10001",
-        "country": "USA"
+    "secret": "JBSWY3DPEHPK3PXP",
+    "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+    "backupCodes": [
+      "12345678",
+      "87654321",
+      "11111111"
+    ]
+  },
+  "message": "2FA setup initiated"
+}
+```
+
+### Verify 2FA Setup
+
+```http
+POST /api/v1/auth/2fa/verify
+Authorization: Bearer <access-token>
+Content-Type: application/json
+
+{
+  "token": "123456"
+}
+```
+
+### Login with 2FA
+
+After entering email/password, if 2FA is enabled:
+
+```http
+POST /api/v1/auth/2fa/authenticate
+Content-Type: application/json
+
+{
+  "sessionId": "temp-session-id",
+  "token": "123456"
+}
+```
+
+## Password Reset
+
+### Request Password Reset
+
+```http
+POST /api/v1/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "user@example.com"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Password reset email sent"
+}
+```
+
+### Reset Password
+
+```http
+POST /api/v1/auth/reset-password
+Content-Type: application/json
+
+{
+  "token": "reset-token-from-email",
+  "password": "newSecurePassword123",
+  "confirmPassword": "newSecurePassword123"
+}
+```
+
+## Session Management
+
+### Get Current Session
+
+```http
+GET /api/v1/auth/session
+Authorization: Bearer <access-token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "user": {
+      "id": "user123",
+      "email": "user@example.com",
+      "name": "John Doe",
+      "role": "buyer",
+      "company": {
+        "id": "comp123",
+        "name": "Acme Food Corp"
       }
     },
-    "preferences": {
-      "notifications": {
-        "email": true,
-        "sms": false,
-        "push": true
-      },
-      "language": "en",
-      "timezone": "America/New_York"
-    },
-    "accountStatus": "active",
-    "profileCompletionPercentage": 85,
-    "lastLogin": "2024-01-15T10:30:00Z",
-    "createdAt": "2024-01-01T00:00:00Z"
+    "session": {
+      "id": "session123",
+      "createdAt": "2023-12-01T10:00:00Z",
+      "expiresAt": "2023-12-01T11:00:00Z",
+      "ipAddress": "192.168.1.100",
+      "userAgent": "Mozilla/5.0..."
+    }
   }
 }
 ```
 
-## Authentication Middleware
+### Logout
 
-### Usage in Routes
-```typescript
-import { authenticate, requireRole, requirePermissions } from '../middleware/auth.middleware';
-
-// Basic authentication required
-router.get('/protected', authenticate, controller.method);
-
-// Role-based access
-router.post('/admin-only', authenticate, requireRole('admin'), controller.method);
-
-// Permission-based access
-router.put('/products', authenticate, requirePermissions('write:products'), controller.method);
-
-// Multiple roles
-router.get('/seller-buyer', authenticate, requireRole('seller', 'buyer'), controller.method);
+```http
+POST /api/v1/auth/logout
+Authorization: Bearer <access-token>
 ```
 
-### Middleware Implementation
-```typescript
-// Authentication middleware
-export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
-  try {
-    const token = extractTokenFromHeader(req);
-    if (!token) {
-      return res.status(401).json({ 
-        success: false, 
-        error: { code: 'AUTH_NO_TOKEN', message: 'No token provided' }
-      });
-    }
-
-    // Verify JWT token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    // Check if token is blacklisted
-    const isBlacklisted = await redis.get(`blacklist:${token}`);
-    if (isBlacklisted) {
-      return res.status(401).json({
-        success: false,
-        error: { code: 'AUTH_TOKEN_REVOKED', message: 'Token has been revoked' }
-      });
-    }
-
-    // Attach user to request
-    req.user = await User.findById(decoded.userId).select('-password');
-    req.userId = decoded.userId;
-    
-    next();
-  } catch (error) {
-    return res.status(401).json({
-      success: false,
-      error: { code: 'AUTH_INVALID_TOKEN', message: 'Invalid token' }
-    });
-  }
-};
-```
-
-## User Roles and Permissions
-
-### Role Hierarchy
-```typescript
-enum UserRole {
-  ADMIN = 'admin',          // Full system access
-  SELLER = 'seller',        // Can create products, respond to RFQs
-  BUYER = 'buyer',          // Can create RFQs, place orders
-  CONTRACTOR = 'contractor', // Limited access to specific projects
-  AGENT = 'agent'           // Commission-based intermediary
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Logout successful"
 }
 ```
 
-### Permission Matrix
-| Resource | Admin | Seller | Buyer | Contractor | Agent |
-|----------|-------|--------|-------|------------|-------|
-| Products | CRUD  | CRUD*  | R     | R          | R     |
-| RFQs     | CRUD  | R      | CRUD* | R          | CRUD* |
-| Orders   | CRUD  | RU*    | CRUD* | R          | R     |
-| Users    | CRUD  | R*     | R*    | R*         | R*    |
-| Reports  | R     | R*     | R*    | R*         | R*    |
+### Logout All Sessions
 
-*Limited to own resources or assigned resources
-
-### Permission Examples
-```typescript
-// Product permissions
-const productPermissions = {
-  'read:products': ['admin', 'seller', 'buyer', 'contractor', 'agent'],
-  'write:products': ['admin', 'seller'],
-  'delete:products': ['admin', 'seller']
-};
-
-// RFQ permissions
-const rfqPermissions = {
-  'read:rfq': ['admin', 'seller', 'buyer', 'contractor', 'agent'],
-  'write:rfq': ['admin', 'buyer', 'agent'],
-  'respond:rfq': ['admin', 'seller']
-};
+```http
+POST /api/v1/auth/logout-all
+Authorization: Bearer <access-token>
 ```
 
-## Security Features
+## Security Best Practices
+
+### Token Storage
+
+**Do:**
+- Store tokens securely (e.g., secure HTTP-only cookies for web apps)
+- Use secure storage mechanisms on mobile devices
+- Implement token refresh logic
+
+**Don't:**
+- Store tokens in localStorage (web)
+- Log tokens in application logs
+- Transmit tokens over insecure connections
+
+### Token Validation
+
+- Always validate tokens on the server side
+- Check token expiration
+- Verify token signature
+- Validate user permissions
 
 ### Rate Limiting
-```typescript
-// Login attempts: 5 per 15 minutes per IP
-const loginRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5,
-  message: {
-    success: false,
-    error: {
-      code: 'RATE_LIMIT_EXCEEDED',
-      message: 'Too many login attempts, please try again later'
+
+Authentication endpoints have strict rate limits:
+- Login: 5 attempts per 15 minutes per IP
+- Registration: 3 attempts per hour per IP
+- Password reset: 3 attempts per hour per email
+
+## Error Handling
+
+### Common Authentication Errors
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "INVALID_CREDENTIALS",
+    "message": "Invalid email or password"
+  }
+}
+```
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "TOKEN_EXPIRED",
+    "message": "Access token has expired"
+  }
+}
+```
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "ACCOUNT_LOCKED",
+    "message": "Account has been locked due to too many failed attempts"
+  }
+}
+```
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "2FA_REQUIRED",
+    "message": "Two-factor authentication is required",
+    "data": {
+      "sessionId": "temp-session-id"
     }
   }
-});
-
-// API calls: 100 per 15 minutes per user
-const apiRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  keyGenerator: (req) => req.user?.id || req.ip
-});
-```
-
-### Account Security
-- **Password Policy**: Minimum 8 characters, complexity requirements
-- **Account Lockout**: 5 failed attempts locks account for 30 minutes
-- **Session Management**: Redis-based session storage with TTL
-- **Token Blacklisting**: Revoked tokens stored in Redis
-- **Device Tracking**: Optional device fingerprinting
-
-### Security Headers
-```typescript
-// Applied via helmet middleware
-const securityHeaders = {
-  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
-  'Content-Security-Policy': "default-src 'self'",
-  'X-Content-Type-Options': 'nosniff',
-  'X-Frame-Options': 'DENY',
-  'X-XSS-Protection': '1; mode=block'
-};
-```
-
-## Token Structure
-
-### Access Token Payload
-```typescript
-interface AccessTokenPayload {
-  userId: string;
-  email: string;
-  role: UserRole;
-  permissions: string[];
-  sessionId: string;
-  iat: number;
-  exp: number;
 }
 ```
 
-### Refresh Token Payload
-```typescript
-interface RefreshTokenPayload {
-  userId: string;
-  sessionId: string;
-  deviceId?: string;
-  iat: number;
-  exp: number;
+## JWT Token Structure
+
+### Access Token Claims
+
+```json
+{
+  "sub": "user123",
+  "email": "user@example.com",
+  "role": "buyer",
+  "tenantId": "tenant123",
+  "companyId": "comp123",
+  "iat": 1701428400,
+  "exp": 1701432000,
+  "type": "access"
 }
 ```
 
-## Error Codes Reference
+### Refresh Token Claims
 
-| Code | HTTP Status | Description |
-|------|-------------|-------------|
-| `AUTH_NO_TOKEN` | 401 | No authorization token provided |
-| `AUTH_INVALID_TOKEN` | 401 | Invalid or malformed token |
-| `AUTH_TOKEN_EXPIRED` | 401 | Token has expired |
-| `AUTH_TOKEN_REVOKED` | 401 | Token has been revoked |
-| `AUTH_INVALID_CREDENTIALS` | 401 | Invalid email or password |
-| `AUTH_ACCOUNT_LOCKED` | 423 | Account locked due to failed attempts |
-| `AUTH_ACCOUNT_DISABLED` | 403 | Account has been disabled |
-| `AUTH_INSUFFICIENT_PERMISSIONS` | 403 | User lacks required permissions |
-| `AUTH_EMAIL_NOT_VERIFIED` | 403 | Email verification required |
-| `RATE_LIMIT_EXCEEDED` | 429 | Too many requests |
+```json
+{
+  "sub": "user123",
+  "sessionId": "session123",
+  "iat": 1701428400,
+  "exp": 1701514800,
+  "type": "refresh"
+}
+```
 
-## Best Practices
+## API Key Authentication
 
-### Client-Side Implementation
-1. Store tokens securely (httpOnly cookies or secure storage)
-2. Implement token refresh logic
-3. Handle token expiration gracefully
-4. Clear tokens on logout
-5. Validate tokens before making requests
+For server-to-server integrations, API keys can be used:
 
-### Server-Side Security
-1. Use strong JWT secrets (256-bit minimum)
-2. Implement proper token validation
-3. Use refresh token rotation
-4. Monitor for suspicious activity
-5. Regular security audits
+### Generate API Key
 
-### Development Tips
-1. Use environment-specific JWT secrets
-2. Implement comprehensive logging
-3. Test authentication flows thoroughly
-4. Monitor authentication metrics
-5. Keep dependencies updated
+```http
+POST /api/v1/auth/api-keys
+Authorization: Bearer <access-token>
+Content-Type: application/json
+
+{
+  "name": "Integration API Key",
+  "permissions": ["read:products", "write:orders"],
+  "expiresAt": "2024-12-01T00:00:00Z"
+}
+```
+
+### Use API Key
+
+```http
+GET /api/v1/products
+Authorization: ApiKey <api-key>
+```
+
+## Multi-Tenant Considerations
+
+- Each company operates in its own tenant
+- Tokens are scoped to a specific tenant
+- Cross-tenant access is not permitted
+- Tenant isolation is enforced at the API level
 
 ## Testing Authentication
 
-### Example Test Cases
-```typescript
-describe('Authentication API', () => {
-  it('should register a new user', async () => {
-    const response = await request(app)
-      .post('/api/auth/register')
-      .send({
-        email: 'test@example.com',
-        password: 'Test123!',
-        firstName: 'Test',
-        lastName: 'User',
-        role: 'buyer'
-      });
-    
-    expect(response.status).toBe(201);
-    expect(response.body.success).toBe(true);
-  });
+### Sandbox Credentials
 
-  it('should login with valid credentials', async () => {
-    const response = await request(app)
-      .post('/api/auth/login')
-      .send({
-        email: 'test@example.com',
-        password: 'Test123!'
-      });
+For testing, use these sandbox credentials:
+
+```
+Email: test@foodxchange.com
+Password: TestPassword123
+```
+
+### Test Tokens
+
+Generate test tokens for development:
+
+```http
+POST /api/v1/auth/test-token
+Content-Type: application/json
+
+{
+  "userId": "test-user",
+  "role": "buyer",
+  "tenantId": "test-tenant"
+}
+```
+
+## Integration Examples
+
+### JavaScript/Node.js
+
+```javascript
+const axios = require('axios');
+
+class FoodXchangeAuth {
+  constructor(baseURL) {
+    this.baseURL = baseURL;
+    this.accessToken = null;
+    this.refreshToken = null;
+  }
+
+  async login(email, password) {
+    const response = await axios.post(`${this.baseURL}/auth/login`, {
+      email,
+      password
+    });
+
+    this.accessToken = response.data.data.tokens.accessToken;
+    this.refreshToken = response.data.data.tokens.refreshToken;
     
-    expect(response.status).toBe(200);
-    expect(response.body.data.accessToken).toBeDefined();
-  });
-});
+    return response.data.data.user;
+  }
+
+  async refreshAccessToken() {
+    const response = await axios.post(`${this.baseURL}/auth/refresh`, {
+      refreshToken: this.refreshToken
+    });
+
+    this.accessToken = response.data.data.accessToken;
+    return this.accessToken;
+  }
+
+  getAuthHeaders() {
+    return {
+      'Authorization': `Bearer ${this.accessToken}`
+    };
+  }
+}
+```
+
+### Python
+
+```python
+import requests
+from datetime import datetime, timedelta
+
+class FoodXchangeAuth:
+    def __init__(self, base_url):
+        self.base_url = base_url
+        self.access_token = None
+        self.refresh_token = None
+        self.token_expires_at = None
+
+    def login(self, email, password):
+        response = requests.post(f"{self.base_url}/auth/login", json={
+            "email": email,
+            "password": password
+        })
+        
+        data = response.json()["data"]
+        self.access_token = data["tokens"]["accessToken"]
+        self.refresh_token = data["tokens"]["refreshToken"]
+        self.token_expires_at = datetime.now() + timedelta(seconds=data["tokens"]["expiresIn"])
+        
+        return data["user"]
+
+    def refresh_access_token(self):
+        response = requests.post(f"{self.base_url}/auth/refresh", json={
+            "refreshToken": self.refresh_token
+        })
+        
+        data = response.json()["data"]
+        self.access_token = data["accessToken"]
+        self.token_expires_at = datetime.now() + timedelta(seconds=data["expiresIn"])
+        
+        return self.access_token
+
+    def get_auth_headers(self):
+        if self.token_expires_at and datetime.now() >= self.token_expires_at:
+            self.refresh_access_token()
+        
+        return {
+            "Authorization": f"Bearer {self.access_token}"
+        }
 ```

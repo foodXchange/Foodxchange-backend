@@ -3,6 +3,7 @@ import helmet from 'helmet';
 import cors from 'cors';
 import mongoSanitize from 'express-mongo-sanitize';
 import xss from 'xss';
+import crypto from 'crypto';
 import { Logger } from '../core/logging/logger';
 import { MetricsService } from '../core/metrics/MetricsService';
 
@@ -284,6 +285,189 @@ function parseSize(size: string): number {
   return value * units[unit];
 }
 
+// SQL injection prevention for raw queries
+export const sqlInjectionPrevention = (req: Request, res: Response, next: NextFunction): void => {
+  const sqlPatterns = [
+    /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|UNION|CREATE|ALTER|EXEC|EXECUTE)\b)/gi,
+    /(--|#|\/\*|\*\/)/g,
+    /(\bOR\b\s*\d+\s*=\s*\d+)/gi,
+    /('\s*OR\s*')/gi
+  ];
+
+  const checkValue = (value: any): boolean => {
+    if (typeof value === 'string') {
+      return sqlPatterns.some(pattern => pattern.test(value));
+    }
+    return false;
+  };
+
+  const checkObject = (obj: any): boolean => {
+    for (const key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        if (checkValue(obj[key])) return true;
+        if (typeof obj[key] === 'object' && obj[key] !== null) {
+          if (checkObject(obj[key])) return true;
+        }
+      }
+    }
+    return false;
+  };
+
+  if (checkObject(req.body) || checkObject(req.query) || checkObject(req.params)) {
+    logger.warn('SQL injection attempt detected', {
+      ip: req.ip,
+      path: req.path,
+      method: req.method
+    });
+    
+    metricsService.incrementCounter('sql_injection_attempts_total');
+    
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'INVALID_INPUT',
+        message: 'Invalid characters detected in request'
+      }
+    });
+  }
+
+  next();
+};
+
+// API abuse detection middleware
+export const apiAbuseDetection = (req: Request, res: Response, next: NextFunction): void => {
+  const suspiciousPatterns = [
+    /\.\.\//g, // Directory traversal
+    /%2e%2e%2f/gi, // Encoded directory traversal
+    /\0/g, // Null byte injection
+    /exec\s*\(/gi, // Command injection
+    /eval\s*\(/gi, // Code injection
+  ];
+
+  const checkForAbuse = (value: string): boolean => {
+    return suspiciousPatterns.some(pattern => pattern.test(value));
+  };
+
+  // Check URL path
+  if (checkForAbuse(req.path) || checkForAbuse(req.originalUrl)) {
+    logger.warn('API abuse detected in URL', {
+      ip: req.ip,
+      path: req.path,
+      originalUrl: req.originalUrl
+    });
+    
+    metricsService.incrementCounter('api_abuse_attempts_total');
+    
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'INVALID_REQUEST',
+        message: 'Invalid request detected'
+      }
+    });
+  }
+
+  next();
+};
+
+// CSRF token generation and validation
+export const generateCSRFToken = (): string => {
+  return crypto.randomBytes(32).toString('hex');
+};
+
+export const csrfProtection = (req: Request, res: Response, next: NextFunction): void => {
+  // Skip CSRF for certain methods
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    return next();
+  }
+
+  const token = req.headers['x-csrf-token'] as string || req.body._csrf;
+  const sessionToken = req.session?.csrfToken;
+
+  if (!token || !sessionToken || token !== sessionToken) {
+    logger.warn('CSRF token validation failed', {
+      ip: req.ip,
+      path: req.path,
+      method: req.method
+    });
+
+    metricsService.incrementCounter('csrf_validation_failures_total');
+
+    return res.status(403).json({
+      success: false,
+      error: {
+        code: 'CSRF_VALIDATION_FAILED',
+        message: 'CSRF token validation failed'
+      }
+    });
+  }
+
+  next();
+};
+
+// File upload security middleware
+export const fileUploadSecurity = (req: Request, res: Response, next: NextFunction): void => {
+  if (req.files || req.file) {
+    const allowedMimeTypes = [
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'application/pdf',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/csv'
+    ];
+
+    const maxFileSize = 10 * 1024 * 1024; // 10MB
+
+    const files = req.files ? (Array.isArray(req.files) ? req.files : [req.files]) : [req.file];
+    
+    for (const file of files.filter(Boolean)) {
+      // Check MIME type
+      if (!allowedMimeTypes.includes(file.mimetype)) {
+        logger.warn('Invalid file type upload attempt', {
+          ip: req.ip,
+          filename: file.originalname,
+          mimetype: file.mimetype
+        });
+        
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'INVALID_FILE_TYPE',
+            message: 'File type not allowed',
+            allowedTypes: allowedMimeTypes
+          }
+        });
+      }
+
+      // Check file size
+      if (file.size > maxFileSize) {
+        logger.warn('File size limit exceeded', {
+          ip: req.ip,
+          filename: file.originalname,
+          size: file.size,
+          maxSize: maxFileSize
+        });
+        
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'FILE_TOO_LARGE',
+            message: `File size exceeds limit of ${maxFileSize / 1024 / 1024}MB`
+          }
+        });
+      }
+
+      // Sanitize filename
+      file.originalname = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+    }
+  }
+
+  next();
+};
+
 // Complete security middleware setup
 export const setupSecurity = () => {
   return [
@@ -291,6 +475,8 @@ export const setupSecurity = () => {
     cors(corsOptions),
     mongoSanitize(),
     sanitizeInput,
+    sqlInjectionPrevention,
+    apiAbuseDetection,
     securityHeaders,
     validateUserAgent,
     requestSizeLimit()
@@ -302,4 +488,20 @@ export {
   helmet,
   cors,
   mongoSanitize
+};
+
+export default {
+  setupSecurity,
+  corsOptions,
+  helmetConfig,
+  sanitizeInput,
+  sqlInjectionPrevention,
+  apiAbuseDetection,
+  securityHeaders,
+  ipWhitelist,
+  validateUserAgent,
+  requestSizeLimit,
+  fileUploadSecurity,
+  csrfProtection,
+  generateCSRFToken
 };

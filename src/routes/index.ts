@@ -20,6 +20,12 @@ import recommendationRoutes from '../api/routes/recommendations';
 import aiRoutes from '../api/routes/ai';
 import agentRoutes from './agentRoutes';
 import webhookRoutes from './webhookRoutes';
+import signalRRoutes from './signalr';
+import analyticsRoutes from './analytics/analyticsRoutes';
+import mobileRoutes from './mobile/mobileRoutes';
+import aiRecommendationRoutes from './ai/recommendationRoutes';
+import exportRoutes from './export/exportRoutes';
+import performanceRoutes from './performance';
 
 const logger = new Logger('Routes');
 
@@ -42,9 +48,15 @@ export const configureRoutes = (app: Express): void => {
     { path: '/import', router: importRoutes, name: 'Import' },
     { path: '/tracking', router: trackingRoutes, name: 'Tracking' },
     { path: '/recommendations', router: recommendationRoutes, name: 'AI Recommendations' },
-    { path: '/ai', router: aiRoutes, name: 'AI Services' },
+    { path: '/ai-services', router: aiRoutes, name: 'AI Services' },
     { path: '/agents', router: agentRoutes, name: 'Agent Management' },
     { path: '/webhooks', router: webhookRoutes, name: 'Webhook Endpoints' },
+    { path: '/signalr', router: signalRRoutes, name: 'SignalR Real-time' },
+    { path: '/analytics', router: analyticsRoutes, name: 'Analytics & Reporting' },
+    { path: '/mobile', router: mobileRoutes, name: 'Mobile API' },
+    { path: '/ai', router: aiRecommendationRoutes, name: 'AI Recommendations & Search' },
+    { path: '/export', router: exportRoutes, name: 'Data Export/Import' },
+    { path: '/performance', router: performanceRoutes, name: 'Performance Monitoring' },
   ];
 
   // Register each route

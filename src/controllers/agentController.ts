@@ -1,12 +1,13 @@
-const Agent = require('../models/Agent');
-const User = require('../models/User');
-const AgentLead = require('../models/AgentLead');
-const AgentActivity = require('../models/AgentActivity');
-const AgentCommission = require('../models/AgentCommission');
-const asyncHandler = require('express-async-handler');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const mongoose = require('mongoose');
+import { Agent } from '../models/Agent';
+import { User } from '../models/User';
+import { AgentLead } from '../models/AgentLead';
+import { AgentActivity } from '../models/AgentActivity';
+import { AgentCommission } from '../models/AgentCommission';
+import asyncHandler from 'express-async-handler';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
+import { Request, Response } from 'express';
 
 const agentOnboarding = asyncHandler(async (req, res) => {
   const { step, data } = req.body;

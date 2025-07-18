@@ -211,4 +211,128 @@ export const shutdownRedis = async (): Promise<void> => {
   logger.info('Redis connections closed');
 };
 
+// Caching utility class
+export class CacheService {
+  private defaultTTL: number = 3600; // 1 hour default
+
+  constructor(private client: typeof redisClient = redisClient) {}
+
+  // Set cache with optional TTL
+  async set(key: string, value: any, ttl?: number): Promise<void> {
+    try {
+      const serialized = JSON.stringify(value);
+      if (ttl) {
+        await this.client.setex(key, ttl, serialized);
+      } else {
+        await this.client.setex(key, this.defaultTTL, serialized);
+      }
+      logger.debug(`Cache set: ${key}`);
+    } catch (error) {
+      logger.error(`Cache set error for key ${key}:`, error);
+      throw error;
+    }
+  }
+
+  // Get cache
+  async get<T>(key: string): Promise<T | null> {
+    try {
+      const value = await this.client.get(key);
+      if (!value) return null;
+      
+      logger.debug(`Cache hit: ${key}`);
+      return JSON.parse(value) as T;
+    } catch (error) {
+      logger.error(`Cache get error for key ${key}:`, error);
+      return null;
+    }
+  }
+
+  // Delete cache
+  async del(key: string | string[]): Promise<void> {
+    try {
+      if (Array.isArray(key)) {
+        await this.client.del(...key);
+        logger.debug(`Cache deleted: ${key.join(', ')}`);
+      } else {
+        await this.client.del(key);
+        logger.debug(`Cache deleted: ${key}`);
+      }
+    } catch (error) {
+      logger.error(`Cache delete error:`, error);
+    }
+  }
+
+  // Clear cache by pattern
+  async clearPattern(pattern: string): Promise<void> {
+    try {
+      const keys = await this.client.keys(pattern);
+      if (keys.length > 0) {
+        await this.client.del(...keys);
+        logger.debug(`Cache cleared for pattern: ${pattern} (${keys.length} keys)`);
+      }
+    } catch (error) {
+      logger.error(`Cache clear pattern error:`, error);
+    }
+  }
+
+  // Check if key exists
+  async exists(key: string): Promise<boolean> {
+    try {
+      const exists = await this.client.exists(key);
+      return exists === 1;
+    } catch (error) {
+      logger.error(`Cache exists error for key ${key}:`, error);
+      return false;
+    }
+  }
+
+  // Get remaining TTL
+  async ttl(key: string): Promise<number> {
+    try {
+      return await this.client.ttl(key);
+    } catch (error) {
+      logger.error(`Cache TTL error for key ${key}:`, error);
+      return -1;
+    }
+  }
+
+  // Cache wrapper function
+  async wrap<T>(
+    key: string,
+    fn: () => Promise<T>,
+    ttl?: number
+  ): Promise<T> {
+    // Try to get from cache
+    const cached = await this.get<T>(key);
+    if (cached !== null) {
+      return cached;
+    }
+
+    // Execute function and cache result
+    const result = await fn();
+    await this.set(key, result, ttl);
+    return result;
+  }
+
+  // Invalidate related caches
+  async invalidateRelated(patterns: string[]): Promise<void> {
+    for (const pattern of patterns) {
+      await this.clearPattern(pattern);
+    }
+  }
+
+  // Flush all cache (use with caution)
+  async flushAll(): Promise<void> {
+    try {
+      await this.client.flushdb();
+      logger.warn('All cache flushed');
+    } catch (error) {
+      logger.error('Cache flush error:', error);
+    }
+  }
+}
+
+// Export cache service singleton
+export const cacheService = new CacheService();
+
 export default redisClient;

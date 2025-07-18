@@ -1,265 +1,165 @@
-/**
- * Enterprise-grade Logging System
- * Supports multiple transports, structured logging, and correlation IDs
- */
-
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
-import { config } from '../config';
 import path from 'path';
-import fs from 'fs';
 
-// Ensure logs directory exists
-const logsDir = path.resolve(config.logging.dir);
-if (!fs.existsSync(logsDir)) {
-  fs.mkdirSync(logsDir, { recursive: true });
-}
+// Define log levels
+const levels = {
+  error: 0,
+  warn: 1,
+  info: 2,
+  http: 3,
+  debug: 4,
+};
 
-// Custom log format
-const logFormat = winston.format.combine(
+// Define log colors
+const colors = {
+  error: 'red',
+  warn: 'yellow',
+  info: 'green',
+  http: 'magenta',
+  debug: 'white',
+};
+
+// Add colors to winston
+winston.addColors(colors);
+
+// Define log format
+const format = winston.format.combine(
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
   winston.format.errors({ stack: true }),
-  winston.format.metadata({ fillExcept: ['message', 'level', 'timestamp', 'label'] })
-);
-
-// Console format for development
-const consoleFormat = winston.format.combine(
-  winston.format.colorize(),
-  winston.format.printf(({ timestamp, level, message, label, ...metadata }) => {
-    let msg = `${timestamp} [${label || 'APP'}] ${level}: ${message}`;
-    if (Object.keys(metadata).length > 0) {
-      msg += ` ${JSON.stringify(metadata)}`;
-    }
-    return msg;
-  })
-);
-
-// JSON format for production
-const jsonFormat = winston.format.combine(
-  logFormat,
+  winston.format.splat(),
   winston.format.json()
 );
 
-// Create transports
-const transports: winston.transport[] = [];
-
-// Console transport
-if (config.env !== 'production' || process.env.LOG_TO_CONSOLE === 'true') {
-  transports.push(
-    new winston.transports.Console({
-      format: winston.format.combine(
-        logFormat,
-        consoleFormat
-      ),
-    })
-  );
-}
-
-// File transports with rotation
-transports.push(
-  // Error logs
-  new DailyRotateFile({
-    filename: path.join(logsDir, 'error-%DATE%.log'),
-    datePattern: 'YYYY-MM-DD',
-    level: 'error',
-    format: jsonFormat,
-    maxSize: '20m',
-    maxFiles: '30d',
-    zippedArchive: true,
-  }),
-  
-  // Combined logs
-  new DailyRotateFile({
-    filename: path.join(logsDir, 'combined-%DATE%.log'),
-    datePattern: 'YYYY-MM-DD',
-    format: jsonFormat,
-    maxSize: '20m',
-    maxFiles: '14d',
-    zippedArchive: true,
-  })
+// Define console format for development
+const consoleFormat = winston.format.combine(
+  winston.format.colorize({ all: true }),
+  winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
+  winston.format.printf(
+    (info) => `${info.timestamp} [${info.context || 'App'}] [${info.level}]: ${info.message}${info.stack ? '\n' + info.stack : ''}`
+  )
 );
 
-// Create logger instance
-const logger = winston.createLogger({
-  level: config.logging.level,
-  format: logFormat,
-  transports,
-  exitOnError: false,
+// Create daily rotate file transport
+const fileRotateTransport = new DailyRotateFile({
+  filename: path.join('logs', '%DATE%-combined.log'),
+  datePattern: 'YYYY-MM-DD',
+  maxSize: '20m',
+  maxFiles: '14d',
+  format,
 });
 
-// Logger wrapper class for additional functionality
+// Create error file transport
+const errorFileTransport = new DailyRotateFile({
+  filename: path.join('logs', '%DATE%-error.log'),
+  datePattern: 'YYYY-MM-DD',
+  maxSize: '20m',
+  maxFiles: '30d',
+  level: 'error',
+  format,
+});
+
+// Create console transport
+const consoleTransport = new winston.transports.Console({
+  format: consoleFormat,
+});
+
+// Create the winston logger
+const winstonLogger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  levels,
+  transports: [
+    fileRotateTransport,
+    errorFileTransport,
+    // Only log to console in development
+    ...(process.env.NODE_ENV !== 'production' ? [consoleTransport] : []),
+  ],
+});
+
+// Create custom logger class
 export class Logger {
   private context: string;
   private metadata: Record<string, any>;
 
-  constructor(context: string, metadata?: Record<string, any>) {
+  constructor(context: string = 'App', metadata: Record<string, any> = {}) {
     this.context = context;
-    this.metadata = metadata || {};
+    this.metadata = metadata;
+  }
+
+  private log(level: string, message: string, meta?: any) {
+    const logData = {
+      context: this.context,
+      ...this.metadata,
+      ...(meta || {}),
+    };
+
+    if (meta instanceof Error) {
+      logData.error = {
+        message: meta.message,
+        stack: meta.stack,
+        name: meta.name,
+      };
+    }
+
+    winstonLogger.log(level, message, { metadata: logData });
+  }
+
+  error(message: string, error?: Error | any) {
+    this.log('error', message, error);
+  }
+
+  warn(message: string, meta?: any) {
+    this.log('warn', message, meta);
+  }
+
+  info(message: string, meta?: any) {
+    this.log('info', message, meta);
+  }
+
+  http(message: string, meta?: any) {
+    this.log('http', message, meta);
+  }
+
+  debug(message: string, meta?: any) {
+    this.log('debug', message, meta);
   }
 
   // Create child logger with additional context
   child(context: string, metadata?: Record<string, any>): Logger {
     return new Logger(
-      `${this.context}:${context}`,
-      { ...this.metadata, ...metadata }
+      `${this.context}.${context}`,
+      { ...this.metadata, ...(metadata || {}) }
     );
   }
 
-  // Add correlation ID to all logs
-  withCorrelationId(correlationId: string): Logger {
-    return new Logger(this.context, { ...this.metadata, correlationId });
-  }
-
-  // Add user context
-  withUser(userId: string, userEmail?: string): Logger {
-    return new Logger(this.context, {
-      ...this.metadata,
-      userId,
-      userEmail,
-    });
-  }
-
-  // Log methods
-  error(message: string, error?: Error | any, metadata?: Record<string, any>): void {
-    logger.error(message, {
-      label: this.context,
-      ...this.metadata,
-      ...metadata,
-      error: error instanceof Error ? {
-        message: error.message,
-        stack: error.stack,
-        name: error.name,
-      } : error,
-    });
-  }
-
-  warn(message: string, metadata?: Record<string, any>): void {
-    logger.warn(message, {
-      label: this.context,
-      ...this.metadata,
-      ...metadata,
-    });
-  }
-
-  info(message: string, metadata?: Record<string, any>): void {
-    logger.info(message, {
-      label: this.context,
-      ...this.metadata,
-      ...metadata,
-    });
-  }
-
-  debug(message: string, metadata?: Record<string, any>): void {
-    logger.debug(message, {
-      label: this.context,
-      ...this.metadata,
-      ...metadata,
-    });
-  }
-
-  // Performance logging
-  startTimer(): () => void {
-    const startTime = Date.now();
-    return () => {
-      const duration = Date.now() - startTime;
-      this.info('Operation completed', { duration });
-    };
-  }
-
-  // HTTP request logging
-  logHttpRequest(req: any, res: any, responseTime: number): void {
-    const metadata = {
-      method: req.method,
-      url: req.url,
-      statusCode: res.statusCode,
-      responseTime,
-      ip: req.ip,
-      userAgent: req.get('user-agent'),
-      correlationId: req.id,
-    };
-
-    if (res.statusCode >= 500) {
-      this.error('HTTP request failed', undefined, metadata);
-    } else if (res.statusCode >= 400) {
-      this.warn('HTTP request client error', metadata);
-    } else {
-      this.info('HTTP request completed', metadata);
-    }
-  }
-
-  // Database query logging
-  logQuery(operation: string, collection: string, duration: number, metadata?: Record<string, any>): void {
-    this.debug('Database query', {
-      operation,
-      collection,
-      duration,
-      ...metadata,
-    });
-  }
-
-  // External service call logging
-  logExternalCall(service: string, operation: string, duration: number, success: boolean, metadata?: Record<string, any>): void {
-    const level = success ? 'info' : 'error';
-    logger[level]('External service call', {
-      label: this.context,
-      service,
+  // Log performance metrics
+  performance(operation: string, duration: number, meta?: any) {
+    this.info(`Performance: ${operation} completed in ${duration}ms`, {
       operation,
       duration,
-      success,
-      ...this.metadata,
-      ...metadata,
+      ...meta,
+    });
+  }
+
+  // Log API requests
+  request(req: any, res: any, duration: number) {
+    const { method, url, ip, headers } = req;
+    const { statusCode } = res;
+    
+    this.http(`${method} ${url} ${statusCode} - ${duration}ms`, {
+      method,
+      url,
+      statusCode,
+      duration,
+      ip: ip || req.connection?.remoteAddress,
+      userAgent: headers['user-agent'],
+      userId: req.user?.id,
     });
   }
 }
 
-// Create default logger
-export const createLogger = (context: string, metadata?: Record<string, any>): Logger => {
-  return new Logger(context, metadata);
-};
+// Export singleton logger instance
+export const logger = new Logger();
 
-// Express middleware for request logging
-export const requestLogger = (req: any, res: any, next: any): void => {
-  const startTime = Date.now();
-  const logger = createLogger('HTTP').withCorrelationId(req.id || 'unknown');
-
-  // Log request
-  logger.info('Incoming request', {
-    method: req.method,
-    url: req.url,
-    ip: req.ip,
-    userAgent: req.get('user-agent'),
-  });
-
-  // Log response
-  const originalSend = res.send;
-  res.send = function (data: any) {
-    res.send = originalSend;
-    const responseTime = Date.now() - startTime;
-    logger.logHttpRequest(req, res, responseTime);
-    return res.send(data);
-  };
-
-  next();
-};
-
-// Global error logging
-export const logUnhandledErrors = (): void => {
-  const logger = createLogger('SYSTEM');
-
-  process.on('uncaughtException', (error: Error) => {
-    logger.error('Uncaught Exception', error);
-    // Give the logger time to write before exiting
-    setTimeout(() => process.exit(1), 1000);
-  });
-
-  process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
-    logger.error('Unhandled Rejection', reason, { promise: promise.toString() });
-  });
-
-  process.on('warning', (warning: Error) => {
-    logger.warn('Process Warning', { warning: warning.toString() });
-  });
-};
-
-// Export default logger instance
-export default createLogger('APP');
+// Export the winston logger for special cases
+export const winstonInstance = winstonLogger;

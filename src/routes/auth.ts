@@ -1,13 +1,5 @@
 import express from 'express';
-import { 
-  register, 
-  login, 
-  getMe, 
-  updatePassword, 
-  refreshToken, 
-  logout, 
-  logoutAll 
-} from '../controllers/auth.controller';
+import { authController } from '../controllers/auth/AuthController';
 import { protect } from '../middleware/auth';
 import { validateRequest } from '../middleware/advancedValidation';
 import { body } from 'express-validator';
@@ -66,15 +58,15 @@ const refreshTokenValidation = [
 ];
 
 // Public routes
-router.post('/register', registerValidation, validateRequest, register);
-router.post('/login', loginValidation, validateRequest, login);
-router.post('/refresh', refreshTokenValidation, validateRequest, refreshToken);
+router.post('/register', registerValidation, validateRequest, (req, res) => authController.register(req, res));
+router.post('/login', loginValidation, validateRequest, (req, res) => authController.login(req, res));
+router.post('/refresh', refreshTokenValidation, validateRequest, (req, res) => authController.refreshToken(req, res));
 
 // Protected routes
-router.get('/me', protect, getMe);
-router.put('/update-password', protect, updatePasswordValidation, validateRequest, updatePassword);
-router.post('/logout', protect, logout);
-router.post('/logout-all', protect, logoutAll);
+router.get('/me', protect, (req, res) => authController.getMe(req, res));
+router.put('/update-password', protect, updatePasswordValidation, validateRequest, (req, res) => authController.updatePassword(req, res));
+router.post('/logout', protect, (req, res) => authController.logout(req, res));
+router.post('/logout-all', protect, (req, res) => authController.logoutAll(req, res));
 
 // Health check
 router.get('/health', (req, res) => {

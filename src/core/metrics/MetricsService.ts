@@ -1,127 +1,204 @@
-import { Counter, Histogram, Gauge, register } from 'prom-client';
+import * as promClient from 'prom-client';
+import { Logger } from '../logging/logger';
+
+const logger = new Logger('MetricsService');
 
 export class MetricsService {
-  private counters: Map<string, Counter> = new Map();
-  private histograms: Map<string, Histogram> = new Map();
-  private gauges: Map<string, Gauge> = new Map();
+  private register: promClient.Registry;
+  private counters: Map<string, promClient.Counter>;
+  private gauges: Map<string, promClient.Gauge>;
+  private histograms: Map<string, promClient.Histogram>;
+  private summaries: Map<string, promClient.Summary>;
 
   constructor() {
-    // Initialize default metrics
-    this.initializeDefaultMetrics();
+    this.register = new promClient.Registry();
+    this.counters = new Map();
+    this.gauges = new Map();
+    this.histograms = new Map();
+    this.summaries = new Map();
+
+    // Register default metrics
+    promClient.collectDefaultMetrics({ register: this.register });
+
+    // Initialize common metrics
+    this.initializeMetrics();
   }
 
-  private initializeDefaultMetrics(): void {
-    // API request counter
-    this.createCounter('api_requests_total', 'Total number of API requests', ['method', 'path', 'status_code']);
+  private initializeMetrics() {
+    // HTTP metrics
+    this.createHistogram('http_request_duration_seconds', 'Duration of HTTP requests in seconds', ['method', 'route', 'status_code']);
+    this.createCounter('http_requests_total', 'Total number of HTTP requests', ['method', 'route', 'status_code']);
+
+    // Business metrics
+    this.createCounter('user_registrations_total', 'Total number of user registrations', ['user_type']);
+    this.createCounter('login_attempts_total', 'Total number of login attempts', ['status']);
+    this.createCounter('orders_total', 'Total number of orders', ['status', 'payment_method']);
+    this.createGauge('active_users', 'Number of active users', ['user_type']);
     
-    // API errors counter
-    this.createCounter('api_errors_total', 'Total number of API errors', ['method', 'path', 'status_code', 'error_code']);
+    // Performance metrics
+    this.createHistogram('database_query_duration_seconds', 'Duration of database queries', ['operation', 'collection']);
+    this.createHistogram('external_api_duration_seconds', 'Duration of external API calls', ['service', 'endpoint']);
     
-    // API response time histogram
-    this.createHistogram('api_response_time_seconds', 'API response time in seconds', ['method', 'path']);
-    
-    // Active connections gauge
-    this.createGauge('active_connections', 'Number of active connections');
-    
-    // Analytics events counter
-    this.createCounter('analytics_events_total', 'Total number of analytics events', ['event_type', 'user_role']);
-    
-    // Analytics flush counter
-    this.createCounter('analytics_events_flushed_total', 'Total number of flushed analytics events', ['batch_size']);
-    
-    // Analytics errors counter
-    this.createCounter('analytics_errors_total', 'Total number of analytics errors', ['error_type']);
-    
-    // CORS blocked requests
-    this.createCounter('cors_blocked_requests_total', 'Total number of CORS blocked requests', ['origin']);
-    
-    // IP whitelist blocked requests
-    this.createCounter('ip_whitelist_blocked_total', 'Total number of IP whitelist blocked requests', ['ip']);
-    
-    // Malicious user agent blocked
-    this.createCounter('malicious_user_agent_blocked_total', 'Total number of malicious user agent blocked requests', ['userAgent']);
-    
-    // Request size limit exceeded
-    this.createCounter('request_size_limit_exceeded_total', 'Total number of request size limit exceeded', ['size']);
-    
-    // Requests without user agent
-    this.createCounter('requests_without_user_agent_total', 'Total number of requests without user agent');
+    // Error metrics
+    this.createCounter('errors_total', 'Total number of errors', ['error_type', 'service']);
+    this.createCounter('unhandled_rejections_total', 'Total number of unhandled promise rejections');
   }
 
-  private createCounter(name: string, help: string, labelNames: string[] = []): Counter {
-    const counter = new Counter({
+  // Counter methods
+  createCounter(name: string, help: string, labels: string[] = []): promClient.Counter {
+    const counter = new promClient.Counter({
       name,
       help,
-      labelNames
+      labelNames: labels,
+      registers: [this.register]
     });
-    register.registerMetric(counter);
     this.counters.set(name, counter);
     return counter;
   }
 
-  private createHistogram(name: string, help: string, labelNames: string[] = []): Histogram {
-    const histogram = new Histogram({
-      name,
-      help,
-      labelNames,
-      buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10]
-    });
-    register.registerMetric(histogram);
-    this.histograms.set(name, histogram);
-    return histogram;
+  incrementCounter(name: string, labels?: Record<string, string | number>) {
+    const counter = this.counters.get(name);
+    if (!counter) {
+      logger.warn(`Counter ${name} not found`);
+      return;
+    }
+    counter.inc(labels as any);
   }
 
-  private createGauge(name: string, help: string, labelNames: string[] = []): Gauge {
-    const gauge = new Gauge({
+  // Gauge methods
+  createGauge(name: string, help: string, labels: string[] = []): promClient.Gauge {
+    const gauge = new promClient.Gauge({
       name,
       help,
-      labelNames
+      labelNames: labels,
+      registers: [this.register]
     });
-    register.registerMetric(gauge);
     this.gauges.set(name, gauge);
     return gauge;
   }
 
-  public incrementCounter(name: string, labels: Record<string, string> = {}): void {
-    const counter = this.counters.get(name);
-    if (counter) {
-      counter.inc(labels);
+  setGauge(name: string, value: number, labels?: Record<string, string | number>) {
+    const gauge = this.gauges.get(name);
+    if (!gauge) {
+      logger.warn(`Gauge ${name} not found`);
+      return;
     }
+    gauge.set(labels as any, value);
   }
 
-  public recordTimer(name: string, value: number, labels: Record<string, string> = {}): void {
+  incrementGauge(name: string, value: number = 1, labels?: Record<string, string | number>) {
+    const gauge = this.gauges.get(name);
+    if (!gauge) {
+      logger.warn(`Gauge ${name} not found`);
+      return;
+    }
+    gauge.inc(labels as any, value);
+  }
+
+  decrementGauge(name: string, value: number = 1, labels?: Record<string, string | number>) {
+    const gauge = this.gauges.get(name);
+    if (!gauge) {
+      logger.warn(`Gauge ${name} not found`);
+      return;
+    }
+    gauge.dec(labels as any, value);
+  }
+
+  // Histogram methods
+  createHistogram(name: string, help: string, labels: string[] = [], buckets?: number[]): promClient.Histogram {
+    const histogram = new promClient.Histogram({
+      name,
+      help,
+      labelNames: labels,
+      buckets: buckets || promClient.Histogram.exponentialBuckets(0.001, 2, 10),
+      registers: [this.register]
+    });
+    this.histograms.set(name, histogram);
+    return histogram;
+  }
+
+  recordHistogram(name: string, value: number, labels?: Record<string, string | number>) {
     const histogram = this.histograms.get(name);
-    if (histogram) {
-      histogram.observe(labels, value);
+    if (!histogram) {
+      logger.warn(`Histogram ${name} not found`);
+      return;
     }
+    histogram.observe(labels as any, value);
   }
 
-  public setGauge(name: string, value: number, labels: Record<string, string> = {}): void {
-    const gauge = this.gauges.get(name);
-    if (gauge) {
-      gauge.set(labels, value);
+  // Summary methods
+  createSummary(name: string, help: string, labels: string[] = [], percentiles?: number[]): promClient.Summary {
+    const summary = new promClient.Summary({
+      name,
+      help,
+      labelNames: labels,
+      percentiles: percentiles || [0.5, 0.9, 0.95, 0.99],
+      registers: [this.register]
+    });
+    this.summaries.set(name, summary);
+    return summary;
+  }
+
+  recordSummary(name: string, value: number, labels?: Record<string, string | number>) {
+    const summary = this.summaries.get(name);
+    if (!summary) {
+      logger.warn(`Summary ${name} not found`);
+      return;
     }
+    summary.observe(labels as any, value);
   }
 
-  public incrementGauge(name: string, value: number = 1, labels: Record<string, string> = {}): void {
-    const gauge = this.gauges.get(name);
-    if (gauge) {
-      gauge.inc(labels, value);
-    }
+  // Timer utility
+  startTimer(histogramName: string): () => void {
+    const start = Date.now();
+    return () => {
+      const duration = (Date.now() - start) / 1000;
+      this.recordHistogram(histogramName, duration);
+    };
   }
 
-  public decrementGauge(name: string, value: number = 1, labels: Record<string, string> = {}): void {
-    const gauge = this.gauges.get(name);
-    if (gauge) {
-      gauge.dec(labels, value);
-    }
+  // Get metrics for Prometheus
+  async getMetrics(): Promise<string> {
+    return this.register.metrics();
   }
 
-  public getMetrics(): Promise<string> {
-    return register.metrics();
+  // Get metrics as JSON
+  async getMetricsJSON() {
+    return this.register.getMetricsAsJSON();
   }
 
-  public getContentType(): string {
-    return register.contentType;
+  // Reset all metrics
+  reset() {
+    this.register.resetMetrics();
+  }
+
+  // Common metric recording methods
+  recordHttpRequest(method: string, route: string, statusCode: number, duration: number) {
+    const labels = { method, route, status_code: statusCode.toString() };
+    this.incrementCounter('http_requests_total', labels);
+    this.recordHistogram('http_request_duration_seconds', duration / 1000, labels);
+  }
+
+  recordDatabaseQuery(operation: string, collection: string, duration: number) {
+    this.recordHistogram('database_query_duration_seconds', duration / 1000, { operation, collection });
+  }
+
+  recordError(errorType: string, service: string) {
+    this.incrementCounter('errors_total', { error_type: errorType, service });
+  }
+
+  recordLogin(success: boolean) {
+    this.incrementCounter('login_attempts_total', { status: success ? 'success' : 'failure' });
+  }
+
+  recordUserRegistration(userType: string) {
+    this.incrementCounter('user_registrations_total', { user_type: userType });
+  }
+
+  recordOrder(status: string, paymentMethod: string) {
+    this.incrementCounter('orders_total', { status, payment_method: paymentMethod });
   }
 }
+
+// Export singleton instance
+export const metricsService = new MetricsService();

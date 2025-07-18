@@ -8,7 +8,7 @@ import jwt from 'jsonwebtoken';
 import { config } from '../../core/config';
 
 const logger = new Logger('EnhancedWebSocketService');
-const metrics = MetricsService.getInstance();
+const metrics = metricsService;
 
 export interface WebSocketMessage {
   id: string;
@@ -62,7 +62,7 @@ export class EnhancedWebSocketService extends EventEmitter {
 
   private constructor() {
     super();
-    this.cache = CacheService.getInstance();
+    this.cache = cacheService;
   }
 
   static getInstance(): EnhancedWebSocketService {

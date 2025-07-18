@@ -53,8 +53,9 @@ export const createRateLimiter = (options: {
     ...defaults,
     ...options,
     store: new RedisStore({
-      client: redisClient,
-      prefix: 'rl:'
+      client: redisClient as any,
+      prefix: 'rl:',
+      sendCommand: (...args: string[]) => (redisClient as any).call(...args)
     })
   });
 };
@@ -68,8 +69,9 @@ export const createDynamicRateLimiter = () => {
     standardHeaders: true,
     legacyHeaders: false,
     store: new RedisStore({
-      client: redisClient,
-      prefix: 'drl:'
+      client: redisClient as any,
+      prefix: 'drl:',
+      sendCommand: (...args: string[]) => (redisClient as any).call(...args)
     }),
     max: (req: Request) => {
       // Dynamic limit based on subscription tier

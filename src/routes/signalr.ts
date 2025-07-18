@@ -1,6 +1,6 @@
 import express from 'express';
 import { SignalRController } from '../controllers/SignalRController';
-import { authMiddleware } from '../middleware/auth';
+import { requireAuth } from '../middleware/auth';
 import { enforceTenantIsolation } from '../middleware/tenantIsolation';
 import { createCustomRateLimiter } from '../middleware/rateLimiter';
 import { authorize } from '../middleware/authorize';
@@ -13,7 +13,7 @@ const signalRController = new SignalRController();
 const signalRRateLimiter = createCustomRateLimiter('signalr', 1, 60); // 60 requests per minute
 
 // Apply middleware to all routes
-router.use(authMiddleware);
+router.use(requireAuth);
 router.use(enforceTenantIsolation);
 router.use(signalRRateLimiter);
 

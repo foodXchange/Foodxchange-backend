@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { asyncHandler } from '../../core/errors';
+import asyncHandler from 'express-async-handler';
 import haccpRoutes from './haccp';
 
 const router = Router();

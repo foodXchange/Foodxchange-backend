@@ -284,7 +284,7 @@ export class PrometheusMetricsService {
         const userRole = req.user?.role || 'anonymous';
         
         // Record HTTP request metrics
-        PrometheusMetricsService.getInstance().recordHttpRequest(
+        PrometheusmetricsService.recordHttpRequest(
           req.method,
           req.route?.path || req.path,
           res.statusCode,
@@ -295,7 +295,7 @@ export class PrometheusMetricsService {
         // Record response size
         if (chunk) {
           const responseSize = Buffer.isBuffer(chunk) ? chunk.length : Buffer.byteLength(chunk);
-          PrometheusMetricsService.getInstance().recordHttpResponseSize(
+          PrometheusmetricsService.recordHttpResponseSize(
             req.method,
             req.route?.path || req.path,
             responseSize
@@ -338,4 +338,4 @@ export class PrometheusMetricsService {
 }
 
 // Export singleton instance
-export const prometheusMetrics = PrometheusMetricsService.getInstance();
+export const prometheusMetrics = PrometheusmetricsService;

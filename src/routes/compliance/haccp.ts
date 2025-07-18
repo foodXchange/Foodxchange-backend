@@ -1,10 +1,10 @@
 import express from 'express';
 import { HACCPController } from '../../controllers/HACCPController';
-import { authMiddleware } from '../../middleware/auth';
+import { requireAuth } from '../../middleware/auth';
 import { enforceTenantIsolation } from '../../middleware/tenantIsolation';
 import { createCustomRateLimiter } from '../../middleware/rateLimiter';
 import { authorize } from '../../middleware/authorize';
-import { asyncHandler } from '../../core/errors';
+import asyncHandler from 'express-async-handler';
 
 const router = express.Router();
 const haccpController = new HACCPController();
@@ -13,7 +13,7 @@ const haccpController = new HACCPController();
 const haccpRateLimiter = createCustomRateLimiter('haccp', 60, 200); // 200 requests per hour
 
 // Apply middleware to all routes
-router.use(authMiddleware);
+router.use(requireAuth);
 router.use(enforceTenantIsolation);
 router.use(haccpRateLimiter);
 

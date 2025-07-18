@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { getMobileOptimizationService } from '../services/mobile/MobileOptimizationService';
 import { Logger } from '../core/logging/logger';
-import { ValidationError } from '../core/errors/customErrors';
+import { ValidationError } from '../core/errors';
 
 const logger = new Logger('MobileController');
 

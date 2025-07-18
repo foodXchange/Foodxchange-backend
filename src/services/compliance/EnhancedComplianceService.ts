@@ -8,7 +8,7 @@ import { AuditService } from '../audit/AuditService';
 import mongoose from 'mongoose';
 
 const logger = new Logger('EnhancedComplianceService');
-const metrics = MetricsService.getInstance();
+const metrics = metricsService;
 
 export interface ComplianceCheck {
   id: string;
@@ -172,7 +172,7 @@ export class EnhancedComplianceService extends EventEmitter {
 
   constructor() {
     super();
-    this.cache = CacheService.getInstance();
+    this.cache = cacheService;
     this.ai = AzureAIService.getInstance();
     this.audit = AuditService.getInstance();
     this.complianceRules = new Map();

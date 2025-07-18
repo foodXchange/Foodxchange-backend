@@ -12,8 +12,8 @@ import { MetricsService } from '../infrastructure/monitoring/MetricsService';
 
 const router = Router();
 const logger = new Logger('TrackingRoutes');
-const cache = CacheService.getInstance();
-const metrics = MetricsService.getInstance();
+const cache = cacheService;
+const metrics = metricsService;
 
 // Middleware to validate request
 const validateRequest = (req: Request, res: Response, next: NextFunction) => {

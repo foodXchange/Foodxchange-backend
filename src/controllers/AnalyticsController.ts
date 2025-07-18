@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { getAnalyticsService } from '../services/analytics/AnalyticsService';
 import { Logger } from '../core/logging/logger';
-import { ValidationError } from '../core/errors/customErrors';
+import { ValidationError } from '../core/errors';
 
 const logger = new Logger('AnalyticsController');
 

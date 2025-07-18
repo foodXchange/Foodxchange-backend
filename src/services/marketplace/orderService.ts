@@ -10,7 +10,7 @@ import { EventEmitter } from 'events';
 import mongoose from 'mongoose';
 
 const logger = new Logger('OrderService');
-const metrics = MetricsService.getInstance();
+const metrics = metricsService;
 
 export interface OrderCreateData {
   supplier: string;
@@ -64,7 +64,7 @@ export class OrderService extends EventEmitter {
 
   constructor() {
     super();
-    this.cache = CacheService.getInstance();
+    this.cache = cacheService;
   }
 
   async createOrder(buyerId: string, data: OrderCreateData): Promise<IOrder> {

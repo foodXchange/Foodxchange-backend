@@ -110,7 +110,7 @@ export class MetricsService {
       name,
       help,
       labelNames: labels,
-      buckets: buckets || promClient.Histogram.exponentialBuckets(0.001, 2, 10),
+      buckets: buckets || promClient.exponentialBuckets(0.001, 2, 10),
       registers: [this.register]
     });
     this.histograms.set(name, histogram);

@@ -5,7 +5,7 @@ import { User } from '../models/User';
 import { Product } from '../models/Product';
 import { RFQ } from '../models/RFQ';
 import { Logger } from '../core/logging/logger';
-import { ValidationError, AuthorizationError, NotFoundError, ConflictError } from '../core/errors/customErrors';
+import { ValidationError, AuthorizationError, NotFoundError, ConflictError } from '../core/errors';
 import { validateOrderData, validateOrderUpdateData } from '../utils/validation';
 import { sendEmail } from '../utils/email';
 import { sendSMS } from '../utils/sms';

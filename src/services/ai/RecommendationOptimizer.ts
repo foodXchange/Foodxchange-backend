@@ -57,8 +57,8 @@ export class RecommendationOptimizer {
 
   private constructor() {
     this.logger = new Logger('RecommendationOptimizer');
-    this.cache = CacheService.getInstance();
-    this.metrics = MetricsService.getInstance();
+    this.cache = cacheService;
+    this.metrics = metricsService;
     this.analytics = new Map();
     this.performanceHistory = [];
     this.config = this.getDefaultConfig();

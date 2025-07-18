@@ -9,7 +9,7 @@ import { NotificationService } from '../notifications/NotificationService';
 import mongoose from 'mongoose';
 
 const logger = new Logger('EnhancedRFQService');
-const metrics = MetricsService.getInstance();
+const metrics = metricsService;
 
 export interface RFQ {
   id: string;
@@ -466,7 +466,7 @@ export class EnhancedRFQService extends EventEmitter {
 
   constructor() {
     super();
-    this.cache = CacheService.getInstance();
+    this.cache = cacheService;
     this.ai = AzureAIService.getInstance();
     this.audit = AuditService.getInstance();
     this.notifications = NotificationService.getInstance();

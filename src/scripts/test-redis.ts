@@ -5,7 +5,7 @@ const logger = new Logger('Redis Test');
 
 async function testRedis() {
   try {
-    const cache = CacheService.getInstance();
+    const cache = cacheService;
     
     // Wait a bit for Redis to connect
     await new Promise(resolve => setTimeout(resolve, 2000));

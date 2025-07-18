@@ -10,7 +10,7 @@ import { EventEmitter } from 'events';
 import mongoose from 'mongoose';
 
 const logger = new Logger('RFQService');
-const metrics = MetricsService.getInstance();
+const metrics = metricsService;
 
 export interface RFQCreateData {
   title: string;
@@ -67,7 +67,7 @@ export class RFQService extends EventEmitter {
 
   constructor() {
     super();
-    this.cache = CacheService.getInstance();
+    this.cache = cacheService;
   }
 
   async createRFQ(buyerId: string, data: RFQCreateData): Promise<IRFQ> {

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { getHACCPService } from '../services/compliance/HACCPService';
 import { Logger } from '../core/logging/logger';
-import { ValidationError, AuthorizationError, NotFoundError } from '../core/errors/customErrors';
+import { ValidationError, AuthorizationError, NotFoundError } from '../core/errors';
 
 const logger = new Logger('HACCPController');
 

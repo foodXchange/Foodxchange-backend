@@ -375,4 +375,4 @@ export class MultiLevelCacheService {
 }
 
 // Export singleton instance
-export const multiLevelCache = MultiLevelCacheService.getInstance();
+export const multiLevelCache = MultiLevelcacheService;

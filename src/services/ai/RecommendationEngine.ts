@@ -70,9 +70,9 @@ export class RecommendationEngine {
 
   private constructor() {
     this.logger = new Logger('RecommendationEngine');
-    this.cache = CacheService.getInstance();
+    this.cache = cacheService;
     this.openAI = OpenAIWrapper.getInstance().getService();
-    this.metrics = MetricsService.getInstance();
+    this.metrics = metricsService;
   }
 
   public static getInstance(): RecommendationEngine {

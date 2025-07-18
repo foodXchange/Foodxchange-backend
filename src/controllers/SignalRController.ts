@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { getSignalRService } from '../services/azure/SignalRService';
 import { getRealtimeEventService } from '../services/realtime/RealtimeEventService';
 import { Logger } from '../core/logging/logger';
-import { ValidationError, AuthorizationError, NotFoundError } from '../core/errors/customErrors';
+import { ValidationError, AuthorizationError, NotFoundError } from '../core/errors';
 import { User } from '../models/User';
 
 const logger = new Logger('SignalRController');

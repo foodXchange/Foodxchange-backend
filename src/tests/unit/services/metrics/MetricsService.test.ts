@@ -130,8 +130,8 @@ describe('MetricsService', () => {
 
   describe('Singleton Pattern', () => {
     it('should return same instance', () => {
-      const instance1 = MetricsService.getInstance();
-      const instance2 = MetricsService.getInstance();
+      const instance1 = metricsService;
+      const instance2 = metricsService;
       
       expect(instance1).toBe(instance2);
     });

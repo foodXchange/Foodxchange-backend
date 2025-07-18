@@ -8,7 +8,7 @@ import { AuditService } from '../audit/AuditService';
 import mongoose from 'mongoose';
 
 const logger = new Logger('EnhancedValidationService');
-const metrics = MetricsService.getInstance();
+const metrics = metricsService;
 
 export interface ValidationRule {
   id: string;
@@ -240,7 +240,7 @@ export class EnhancedValidationService extends EventEmitter {
 
   constructor() {
     super();
-    this.cache = CacheService.getInstance();
+    this.cache = cacheService;
     this.ai = AzureAIService.getInstance();
     this.audit = AuditService.getInstance();
     this.validationSchemas = new Map();

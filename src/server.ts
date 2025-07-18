@@ -17,10 +17,10 @@ dotenv.config();
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
-import { correlationId } from './middleware/correlationId';
-import { responseFormatter } from './middleware/responseFormatter';
+import { correlationIdMiddleware as correlationId } from './middleware/correlationId';
+import { responseFormatterMiddleware as responseFormatter } from './middleware/responseFormatter';
 import { requestLogger } from './middleware/requestLogger';
-import { performanceMonitor } from './middleware/performance';
+import { performanceMiddleware as performanceMonitor } from './middleware/performance';
 
 // Import routes
 import authRoutes from './routes/auth';

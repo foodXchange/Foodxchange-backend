@@ -1,6 +1,6 @@
 import express from 'express';
 import { OrderController } from '../../controllers/OrderController';
-import { authMiddleware } from '../../middleware/auth';
+import { requireAuth } from '../../middleware/auth';
 import { enforceTenantIsolation } from '../../middleware/tenantIsolation';
 import { validateApiKey } from '../../middleware/apiKeyAuth';
 import { createCustomRateLimiter } from '../../middleware/rateLimiter';
@@ -14,7 +14,7 @@ const orderController = new OrderController();
 const orderRateLimiter = createCustomRateLimiter('orders', 60, 100); // 100 requests per hour
 
 // Apply middleware to all routes
-router.use(authMiddleware);
+router.use(requireAuth);
 router.use(enforceTenantIsolation);
 router.use(orderRateLimiter);
 

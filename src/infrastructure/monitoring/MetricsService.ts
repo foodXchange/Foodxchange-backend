@@ -316,4 +316,4 @@ export class MetricsService extends EventEmitter {
 }
 
 // Export singleton instance
-export default MetricsService.getInstance();
+export default metricsService;

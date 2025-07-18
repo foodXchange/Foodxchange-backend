@@ -10,7 +10,7 @@ import { SystemError } from '../../core/errors';
 import { MetricsService } from '../monitoring/MetricsService';
 
 const logger = new Logger('DatabaseService');
-const metrics = MetricsService.getInstance();
+const metrics = metricsService;
 
 export interface DatabaseConfig {
   uri: string;

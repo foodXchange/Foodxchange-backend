@@ -1,11 +1,11 @@
 import { Logger } from '../../core/logging/logger';
-import { CacheService } from '../../infrastructure/cache/CacheService';
-import { MetricsService } from '../../core/monitoring/metrics';
+import { cacheService } from '../../config/redis';
+import { metricsService } from '../../core/metrics/MetricsService';
 import { EventEmitter } from 'events';
 import mongoose from 'mongoose';
 
 const logger = new Logger('NotificationService');
-const metrics = MetricsService.getInstance();
+const metrics = metricsService;
 
 export interface Notification {
   id: string;
@@ -64,11 +64,11 @@ export interface NotificationPreference {
 
 export class NotificationService extends EventEmitter {
   private static instance: NotificationService;
-  private cache: CacheService;
+  private cache: typeof cacheService;
 
   private constructor() {
     super();
-    this.cache = CacheService.getInstance();
+    this.cache = cacheService;
   }
 
   static getInstance(): NotificationService {

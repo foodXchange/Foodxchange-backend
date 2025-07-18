@@ -8,7 +8,7 @@ import {
   checkTenantLimits,
   tenantFeatures 
 } from '../middleware/tenantIsolation';
-import { ProductController } from '../controllers/ProductController';
+import ProductController from '../controllers/marketplace/productController';
 import { 
   validateRequest, 
   commonValidations, 
@@ -24,7 +24,7 @@ import {
 import { fileUploadSecurity } from '../middleware/security';
 
 const router = express.Router();
-const productController = new ProductController();
+const productController = ProductController;
 
 // Configure multer for image uploads
 const upload = multer({

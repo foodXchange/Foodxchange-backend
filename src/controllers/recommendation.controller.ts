@@ -27,7 +27,7 @@ export class RecommendationController {
     this.logger = new Logger('RecommendationController');
     this.recommendationEngine = RecommendationEngine.getInstance();
     this.matchingAlgorithms = new MatchingAlgorithms();
-    this.cache = CacheService.getInstance();
+    this.cache = cacheService;
   }
 
   public static getInstance(): RecommendationController {

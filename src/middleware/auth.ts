@@ -179,3 +179,6 @@ export const requireCompanyVerification = (req: AuthenticatedRequest, res: Respo
 
   next();
 };
+
+// Alias for protect middleware
+export const requireAuth = protect;

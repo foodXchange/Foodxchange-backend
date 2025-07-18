@@ -272,7 +272,7 @@ export class CacheService {
           ? options.keyGenerator(...args)
           : `${target.constructor.name}:${propertyKey}:${JSON.stringify(args)}`;
 
-        const cache = CacheService.getInstance();
+        const cache = cacheService;
         return cache.cached(
           key,
           () => originalMethod.apply(this, args),
@@ -335,4 +335,4 @@ export class CacheService {
 }
 
 // Export singleton instance
-export default CacheService.getInstance();
+export default cacheService;

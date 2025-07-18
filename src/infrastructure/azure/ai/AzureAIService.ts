@@ -128,8 +128,8 @@ export class AzureAIService {
   private initialized = false;
 
   private constructor() {
-    this.cache = CacheService.getInstance();
-    this.metrics = MetricsService.getInstance();
+    this.cache = cacheService;
+    this.metrics = metricsService;
   }
 
   public static getInstance(): AzureAIService {

@@ -1,6 +1,6 @@
 import express from 'express';
 import { MobileController } from '../../controllers/MobileController';
-import { authMiddleware } from '../../middleware/auth';
+import { requireAuth } from '../../middleware/auth';
 import { enforceTenantIsolation } from '../../middleware/tenantIsolation';
 import { createCustomRateLimiter } from '../../middleware/rateLimiter';
 import { authorize } from '../../middleware/authorize';
@@ -13,7 +13,7 @@ const mobileController = new MobileController();
 const mobileRateLimiter = createCustomRateLimiter('mobile', 60, 300); // 300 requests per hour
 
 // Apply middleware to all routes
-router.use(authMiddleware);
+router.use(requireAuth);
 router.use(enforceTenantIsolation);
 router.use(mobileRateLimiter);
 

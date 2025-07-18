@@ -1,6 +1,6 @@
 import express from 'express';
 import { ExportController } from '../../controllers/ExportController';
-import { authMiddleware } from '../../middleware/auth';
+import { requireAuth } from '../../middleware/auth';
 import { enforceTenantIsolation } from '../../middleware/tenantIsolation';
 import { createCustomRateLimiter } from '../../middleware/rateLimiter';
 import { authorize } from '../../middleware/authorize';
@@ -44,7 +44,7 @@ const upload = multer({
 });
 
 // Apply middleware to all routes
-router.use(authMiddleware);
+router.use(requireAuth);
 router.use(enforceTenantIsolation);
 router.use(exportRateLimiter);
 

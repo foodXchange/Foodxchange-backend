@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { getExportService } from '../services/export/ExportService';
 import { Logger } from '../core/logging/logger';
-import { ValidationError } from '../core/errors/customErrors';
+import { ValidationError } from '../core/errors';
 import * as path from 'path';
 import * as fs from 'fs';
 

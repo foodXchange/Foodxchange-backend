@@ -165,14 +165,65 @@ const updateProfile = asyncHandler(async (req, res) => {
 // @route   GET /api/sellers/products
 // @access  Private (Seller)
 const getSellerProducts = asyncHandler(async (req, res) => {
-  const sellerId = req.user.sellerId;
+  const sellerId = req.user.sellerId || req.user._id;
+  const companyId = req.user.company;
 
-  // TODO: Implement product fetching logic
-  const products = [];
+  // Import Product model
+  const Product = require('../../models/Product');
+  
+  // Get query parameters for filtering and pagination
+  const { 
+    page = 1, 
+    limit = 20, 
+    status = 'active',
+    category,
+    search 
+  } = req.query;
+
+  // Build query
+  const query = {
+    $or: [
+      { supplier: companyId },
+      { 'seller.id': sellerId }
+    ],
+    status
+  };
+
+  if (category) {
+    query.category = category;
+  }
+
+  if (search) {
+    query.$and = [
+      {
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } },
+          { sku: { $regex: search, $options: 'i' } }
+        ]
+      }
+    ];
+  }
+
+  // Execute query with pagination
+  const skip = (page - 1) * limit;
+  
+  const [products, total] = await Promise.all([
+    Product.find(query)
+      .populate('category', 'name slug')
+      .populate('supplier', 'name')
+      .skip(skip)
+      .limit(parseInt(limit))
+      .sort({ createdAt: -1 }),
+    Product.countDocuments(query)
+  ]);
 
   res.json({
     success: true,
     count: products.length,
+    total,
+    page: parseInt(page),
+    pages: Math.ceil(total / limit),
     data: products
   });
 });
@@ -181,14 +232,110 @@ const getSellerProducts = asyncHandler(async (req, res) => {
 // @route   GET /api/sellers/orders
 // @access  Private (Seller)
 const getSellerOrders = asyncHandler(async (req, res) => {
-  const sellerId = req.user.sellerId;
+  const sellerId = req.user.sellerId || req.user._id;
+  const companyId = req.user.company;
 
-  // TODO: Implement order fetching logic
-  const orders = [];
+  // Import Order model
+  const Order = require('../../models/Order');
+  
+  // Get query parameters for filtering and pagination
+  const { 
+    page = 1, 
+    limit = 20, 
+    status,
+    paymentStatus,
+    startDate,
+    endDate,
+    search 
+  } = req.query;
+
+  // Build query
+  const query = {
+    $or: [
+      { supplier: sellerId },
+      { supplierCompany: companyId }
+    ]
+  };
+
+  if (status) {
+    query.status = status;
+  }
+
+  if (paymentStatus) {
+    query.paymentStatus = paymentStatus;
+  }
+
+  if (startDate || endDate) {
+    query.createdAt = {};
+    if (startDate) {
+      query.createdAt.$gte = new Date(startDate);
+    }
+    if (endDate) {
+      query.createdAt.$lte = new Date(endDate);
+    }
+  }
+
+  if (search) {
+    query.$and = [
+      {
+        $or: [
+          { orderNumber: { $regex: search, $options: 'i' } },
+          { purchaseOrderNumber: { $regex: search, $options: 'i' } }
+        ]
+      }
+    ];
+  }
+
+  // Execute query with pagination
+  const skip = (page - 1) * limit;
+  
+  const [orders, total] = await Promise.all([
+    Order.find(query)
+      .populate('buyer', 'firstName lastName email')
+      .populate('buyerCompany', 'name')
+      .populate('items.productId', 'name sku')
+      .skip(skip)
+      .limit(parseInt(limit))
+      .sort({ createdAt: -1 }),
+    Order.countDocuments(query)
+  ]);
+
+  // Calculate summary statistics
+  const stats = await Order.aggregate([
+    { $match: query },
+    {
+      $group: {
+        _id: null,
+        totalRevenue: { $sum: '$totalAmount' },
+        pendingOrders: {
+          $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] }
+        },
+        processingOrders: {
+          $sum: { $cond: [{ $in: ['$status', ['confirmed', 'preparing', 'shipped']] }, 1, 0] }
+        },
+        completedOrders: {
+          $sum: { $cond: [{ $eq: ['$status', 'delivered'] }, 1, 0] }
+        },
+        unpaidAmount: {
+          $sum: { $cond: [{ $eq: ['$paymentStatus', 'pending'] }, '$totalAmount', 0] }
+        }
+      }
+    }
+  ]);
 
   res.json({
     success: true,
     count: orders.length,
+    total,
+    page: parseInt(page),
+    pages: Math.ceil(total / limit),
+    stats: stats[0] || {
+      totalRevenue: 0,
+      pendingOrders: 0,
+      processingOrders: 0,
+      completedOrders: 0,
+      unpaidAmount: 0
+    },
     data: orders
   });
 });

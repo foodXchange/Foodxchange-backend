@@ -337,5 +337,6 @@ export class PrometheusMetricsService {
   }
 }
 
-// Export singleton instance
-export const prometheusMetrics = PrometheusmetricsService;
+// Create and export singleton instance
+const prometheusMetricsInstance = new PrometheusMetricsService();
+export const prometheusMetrics = prometheusMetricsInstance;

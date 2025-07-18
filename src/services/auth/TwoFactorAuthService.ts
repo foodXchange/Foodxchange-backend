@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { User } from '../../models/User';
 import { Logger } from '../../core/logging/logger';
 import { secureConfig } from '../../config/secure-config';
+import { CacheService } from '../../infrastructure/cache/CacheService';
 
 const logger = new Logger('TwoFactorAuthService');
 
@@ -28,6 +29,8 @@ export class TwoFactorAuthService {
   private readonly tokenWindow = 1; // 30-second window
   private readonly backupCodeLength = 10;
   private readonly backupCodeCount = 10;
+  private readonly challengeTTL = 300; // 5 minutes
+  private readonly cacheService = CacheService.getInstance();
 
   /**
    * Generate a new TOTP secret for a user
@@ -95,6 +98,9 @@ export class TwoFactorAuthService {
             'twoFactor.enabledAt': new Date()
           }
         });
+
+        // Clear cache
+        await this.cacheService.delete(`2fa:enabled:${userId}`, { namespace: 'auth' });
 
         logger.info('2FA enabled for user', { userId });
         return true;
@@ -262,8 +268,25 @@ export class TwoFactorAuthService {
    */
   async is2FAEnabled(userId: string): Promise<boolean> {
     try {
+      // Check cache first
+      const cacheKey = `2fa:enabled:${userId}`;
+      const cached = await this.cacheService.get<boolean>(cacheKey, { namespace: 'auth' });
+      
+      if (cached !== null) {
+        return cached;
+      }
+      
+      // Fallback to database
       const user = await User.findById(userId);
-      return user?.twoFactor?.isEnabled || false;
+      const isEnabled = user?.twoFactor?.isEnabled || false;
+      
+      // Cache the result for 1 hour
+      await this.cacheService.set(cacheKey, isEnabled, 3600, {
+        namespace: 'auth',
+        compress: false
+      });
+      
+      return isEnabled;
     } catch (error) {
       logger.error('Failed to check 2FA status:', error);
       return false;
@@ -283,6 +306,9 @@ export class TwoFactorAuthService {
           'twoFactor.enabledAt': 1
         }
       });
+      
+      // Clear cache
+      await this.cacheService.delete(`2fa:enabled:${userId}`, { namespace: 'auth' });
 
       logger.info('2FA disabled for user', { userId });
     } catch (error) {
@@ -390,28 +416,102 @@ export class TwoFactorAuthService {
   }
 
   private async storeTwoFactorChallenge(challenge: TwoFactorChallenge, code: string): Promise<void> {
-    // Store in Redis or database
-    // Implementation depends on your caching strategy
-    // For now, using in-memory storage (should be replaced with Redis)
-    // TODO: Implement Redis storage
+    try {
+      // Store challenge data
+      const challengeKey = `2fa:challenge:${challenge.challengeId}`;
+      await this.cacheService.set(challengeKey, challenge, this.challengeTTL, {
+        namespace: 'auth',
+        compress: false
+      });
+      
+      // Store code separately for verification
+      const codeKey = `2fa:code:${challenge.challengeId}`;
+      await this.cacheService.set(codeKey, { code, attempts: 0 }, this.challengeTTL, {
+        namespace: 'auth',
+        compress: false
+      });
+      
+      logger.debug('Stored 2FA challenge', { challengeId: challenge.challengeId, userId: challenge.userId });
+    } catch (error) {
+      logger.error('Failed to store 2FA challenge', error);
+      throw new Error('Failed to store 2FA challenge');
+    }
   }
 
   private async getTwoFactorChallenge(challengeId: string): Promise<TwoFactorChallenge | null> {
-    // Retrieve from Redis or database
-    // Implementation depends on your caching strategy
-    // TODO: Implement Redis retrieval
-    return null;
+    try {
+      const challengeKey = `2fa:challenge:${challengeId}`;
+      const challenge = await this.cacheService.get<TwoFactorChallenge>(challengeKey, {
+        namespace: 'auth'
+      });
+      
+      if (!challenge) {
+        logger.debug('2FA challenge not found', { challengeId });
+        return null;
+      }
+      
+      // Check if challenge is expired
+      if (new Date() > new Date(challenge.expiresAt)) {
+        logger.debug('2FA challenge expired', { challengeId });
+        await this.cacheService.delete(challengeKey, { namespace: 'auth' });
+        await this.cacheService.delete(`2fa:code:${challengeId}`, { namespace: 'auth' });
+        return null;
+      }
+      
+      return challenge;
+    } catch (error) {
+      logger.error('Failed to retrieve 2FA challenge', error);
+      return null;
+    }
   }
 
   private async getChallengeCode(challengeId: string): Promise<string | null> {
-    // Retrieve challenge code from Redis or database
-    // TODO: Implement Redis retrieval
-    return null;
+    try {
+      const codeKey = `2fa:code:${challengeId}`;
+      const codeData = await this.cacheService.get<{ code: string; attempts: number }>(codeKey, {
+        namespace: 'auth'
+      });
+      
+      if (!codeData) {
+        logger.debug('2FA code not found', { challengeId });
+        return null;
+      }
+      
+      // Check if too many attempts
+      if (codeData.attempts >= 3) {
+        logger.warn('Too many 2FA attempts', { challengeId, attempts: codeData.attempts });
+        await this.cacheService.delete(codeKey, { namespace: 'auth' });
+        await this.cacheService.delete(`2fa:challenge:${challengeId}`, { namespace: 'auth' });
+        return null;
+      }
+      
+      // Increment attempts
+      codeData.attempts++;
+      await this.cacheService.set(codeKey, codeData, this.challengeTTL, {
+        namespace: 'auth',
+        compress: false
+      });
+      
+      return codeData.code;
+    } catch (error) {
+      logger.error('Failed to retrieve 2FA code', error);
+      return null;
+    }
   }
 
   private async markChallengeAsUsed(challengeId: string): Promise<void> {
-    // Mark challenge as used in Redis or database
-    // TODO: Implement Redis update
+    try {
+      // Delete both challenge and code from cache
+      await Promise.all([
+        this.cacheService.delete(`2fa:challenge:${challengeId}`, { namespace: 'auth' }),
+        this.cacheService.delete(`2fa:code:${challengeId}`, { namespace: 'auth' })
+      ]);
+      
+      logger.debug('Marked 2FA challenge as used', { challengeId });
+    } catch (error) {
+      logger.error('Failed to mark 2FA challenge as used', error);
+      // Non-critical error, don't throw
+    }
   }
 
   private async sendSMS(phoneNumber: string, message: string): Promise<void> {

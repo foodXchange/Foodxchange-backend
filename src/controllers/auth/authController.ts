@@ -64,7 +64,7 @@ export class AuthController {
       const existingUser = await User.findOne({ email });
       if (existingUser) {
         await this.analyticsService.trackEvent({
-          tenantId: 'default', // TODO: Get from request context
+          tenantId: req.tenantId || 'default',
           eventType: 'signup_failure',
           category: 'user',
           data: { email, reason: 'email_exists' },
@@ -156,7 +156,7 @@ export class AuthController {
 
       // Track successful signup
       await this.analyticsService.trackEvent({
-        tenantId: 'default', // TODO: Get from request context
+        tenantId: companyId?.toString() || 'default',
         eventType: 'signup_success',
         category: 'user',
         userId: user._id,
@@ -206,7 +206,7 @@ export class AuthController {
       const user = await User.findOne({ email }).select('+password').populate('company');
       if (!user) {
         await this.analyticsService.trackEvent({
-          tenantId: 'default', // TODO: Get from request context
+          tenantId: req.tenantId || 'default',
           eventType: 'login_failure',
           category: 'user',
           data: { email, reason: 'user_not_found' },
@@ -228,7 +228,7 @@ export class AuthController {
         
         if (lockDuration && lockDuration > new Date()) {
           await this.analyticsService.trackEvent({
-            tenantId: 'default', // TODO: Get from request context
+            tenantId: req.tenantId || user.company?.toString() || 'default',
             eventType: 'login_failure',
             category: 'user',
             data: { email, reason: 'account_locked' },
@@ -248,7 +248,7 @@ export class AuthController {
         await this.incrementFailedLoginAttempts(user);
         
         await this.analyticsService.trackEvent({
-          tenantId: 'default', // TODO: Get from request context
+          tenantId: req.tenantId || user.company?.toString() || 'default',
           eventType: 'login_failure',
           category: 'user',
           data: { email, reason: 'invalid_password' },
@@ -290,7 +290,7 @@ export class AuthController {
 
       // Track successful login
       await this.analyticsService.trackEvent({
-        tenantId: 'default', // TODO: Get from request context
+        tenantId: req.tenantId || user.company?.toString() || 'default',
         eventType: 'login_success',
         category: 'user',
         userId: user._id,
@@ -586,7 +586,7 @@ export class AuthController {
 
       // Track password reset request
       await this.analyticsService.trackEvent({
-        tenantId: 'default', // TODO: Get from request context
+        tenantId: req.tenantId || user.company?.toString() || 'default',
         eventType: 'password_reset_requested',
         category: 'user',
         userId: user._id,
@@ -636,7 +636,7 @@ export class AuthController {
 
       // Track password reset success
       await this.analyticsService.trackEvent({
-        tenantId: 'default', // TODO: Get from request context
+        tenantId: req.tenantId || user.company?.toString() || 'default',
         eventType: 'password_reset_success',
         category: 'user',
         userId: user._id,
@@ -714,7 +714,7 @@ export class AuthController {
 
         // Track logout
         await this.analyticsService.trackEvent({
-          tenantId: 'default', // TODO: Get from request context
+          tenantId: req.tenantId || 'default',
           eventType: 'logout',
           category: 'user',
           userId: mongoose.Types.ObjectId.createFromHexString(userId),
@@ -793,7 +793,7 @@ export class AuthController {
 
       // Track email verification
       await this.analyticsService.trackEvent({
-        tenantId: 'default', // TODO: Get from request context
+        tenantId: req.tenantId || user.company?.toString() || 'default',
         eventType: 'email_verified',
         category: 'user',
         userId: user._id,
@@ -887,7 +887,7 @@ export class AuthController {
 
       // Track social login
       await this.analyticsService.trackEvent({
-        tenantId: 'default', // TODO: Get from request context
+        tenantId: req.tenantId || user.company?.toString() || 'default',
         eventType: 'social_login_success',
         category: 'user',
         userId: user._id,

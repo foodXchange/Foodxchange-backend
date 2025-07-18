@@ -19,17 +19,33 @@ router.post('/twilio/whatsapp', asyncHandler(async (req, res) => {
       const twilioSignature = req.headers['x-twilio-signature'];
       const url = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
       
-      // TODO: Implement Twilio signature validation
-      // const isValid = twilio.validateRequest(
-      //   process.env.TWILIO_AUTH_TOKEN,
-      //   twilioSignature,
-      //   url,
-      //   req.body
-      // );
+      // Validate Twilio signature
+      const crypto = require('crypto');
+      const authToken = process.env.TWILIO_AUTH_TOKEN;
       
-      // if (!isValid) {
-      //   return res.status(403).send('Forbidden');
-      // }
+      if (!authToken || !twilioSignature) {
+        logger.warn('Missing Twilio auth token or signature');
+        return res.status(403).send('Forbidden');
+      }
+      
+      // Create the expected signature
+      const data = Object.keys(req.body)
+        .sort()
+        .reduce((acc, key) => acc + key + req.body[key], url);
+      
+      const expectedSignature = crypto
+        .createHmac('sha1', authToken)
+        .update(Buffer.from(data, 'utf-8'))
+        .digest('base64');
+      
+      // Compare signatures
+      if (twilioSignature !== expectedSignature) {
+        logger.warn('Invalid Twilio signature', { 
+          received: twilioSignature, 
+          expected: expectedSignature 
+        });
+        return res.status(403).send('Forbidden');
+      }
     }
     
     logger.info('Received WhatsApp message:', {

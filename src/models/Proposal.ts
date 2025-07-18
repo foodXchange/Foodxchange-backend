@@ -80,7 +80,11 @@ const proposalSchema = mongoose.Schema({
   },
   submittedAt: Date,
   reviewedAt: Date,
-  reviewNotes: String
+  reviewNotes: String,
+  orderId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Order'
+  }
 }, {
   timestamps: true
 });

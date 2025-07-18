@@ -1,5 +1,5 @@
 import express from 'express';
-import { authController } from '../controllers/auth/AuthController';
+import { authController } from '../controllers/auth/authController';
 import { protect } from '../middleware/auth';
 import { validateRequest } from '../middleware/advancedValidation';
 import { body } from 'express-validator';

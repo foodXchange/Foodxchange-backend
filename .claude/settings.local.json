@@ -62,7 +62,8 @@
       "Bash(npm outdated)",
       "Bash(npm run lint:*)",
       "Bash(npx eslint:*)",
-      "Bash(start http://localhost:5001/api-docs)"
+      "Bash(start http://localhost:5001/api-docs)",
+      "Bash(npm start)"
     ],
     "deny": []
   }

@@ -172,10 +172,10 @@ export const clearCacheOnMutation = (patterns: string[] | ((req: Request) => str
       
       // Only clear cache on successful responses
       if (res.statusCode >= 200 && res.statusCode < 300) {
-        const patternsToC lear = typeof patterns === 'function' ? patterns(req) : patterns;
+        const patternsToClear = typeof patterns === 'function' ? patterns(req) : patterns;
         
         // Clear cache asynchronously
-        clearCache(patternsToC lear).catch(error => {
+        clearCache(patternsToClear).catch(error => {
           logger.error('Cache clear error:', error);
         });
       }
@@ -189,10 +189,10 @@ export const clearCacheOnMutation = (patterns: string[] | ((req: Request) => str
       
       // Only clear cache on successful responses
       if (res.statusCode >= 200 && res.statusCode < 300) {
-        const patternsToC lear = typeof patterns === 'function' ? patterns(req) : patterns;
+        const patternsToClear = typeof patterns === 'function' ? patterns(req) : patterns;
         
         // Clear cache asynchronously
-        clearCache(patternsToC lear).catch(error => {
+        clearCache(patternsToClear).catch(error => {
           logger.error('Cache clear error:', error);
         });
       }

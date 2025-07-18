@@ -375,4 +375,6 @@ export class MultiLevelCacheService {
 }
 
 // Export singleton instance
-export const multiLevelCache = MultiLevelcacheService;
+// Create and export singleton instance
+const multiLevelCacheInstance = new MultiLevelCacheService();
+export const multiLevelCache = multiLevelCacheInstance;

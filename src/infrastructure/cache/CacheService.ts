@@ -5,6 +5,8 @@
 
 import Redis from 'ioredis';
 import NodeCache from 'node-cache';
+import { promisify } from 'util';
+import { gzip, gunzip } from 'zlib';
 import { config } from '../../core/config';
 import { Logger } from '../../core/logging/logger';
 import { ExternalServiceError } from '../../core/errors';
@@ -24,6 +26,8 @@ export class CacheService {
   private isRedisConnected = false;
   private readonly defaultTTL = 3600; // 1 hour
   private readonly keyPrefix = 'fdx:'; // FoodXchange prefix
+  private gzipAsync = promisify(gzip);
+  private gunzipAsync = promisify(gunzip);
 
   private constructor() {
     // Initialize in-memory cache as fallback
@@ -102,7 +106,7 @@ export class CacheService {
         const value = await this.redisClient.get(fullKey);
         if (value) {
           logger.debug('Cache hit (Redis)', { key: fullKey, duration: Date.now() - startTime });
-          return this.deserialize<T>(value, options.compress);
+          return await this.deserialize<T>(value, options.compress);
         }
       }
 
@@ -110,7 +114,7 @@ export class CacheService {
       const memValue = this.memoryCache.get<string>(fullKey);
       if (memValue) {
         logger.debug('Cache hit (Memory)', { key: fullKey, duration: Date.now() - startTime });
-        return this.deserialize<T>(memValue, false);
+        return await this.deserialize<T>(memValue, false);
       }
 
       logger.debug('Cache miss', { key: fullKey, duration: Date.now() - startTime });
@@ -224,16 +228,33 @@ export class CacheService {
   private async serialize<T>(value: T, compress?: boolean): Promise<string> {
     const json = JSON.stringify(value);
     if (compress && json.length > 1024) {
-      // TODO: Implement compression if needed
-      return json;
+      // Compress data using gzip if it's larger than 1KB
+      try {
+        const compressed = await this.gzipAsync(json);
+        // Return base64 encoded compressed data with a prefix to identify compressed content
+        return 'gzip:' + compressed.toString('base64');
+      } catch (error) {
+        logger.warn('Failed to compress cache data, storing uncompressed', { error });
+        return json;
+      }
     }
     return json;
   }
 
-  private deserialize<T>(value: string, compressed?: boolean): T {
-    if (compressed) {
-      // TODO: Implement decompression if needed
-      return JSON.parse(value);
+  private async deserialize<T>(value: string, compressed?: boolean): Promise<T> {
+    if (compressed || value.startsWith('gzip:')) {
+      // Check if value is compressed (either by flag or by prefix)
+      if (value.startsWith('gzip:')) {
+        try {
+          const compressed = Buffer.from(value.substring(5), 'base64');
+          const decompressed = await this.gunzipAsync(compressed);
+          return JSON.parse(decompressed.toString());
+        } catch (error) {
+          logger.warn('Failed to decompress cache data, attempting to parse as-is', { error });
+          // Fallback: try to parse without decompression
+          return JSON.parse(value);
+        }
+      }
     }
     return JSON.parse(value);
   }
@@ -333,6 +354,9 @@ export class CacheService {
     };
   }
 }
+
+// Create singleton instance
+const cacheService = CacheService.getInstance();
 
 // Export singleton instance
 export default cacheService;

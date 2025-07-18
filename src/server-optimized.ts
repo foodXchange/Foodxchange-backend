@@ -297,13 +297,22 @@ export class OptimizedServer {
           return next(new Error('Authentication required'));
         }
 
-        // TODO: Implement proper JWT token verification
-        // const decoded = jwt.verify(token, configManager.get('JWT_SECRET'));
-        // socket.data.userId = decoded.userId;
+        // Verify JWT token
+        const jwt = require('jsonwebtoken');
+        const jwtSecret = configManager.get('JWT_SECRET') || process.env.JWT_SECRET || 'secret';
         
-        // For now, allow all connections
-        socket.data.userId = 'anonymous';
-        next();
+        try {
+          const decoded = jwt.verify(token, jwtSecret) as any;
+          socket.data.userId = decoded.userId || decoded.id;
+          socket.data.userRole = decoded.role;
+          socket.data.tenantId = decoded.tenantId;
+          next();
+        } catch (jwtError) {
+          // Allow anonymous connections for public data
+          socket.data.userId = 'anonymous';
+          socket.data.userRole = 'guest';
+          next();
+        }
       } catch (error) {
         next(new Error('Authentication failed'));
       }

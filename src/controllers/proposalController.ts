@@ -98,9 +98,104 @@ exports.acceptProposal = async (req, res) => {
     rfq.status = 'completed';
     await rfq.save();
 
-    // TODO: Create order from accepted proposal
+    // Create order from accepted proposal
+    const Order = require('../models/Order');
+    
+    // Generate order number
+    const orderCount = await Order.countDocuments();
+    const orderNumber = `ORD-${new Date().getFullYear()}-${String(orderCount + 1).padStart(6, '0')}`;
+    
+    // Map proposal items to order items
+    const orderItems = proposal.products.map((item) => ({
+      productId: item.product,
+      name: item.alternativeProduct?.name || 'Product',
+      sku: item.product?.sku || 'SKU',
+      description: item.alternativeProduct?.description,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      totalPrice: item.totalPrice || (item.quantity * item.unitPrice),
+      unit: item.unit,
+      quantityOrdered: item.quantity,
+      quantityShipped: 0,
+      quantityDelivered: 0,
+      quantityReturned: 0,
+      quantityRejected: 0,
+      status: 'pending',
+      notes: item.notes
+    }));
+    
+    // Create the order
+    const order = new Order({
+      orderNumber,
+      rfqId: rfq._id,
+      buyer: rfq.buyer,
+      buyerCompany: rfq.buyerCompany,
+      supplier: proposal.submittedBy,
+      supplierCompany: proposal.supplier,
+      tenantId: rfq.tenantId || 'default',
+      items: orderItems,
+      
+      // Financial information
+      subtotal: proposal.pricing.subtotal,
+      taxAmount: proposal.pricing.taxes || 0,
+      shippingCost: proposal.pricing.shipping || 0,
+      discountAmount: 0,
+      totalAmount: proposal.pricing.total,
+      currency: proposal.pricing.currency || 'USD',
+      
+      // Payment information
+      paymentTerms: {
+        method: 'net30',
+        customTerms: proposal.terms?.paymentTerms
+      },
+      paymentStatus: 'pending',
+      
+      // Delivery information from RFQ
+      deliveryAddress: rfq.deliveryLocation,
+      deliveryTerms: {
+        incoterm: rfq.deliveryTerms?.incoterm || 'EXW',
+        shippingMethod: rfq.deliveryTerms?.preferredShippingMethod || 'Standard',
+        insuranceRequired: false,
+        signatureRequired: true
+      },
+      deliverySchedule: {
+        requestedDate: rfq.deliverySchedule?.requestedDate,
+        estimatedDate: new Date(Date.now() + (proposal.terms?.leadTime || 7) * 24 * 60 * 60 * 1000)
+      },
+      
+      // Order status
+      status: 'pending',
+      statusHistory: [{
+        status: 'pending',
+        changedAt: new Date(),
+        changedBy: req.user._id,
+        reason: 'Order created from accepted proposal'
+      }],
+      
+      // Set dates
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+    
+    await order.save();
+    
+    // Update proposal with order reference
+    proposal.orderId = order._id;
+    await proposal.save();
 
-    res.json(proposal);
+    res.json({
+      success: true,
+      message: 'Proposal accepted and order created successfully',
+      data: {
+        proposal,
+        order: {
+          id: order._id,
+          orderNumber: order.orderNumber,
+          totalAmount: order.totalAmount,
+          status: order.status
+        }
+      }
+    });
   } catch (error) {
     console.error('Error accepting proposal:', error);
     res.status(500).json({ error: 'Failed to accept proposal' });

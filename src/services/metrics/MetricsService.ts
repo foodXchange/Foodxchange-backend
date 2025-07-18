@@ -160,5 +160,6 @@ export class MetricsService {
   }
 }
 
-// Export singleton instance
-export const metricsService = metricsService;
+// Create and export singleton instance
+const metricsServiceInstance = new MetricsService();
+export const metricsService = metricsServiceInstance;

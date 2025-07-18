@@ -31,6 +31,7 @@ import complianceRoutes from './routes/compliance/complianceRoutes';
 import analyticsRoutes from './routes/analytics/analyticsRoutes';
 import apiKeyRoutes from './routes/apiKeys';
 import tenantRoutes from './routes/tenant';
+import healthCheckRoutes from './routes/healthCheck';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -162,6 +163,9 @@ app.get('/api', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+// Mount health check routes (no auth required)
+app.use('/health', healthCheckRoutes);
 
 // Mount API routes
 app.use('/api/auth', authRoutes);

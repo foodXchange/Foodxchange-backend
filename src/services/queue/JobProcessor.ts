@@ -1,510 +1,617 @@
+import Bull, { Queue, Job, JobOptions, QueueScheduler, Worker } from 'bull';
 import { Logger } from '../../core/logging/logger';
-import { MetricsService } from '../../core/metrics/MetricsService';
-import { cacheManager } from '../cache/CacheManager';
 import { EventEmitter } from 'events';
+import { performance } from 'perf_hooks';
 
 const logger = new Logger('JobProcessor');
-const metricsService = new MetricsService();
 
-export interface Job {
-  id: string;
+interface JobData {
   type: string;
-  data: any;
-  priority: number;
-  attempts: number;
-  maxAttempts: number;
-  delay: number;
-  createdAt: Date;
-  processedAt?: Date;
-  completedAt?: Date;
-  failedAt?: Date;
+  payload: any;
+  metadata?: {
+    userId?: string;
+    tenantId?: string;
+    correlationId?: string;
+    priority?: number;
+  };
+}
+
+interface JobResult {
+  success: boolean;
+  data?: any;
   error?: string;
-  result?: any;
-  status: 'pending' | 'processing' | 'completed' | 'failed' | 'delayed';
+  duration?: number;
 }
 
-export interface JobHandler {
-  (job: Job): Promise<any>;
+interface JobMetrics {
+  processed: number;
+  failed: number;
+  completed: number;
+  active: number;
+  waiting: number;
+  delayed: number;
+  averageProcessingTime: number;
 }
 
-export interface JobOptions {
-  priority?: number;
-  maxAttempts?: number;
-  delay?: number;
-  timeout?: number;
-  retryDelay?: number;
-  retryBackoff?: 'fixed' | 'exponential' | 'linear';
-}
-
-export interface QueueOptions {
-  concurrency?: number;
-  maxRetries?: number;
-  retryDelay?: number;
-  defaultJobOptions?: JobOptions;
-  processInterval?: number;
-}
+type JobHandler = (job: Job<JobData>) => Promise<any>;
 
 export class JobProcessor extends EventEmitter {
   private static instance: JobProcessor;
-  private jobs: Map<string, Job> = new Map();
+  private queues: Map<string, Queue> = new Map();
+  private workers: Map<string, Worker> = new Map();
+  private schedulers: Map<string, QueueScheduler> = new Map();
   private handlers: Map<string, JobHandler> = new Map();
-  private isProcessing = false;
-  private processInterval?: NodeJS.Timeout;
-  private activeJobs: Set<string> = new Set();
-  private options: Required<QueueOptions>;
+  private metrics: Map<string, JobMetrics> = new Map();
+  private redisConfig: any;
 
-  private constructor(options: QueueOptions = {}) {
+  private constructor() {
     super();
-    this.options = {
-      concurrency: options.concurrency ?? 10,
-      maxRetries: options.maxRetries ?? 3,
-      retryDelay: options.retryDelay ?? 5000,
-      processInterval: options.processInterval ?? 1000,
-      defaultJobOptions: {
-        priority: 0,
-        maxAttempts: 3,
-        delay: 0,
-        timeout: 30000,
-        retryDelay: 5000,
-        retryBackoff: 'exponential',
-        ...options.defaultJobOptions
-      }
+    this.redisConfig = {
+      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT || '6379'),
+      password: process.env.REDIS_PASSWORD,
+      db: parseInt(process.env.REDIS_QUEUE_DB || '2')
     };
+    
+    // Initialize default queues
+    this.initializeDefaultQueues();
   }
 
-  public static getInstance(options?: QueueOptions): JobProcessor {
+  static getInstance(): JobProcessor {
     if (!JobProcessor.instance) {
-      JobProcessor.instance = new JobProcessor(options);
+      JobProcessor.instance = new JobProcessor();
     }
     return JobProcessor.instance;
   }
 
   /**
-   * Register a job handler for a specific job type
+   * Initialize default job queues
    */
-  public registerHandler(jobType: string, handler: JobHandler): void {
-    this.handlers.set(jobType, handler);
-    logger.info('Job handler registered', { jobType });
+  private initializeDefaultQueues(): void {
+    const defaultQueues = [
+      'email',
+      'sms',
+      'export',
+      'import',
+      'analytics',
+      'notifications',
+      'imageProcessing',
+      'dataSync',
+      'reports',
+      'cleanup'
+    ];
+
+    defaultQueues.forEach(queueName => {
+      this.createQueue(queueName);
+    });
+
+    // Register default handlers
+    this.registerDefaultHandlers();
   }
 
   /**
-   * Add a job to the queue
+   * Create a new queue
    */
-  public async addJob(
-    type: string,
-    data: any,
-    options: JobOptions = {}
-  ): Promise<string> {
-    const jobOptions = { ...this.options.defaultJobOptions, ...options };
+  createQueue(name: string, options?: Bull.QueueOptions): Queue {
+    if (this.queues.has(name)) {
+      return this.queues.get(name)!;
+    }
+
+    const queue = new Bull(name, {
+      redis: this.redisConfig,
+      defaultJobOptions: {
+        removeOnComplete: 100,
+        removeOnFail: 500,
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 2000
+        }
+      },
+      ...options
+    });
+
+    // Create scheduler for delayed jobs
+    const scheduler = new QueueScheduler(name, {
+      redis: this.redisConfig
+    });
+
+    // Create worker
+    const worker = new Worker(name, async (job) => {
+      return this.processJob(job);
+    }, {
+      redis: this.redisConfig,
+      concurrency: parseInt(process.env[`QUEUE_${name.toUpperCase()}_CONCURRENCY`] || '5')
+    });
+
+    // Set up event handlers
+    this.setupQueueEvents(queue, name);
+    this.setupWorkerEvents(worker, name);
+
+    this.queues.set(name, queue);
+    this.workers.set(name, worker);
+    this.schedulers.set(name, scheduler);
     
-    const job: Job = {
-      id: this.generateJobId(),
-      type,
-      data,
-      priority: jobOptions.priority!,
-      attempts: 0,
-      maxAttempts: jobOptions.maxAttempts!,
-      delay: jobOptions.delay!,
-      createdAt: new Date(),
-      status: jobOptions.delay! > 0 ? 'delayed' : 'pending'
+    // Initialize metrics
+    this.metrics.set(name, {
+      processed: 0,
+      failed: 0,
+      completed: 0,
+      active: 0,
+      waiting: 0,
+      delayed: 0,
+      averageProcessingTime: 0
+    });
+
+    logger.info(`Queue created: ${name}`);
+    return queue;
+  }
+
+  /**
+   * Register a job handler
+   */
+  registerHandler(jobType: string, handler: JobHandler): void {
+    this.handlers.set(jobType, handler);
+    logger.info(`Handler registered for job type: ${jobType}`);
+  }
+
+  /**
+   * Add a job to queue
+   */
+  async addJob(
+    queueName: string,
+    jobType: string,
+    payload: any,
+    options?: JobOptions
+  ): Promise<Job<JobData>> {
+    const queue = this.queues.get(queueName);
+    if (!queue) {
+      throw new Error(`Queue ${queueName} not found`);
+    }
+
+    const jobData: JobData = {
+      type: jobType,
+      payload,
+      metadata: {
+        correlationId: options?.jobId || this.generateCorrelationId(),
+        priority: options?.priority
+      }
     };
 
-    this.jobs.set(job.id, job);
-    
-    // Store job persistently if cache is available
-    await cacheManager.set(`job:${job.id}`, job, { ttl: 3600 });
-    
-    logger.info('Job added to queue', { 
-      jobId: job.id, 
-      type: job.type, 
-      priority: job.priority,
-      delay: job.delay
+    const job = await queue.add(jobType, jobData, {
+      ...options,
+      jobId: jobData.metadata?.correlationId
     });
-    
-    this.emit('job:added', job);
-    
-    metricsService.incrementCounter('jobs_added_total', { type: job.type });
-    
-    return job.id;
+
+    logger.info(`Job added to ${queueName}`, {
+      jobId: job.id,
+      jobType,
+      correlationId: jobData.metadata?.correlationId
+    });
+
+    return job;
   }
 
   /**
-   * Start processing jobs
+   * Process a job
    */
-  public start(): void {
-    if (this.isProcessing) {
-      logger.warn('Job processor is already running');
-      return;
+  private async processJob(job: Job<JobData>): Promise<JobResult> {
+    const startTime = performance.now();
+    const { type, payload, metadata } = job.data;
+
+    logger.info(`Processing job`, {
+      queue: job.queue.name,
+      jobId: job.id,
+      type,
+      correlationId: metadata?.correlationId
+    });
+
+    try {
+      const handler = this.handlers.get(type);
+      if (!handler) {
+        throw new Error(`No handler registered for job type: ${type}`);
+      }
+
+      const result = await handler(job);
+      const duration = performance.now() - startTime;
+
+      // Update metrics
+      this.updateMetrics(job.queue.name, 'completed', duration);
+
+      logger.info(`Job completed`, {
+        queue: job.queue.name,
+        jobId: job.id,
+        type,
+        duration: `${duration.toFixed(2)}ms`
+      });
+
+      return {
+        success: true,
+        data: result,
+        duration
+      };
+    } catch (error) {
+      const duration = performance.now() - startTime;
+      
+      // Update metrics
+      this.updateMetrics(job.queue.name, 'failed', duration);
+
+      logger.error(`Job failed`, error, {
+        queue: job.queue.name,
+        jobId: job.id,
+        type,
+        attempt: job.attemptsMade
+      });
+
+      throw error;
+    }
+  }
+
+  /**
+   * Register default job handlers
+   */
+  private registerDefaultHandlers(): void {
+    // Email handler
+    this.registerHandler('sendEmail', async (job) => {
+      const { to, subject, body, template } = job.data.payload;
+      // Dynamic import to avoid loading heavy dependencies
+      const { emailService } = await import('../notification/EmailService');
+      return emailService.send({ to, subject, body, template });
+    });
+
+    // SMS handler
+    this.registerHandler('sendSMS', async (job) => {
+      const { to, message } = job.data.payload;
+      const { smsService } = await import('../notification/SMSService');
+      return smsService.send(to, message);
+    });
+
+    // Export handler
+    this.registerHandler('exportData', async (job) => {
+      const { type, filters, format, userId } = job.data.payload;
+      const { exportService } = await import('../export/ExportService');
+      return exportService.exportData(type, filters, format, userId);
+    });
+
+    // Import handler
+    this.registerHandler('importData', async (job) => {
+      const { type, fileUrl, mappings, userId } = job.data.payload;
+      const { importService } = await import('../import/ImportService');
+      return importService.importData(type, fileUrl, mappings, userId);
+    });
+
+    // Analytics handler
+    this.registerHandler('generateAnalytics', async (job) => {
+      const { reportType, dateRange, filters } = job.data.payload;
+      const { analyticsService } = await import('../analytics/AnalyticsService');
+      return analyticsService.generateReport(reportType, dateRange, filters);
+    });
+
+    // Image processing handler
+    this.registerHandler('processImage', async (job) => {
+      const { filename, operations } = job.data.payload;
+      const { imageOptimizationService } = await import('../optimization/ImageOptimizationService');
+      
+      // Update job progress
+      await job.updateProgress(10);
+      
+      const result = await imageOptimizationService.processUploadedImage(
+        Buffer.from(operations.buffer, 'base64'),
+        filename,
+        operations.options
+      );
+      
+      await job.updateProgress(100);
+      return result;
+    });
+
+    // Cleanup handler
+    this.registerHandler('cleanup', async (job) => {
+      const { type, olderThan } = job.data.payload;
+      const { cleanupService } = await import('../maintenance/CleanupService');
+      return cleanupService.cleanup(type, olderThan);
+    });
+
+    // Notification handler
+    this.registerHandler('sendNotification', async (job) => {
+      const { userId, type, title, message, data } = job.data.payload;
+      const { notificationService } = await import('../notification/NotificationService');
+      return notificationService.send(userId, { type, title, message, data });
+    });
+  }
+
+  /**
+   * Setup queue event handlers
+   */
+  private setupQueueEvents(queue: Queue, name: string): void {
+    queue.on('error', (error) => {
+      logger.error(`Queue error: ${name}`, error);
+      this.emit('queue:error', { queue: name, error });
+    });
+
+    queue.on('waiting', (jobId) => {
+      logger.debug(`Job waiting: ${jobId} in ${name}`);
+      this.updateQueueCounts(name);
+    });
+
+    queue.on('active', (job) => {
+      logger.debug(`Job active: ${job.id} in ${name}`);
+      this.updateQueueCounts(name);
+    });
+
+    queue.on('stalled', (job) => {
+      logger.warn(`Job stalled: ${job.id} in ${name}`);
+      this.emit('job:stalled', { queue: name, jobId: job.id });
+    });
+
+    queue.on('progress', (job, progress) => {
+      logger.debug(`Job progress: ${job.id} in ${name} - ${progress}%`);
+      this.emit('job:progress', { queue: name, jobId: job.id, progress });
+    });
+  }
+
+  /**
+   * Setup worker event handlers
+   */
+  private setupWorkerEvents(worker: Worker, name: string): void {
+    worker.on('completed', (job, result) => {
+      logger.info(`Job completed: ${job.id} in ${name}`);
+      this.emit('job:completed', { 
+        queue: name, 
+        jobId: job.id, 
+        result,
+        duration: result.duration 
+      });
+    });
+
+    worker.on('failed', (job, error) => {
+      logger.error(`Job failed: ${job?.id} in ${name}`, error);
+      this.emit('job:failed', { 
+        queue: name, 
+        jobId: job?.id, 
+        error: error.message,
+        attempt: job?.attemptsMade 
+      });
+    });
+
+    worker.on('error', (error) => {
+      logger.error(`Worker error: ${name}`, error);
+      this.emit('worker:error', { queue: name, error });
+    });
+  }
+
+  /**
+   * Get queue metrics
+   */
+  async getQueueMetrics(queueName?: string): Promise<Record<string, any>> {
+    if (queueName) {
+      const queue = this.queues.get(queueName);
+      if (!queue) {
+        throw new Error(`Queue ${queueName} not found`);
+      }
+      
+      const [waiting, active, completed, failed, delayed] = await Promise.all([
+        queue.getWaitingCount(),
+        queue.getActiveCount(),
+        queue.getCompletedCount(),
+        queue.getFailedCount(),
+        queue.getDelayedCount()
+      ]);
+
+      const metrics = this.metrics.get(queueName)!;
+      
+      return {
+        name: queueName,
+        waiting,
+        active,
+        completed,
+        failed,
+        delayed,
+        processed: metrics.processed,
+        averageProcessingTime: metrics.averageProcessingTime
+      };
     }
 
-    this.isProcessing = true;
-    this.processInterval = setInterval(
-      () => this.processJobs(),
-      this.options.processInterval
+    // Get metrics for all queues
+    const allMetrics: Record<string, any> = {};
+    
+    for (const [name, queue] of this.queues) {
+      allMetrics[name] = await this.getQueueMetrics(name);
+    }
+    
+    return allMetrics;
+  }
+
+  /**
+   * Clean completed/failed jobs
+   */
+  async cleanJobs(queueName: string, grace: number = 3600000): Promise<void> {
+    const queue = this.queues.get(queueName);
+    if (!queue) {
+      throw new Error(`Queue ${queueName} not found`);
+    }
+
+    await queue.clean(grace, 'completed');
+    await queue.clean(grace * 2, 'failed');
+    
+    logger.info(`Cleaned old jobs from ${queueName}`);
+  }
+
+  /**
+   * Pause/resume queue
+   */
+  async pauseQueue(queueName: string): Promise<void> {
+    const queue = this.queues.get(queueName);
+    if (!queue) {
+      throw new Error(`Queue ${queueName} not found`);
+    }
+    
+    await queue.pause();
+    logger.info(`Queue paused: ${queueName}`);
+  }
+
+  async resumeQueue(queueName: string): Promise<void> {
+    const queue = this.queues.get(queueName);
+    if (!queue) {
+      throw new Error(`Queue ${queueName} not found`);
+    }
+    
+    await queue.resume();
+    logger.info(`Queue resumed: ${queueName}`);
+  }
+
+  /**
+   * Retry failed jobs
+   */
+  async retryFailedJobs(queueName: string): Promise<number> {
+    const queue = this.queues.get(queueName);
+    if (!queue) {
+      throw new Error(`Queue ${queueName} not found`);
+    }
+
+    const failedJobs = await queue.getFailed();
+    let retried = 0;
+
+    for (const job of failedJobs) {
+      await job.retry();
+      retried++;
+    }
+
+    logger.info(`Retried ${retried} failed jobs in ${queueName}`);
+    return retried;
+  }
+
+  /**
+   * Schedule recurring jobs
+   */
+  async scheduleRecurringJob(
+    queueName: string,
+    jobName: string,
+    jobType: string,
+    payload: any,
+    cronExpression: string
+  ): Promise<void> {
+    const queue = this.queues.get(queueName);
+    if (!queue) {
+      throw new Error(`Queue ${queueName} not found`);
+    }
+
+    await queue.add(
+      jobType,
+      {
+        type: jobType,
+        payload,
+        metadata: { recurring: true }
+      },
+      {
+        repeat: {
+          cron: cronExpression
+        },
+        jobId: `recurring:${jobName}`
+      }
     );
-    
-    logger.info('Job processor started', {
-      concurrency: this.options.concurrency,
-      processInterval: this.options.processInterval
-    });
-    
-    this.emit('processor:started');
+
+    logger.info(`Scheduled recurring job: ${jobName} in ${queueName}`);
   }
 
   /**
-   * Stop processing jobs
+   * Start job processor
    */
-  public stop(): void {
-    if (!this.isProcessing) {
-      logger.warn('Job processor is not running');
-      return;
-    }
-
-    this.isProcessing = false;
+  async start(): Promise<void> {
+    logger.info('Starting job processor...');
     
-    if (this.processInterval) {
-      clearInterval(this.processInterval);
-      this.processInterval = undefined;
+    // Start all workers
+    for (const [name, worker] of this.workers) {
+      if (!worker.isRunning()) {
+        await worker.run();
+        logger.info(`Worker started: ${name}`);
+      }
+    }
+    
+    // Schedule cleanup jobs
+    await this.scheduleCleanupJobs();
+    
+    logger.info('Job processor started');
+  }
+
+  /**
+   * Stop job processor
+   */
+  async stop(): Promise<void> {
+    logger.info('Stopping job processor...');
+    
+    // Close all workers
+    for (const [name, worker] of this.workers) {
+      await worker.close();
+      logger.info(`Worker stopped: ${name}`);
+    }
+    
+    // Close all schedulers
+    for (const [name, scheduler] of this.schedulers) {
+      await scheduler.close();
+      logger.info(`Scheduler stopped: ${name}`);
+    }
+    
+    // Close all queues
+    for (const [name, queue] of this.queues) {
+      await queue.close();
+      logger.info(`Queue closed: ${name}`);
     }
     
     logger.info('Job processor stopped');
-    this.emit('processor:stopped');
   }
 
   /**
-   * Process pending jobs
+   * Helper methods
    */
-  private async processJobs(): Promise<void> {
-    if (this.activeJobs.size >= this.options.concurrency) {
-      return;
-    }
-
-    const pendingJobs = this.getPendingJobs();
-    const availableSlots = this.options.concurrency - this.activeJobs.size;
-    const jobsToProcess = pendingJobs.slice(0, availableSlots);
-
-    for (const job of jobsToProcess) {
-      this.processJob(job);
-    }
-  }
-
-  /**
-   * Get jobs ready for processing
-   */
-  private getPendingJobs(): Job[] {
-    const now = new Date();
-    
-    return Array.from(this.jobs.values())
-      .filter(job => {
-        // Check if job is ready to be processed
-        if (job.status === 'pending') {
-          return true;
-        }
-        
-        // Check if delayed job is ready
-        if (job.status === 'delayed') {
-          const delayedUntil = new Date(job.createdAt.getTime() + job.delay);
-          return now >= delayedUntil;
-        }
-        
-        return false;
-      })
-      .sort((a, b) => {
-        // Sort by priority (higher first), then by creation time
-        if (a.priority !== b.priority) {
-          return b.priority - a.priority;
-        }
-        return a.createdAt.getTime() - b.createdAt.getTime();
-      });
-  }
-
-  /**
-   * Process a single job
-   */
-  private async processJob(job: Job): Promise<void> {
-    if (this.activeJobs.has(job.id)) {
-      return;
-    }
-
-    this.activeJobs.add(job.id);
-    
-    job.status = 'processing';
-    job.processedAt = new Date();
-    job.attempts++;
-    
-    logger.info('Processing job', { 
-      jobId: job.id, 
-      type: job.type, 
-      attempt: job.attempts,
-      maxAttempts: job.maxAttempts
-    });
-    
-    this.emit('job:processing', job);
-    
-    const handler = this.handlers.get(job.type);
-    if (!handler) {
-      await this.failJob(job, `No handler registered for job type: ${job.type}`);
-      return;
-    }
-
-    const startTime = Date.now();
-    
-    try {
-      // Set timeout for job processing
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => {
-          reject(new Error('Job processing timeout'));
-        }, this.options.defaultJobOptions.timeout);
-      });
-
-      const result = await Promise.race([
-        handler(job),
-        timeoutPromise
-      ]);
-
-      await this.completeJob(job, result);
-      
-      const processingTime = Date.now() - startTime;
-      metricsService.recordTimer('job_processing_duration_seconds', processingTime / 1000, {
-        type: job.type,
-        status: 'completed'
-      });
-      
-    } catch (error) {
-      const processingTime = Date.now() - startTime;
-      metricsService.recordTimer('job_processing_duration_seconds', processingTime / 1000, {
-        type: job.type,
-        status: 'failed'
-      });
-      
-      await this.handleJobError(job, error);
-    } finally {
-      this.activeJobs.delete(job.id);
-    }
-  }
-
-  /**
-   * Complete a job successfully
-   */
-  private async completeJob(job: Job, result: any): Promise<void> {
-    job.status = 'completed';
-    job.completedAt = new Date();
-    job.result = result;
-    
-    logger.info('Job completed successfully', { 
-      jobId: job.id, 
-      type: job.type,
-      processingTime: job.completedAt.getTime() - job.processedAt!.getTime()
-    });
-    
-    this.emit('job:completed', job);
-    
-    metricsService.incrementCounter('jobs_completed_total', { type: job.type });
-    
-    // Remove completed job after some time
-    setTimeout(() => {
-      this.jobs.delete(job.id);
-      cacheManager.delete(`job:${job.id}`);
-    }, 300000); // 5 minutes
-  }
-
-  /**
-   * Handle job processing error
-   */
-  private async handleJobError(job: Job, error: any): Promise<void> {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    
-    logger.error('Job processing failed', error, {
-      jobId: job.id,
-      type: job.type,
-      attempt: job.attempts,
-      maxAttempts: job.maxAttempts
-    });
-    
-    if (job.attempts >= job.maxAttempts) {
-      await this.failJob(job, errorMessage);
-    } else {
-      await this.retryJob(job, errorMessage);
-    }
-  }
-
-  /**
-   * Retry a failed job
-   */
-  private async retryJob(job: Job, error: string): Promise<void> {
-    job.status = 'pending';
-    job.error = error;
-    
-    // Calculate retry delay based on backoff strategy
-    const retryDelay = this.calculateRetryDelay(job);
-    job.delay = retryDelay;
-    
-    if (retryDelay > 0) {
-      job.status = 'delayed';
-    }
-    
-    logger.info('Job scheduled for retry', {
-      jobId: job.id,
-      type: job.type,
-      attempt: job.attempts,
-      retryDelay
-    });
-    
-    this.emit('job:retry', job);
-    
-    metricsService.incrementCounter('jobs_retried_total', { type: job.type });
-  }
-
-  /**
-   * Mark job as permanently failed
-   */
-  private async failJob(job: Job, error: string): Promise<void> {
-    job.status = 'failed';
-    job.failedAt = new Date();
-    job.error = error;
-    
-    logger.error('Job permanently failed', {
-      jobId: job.id,
-      type: job.type,
-      attempts: job.attempts,
-      error
-    });
-    
-    this.emit('job:failed', job);
-    
-    metricsService.incrementCounter('jobs_failed_total', { type: job.type });
-  }
-
-  /**
-   * Calculate retry delay based on backoff strategy
-   */
-  private calculateRetryDelay(job: Job): number {
-    const baseDelay = this.options.defaultJobOptions.retryDelay!;
-    const backoff = this.options.defaultJobOptions.retryBackoff!;
-    
-    switch (backoff) {
-      case 'fixed':
-        return baseDelay;
-      case 'linear':
-        return baseDelay * job.attempts;
-      case 'exponential':
-        return baseDelay * Math.pow(2, job.attempts - 1);
-      default:
-        return baseDelay;
-    }
-  }
-
-  /**
-   * Get job by ID
-   */
-  public getJob(jobId: string): Job | undefined {
-    return this.jobs.get(jobId);
-  }
-
-  /**
-   * Get all jobs of a specific type
-   */
-  public getJobsByType(type: string): Job[] {
-    return Array.from(this.jobs.values()).filter(job => job.type === type);
-  }
-
-  /**
-   * Get jobs by status
-   */
-  public getJobsByStatus(status: Job['status']): Job[] {
-    return Array.from(this.jobs.values()).filter(job => job.status === status);
-  }
-
-  /**
-   * Cancel a job
-   */
-  public cancelJob(jobId: string): boolean {
-    const job = this.jobs.get(jobId);
-    if (!job || job.status === 'processing' || job.status === 'completed') {
-      return false;
-    }
-
-    this.jobs.delete(jobId);
-    cacheManager.delete(`job:${jobId}`);
-    
-    logger.info('Job cancelled', { jobId });
-    this.emit('job:cancelled', job);
-    
-    return true;
-  }
-
-  /**
-   * Get queue statistics
-   */
-  public getStats(): {
-    total: number;
-    pending: number;
-    processing: number;
-    completed: number;
-    failed: number;
-    delayed: number;
-    active: number;
-    handlers: number;
-  } {
-    const jobs = Array.from(this.jobs.values());
-    
-    return {
-      total: jobs.length,
-      pending: jobs.filter(j => j.status === 'pending').length,
-      processing: jobs.filter(j => j.status === 'processing').length,
-      completed: jobs.filter(j => j.status === 'completed').length,
-      failed: jobs.filter(j => j.status === 'failed').length,
-      delayed: jobs.filter(j => j.status === 'delayed').length,
-      active: this.activeJobs.size,
-      handlers: this.handlers.size
-    };
-  }
-
-  /**
-   * Clear all jobs
-   */
-  public clearJobs(): void {
-    this.jobs.clear();
-    this.activeJobs.clear();
-    logger.info('All jobs cleared');
-    this.emit('jobs:cleared');
-  }
-
-  /**
-   * Generate unique job ID
-   */
-  private generateJobId(): string {
+  
+  private generateCorrelationId(): string {
     return `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
-}
 
-// Common job types
-export const JOB_TYPES = {
-  EMAIL_SEND: 'email:send',
-  EMAIL_VERIFICATION: 'email:verification',
-  PASSWORD_RESET: 'password:reset',
-  USER_WELCOME: 'user:welcome',
-  ANALYTICS_PROCESS: 'analytics:process',
-  NOTIFICATION_SEND: 'notification:send',
-  FILE_PROCESS: 'file:process',
-  DATA_EXPORT: 'data:export',
-  CACHE_WARM: 'cache:warm',
-  CLEANUP: 'cleanup',
-  BACKUP: 'backup'
-} as const;
+  private updateMetrics(queueName: string, status: 'completed' | 'failed', duration: number): void {
+    const metrics = this.metrics.get(queueName);
+    if (!metrics) return;
+    
+    metrics.processed++;
+    if (status === 'completed') {
+      metrics.completed++;
+    } else {
+      metrics.failed++;
+    }
+    
+    // Update average processing time
+    metrics.averageProcessingTime = 
+      (metrics.averageProcessingTime * (metrics.processed - 1) + duration) / metrics.processed;
+  }
 
-// Job handler decorator
-export function JobHandler(jobType: string) {
-  return function(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-    const originalMethod = descriptor.value;
+  private async updateQueueCounts(queueName: string): Promise<void> {
+    const queue = this.queues.get(queueName);
+    if (!queue) return;
     
-    // Register handler with job processor
-    JobProcessor.getInstance().registerHandler(jobType, originalMethod);
+    const metrics = this.metrics.get(queueName);
+    if (!metrics) return;
     
-    return descriptor;
-  };
+    [metrics.waiting, metrics.active, metrics.delayed] = await Promise.all([
+      queue.getWaitingCount(),
+      queue.getActiveCount(),
+      queue.getDelayedCount()
+    ]);
+  }
+
+  private async scheduleCleanupJobs(): Promise<void> {
+    // Clean completed jobs every hour
+    for (const queueName of this.queues.keys()) {
+      await this.scheduleRecurringJob(
+        'cleanup',
+        `clean-${queueName}`,
+        'cleanup',
+        { type: 'queue', target: queueName },
+        '0 * * * *' // Every hour
+      );
+    }
+  }
 }
 
 // Export singleton instance
 export const jobProcessor = JobProcessor.getInstance();
-export default jobProcessor;

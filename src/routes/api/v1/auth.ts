@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { AuthController } from '../../../controllers/auth/AuthController';
 import { validate } from '../../../middleware/validation';
-import { rateLimiters } from '../../../middleware/validation';
 import { responseFormatterMiddleware } from '../../../middleware/responseFormatter';
 import { asyncHandler } from '../../../core/errors';
+import { rateLimitPresets } from '../../../middleware/rateLimiting';
 
 const router = Router();
 const authController = new AuthController();
@@ -72,7 +72,7 @@ router.use(responseFormatterMiddleware);
  *         description: Too many login attempts
  */
 router.post('/login', 
-  rateLimiters.auth, 
+  rateLimitPresets.auth.login, 
   validate.userLogin, 
   asyncHandler(authController.login.bind(authController))
 );
@@ -129,7 +129,7 @@ router.post('/login',
  *         description: Email already exists
  */
 router.post('/signup', 
-  rateLimiters.auth, 
+  rateLimitPresets.auth.register, 
   validate.userRegister, 
   asyncHandler(authController.signup.bind(authController))
 );
@@ -161,7 +161,7 @@ router.post('/signup',
  *         description: Too many requests
  */
 router.post('/forgot-password', 
-  rateLimiters.auth, 
+  rateLimitPresets.auth.passwordReset, 
   asyncHandler(authController.forgotPassword.bind(authController))
 );
 

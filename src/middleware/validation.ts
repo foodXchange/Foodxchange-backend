@@ -306,3 +306,27 @@ export const rateLimiters = {
 
 // Backward compatibility - export enhanced validate as main validate
 export { enhancedValidate as validate };
+
+// Express-validator middleware
+import { validationResult, ValidationChain } from 'express-validator';
+
+export const validateRequest = (validations: ValidationChain[]) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    // Run all validations
+    await Promise.all(validations.map(validation => validation.run(req)));
+
+    // Check for errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      const validationErrors = errors.array().map(err => ({
+        field: err.type === 'field' ? err.path : err.type,
+        message: err.msg,
+        value: err.type === 'field' ? err.value : undefined
+      }));
+      
+      return next(new ValidationError('Validation failed', validationErrors));
+    }
+    
+    next();
+  };
+};

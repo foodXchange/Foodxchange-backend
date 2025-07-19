@@ -8,7 +8,9 @@ import { AuditService } from '../audit/AuditService';
 import mongoose from 'mongoose';
 
 const logger = new Logger('EnhancedComplianceService');
-const metrics = metricsService;
+const metrics = new MetricsService();
+const cacheService = new CacheService();
+const azureAI = new AzureAIService();
 
 export interface ComplianceCheck {
   id: string;
@@ -856,6 +858,308 @@ export class EnhancedComplianceService extends EventEmitter {
     // Validate origin format
     return true;
   }
-}
 
-export default new EnhancedComplianceService();
+  /**
+   * Check product compliance
+   */
+  async checkProductCompliance(params: {
+    productId: string;
+    productData: any;
+    region: string;
+    certifications?: any[];
+  }): Promise<ComplianceCheck> {
+    const { productId, productData, region, certifications } = params;
+    
+    try {
+      // Create compliance check entry
+      const complianceCheck: ComplianceCheck = {
+        id: new mongoose.Types.ObjectId().toString(),
+        productId,
+        region,
+        certifications: certifications || [],
+        status: 'pending',
+        checks: {
+          allergenLabeling: await this.checkAllergenLabeling(productData, region),
+          nutritionalAccuracy: await this.checkNutritionalAccuracy(productData, region),
+          regulatoryCompliance: await this.checkRegulatoryCompliance(productData, region),
+          ingredientRestrictions: await this.checkIngredientRestrictions(productData, region),
+          labelingRequirements: await this.checkLabelingRequirements(productData, region),
+          certificationValidity: await this.validateCertifications(certifications || [], region),
+          packagingCompliance: await this.checkPackagingCompliance(productData, region),
+          shelfLifeRequirements: await this.checkShelfLifeRequirements(productData, region),
+          additiveRestrictions: await this.checkAdditiveRestrictions(productData, region),
+          healthClaimsValidation: await this.validateHealthClaims(productData, region)
+        },
+        riskScore: 0,
+        aiAnalysis: await this.performAIAnalysis(productData, region),
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      // Calculate risk score
+      complianceCheck.riskScore = this.calculateOverallRiskScore(complianceCheck.checks);
+      
+      // Determine status
+      complianceCheck.status = this.determineComplianceStatus(complianceCheck.checks, complianceCheck.riskScore);
+      
+      // Cache result
+      await cacheService.set(
+        `compliance:${productId}:${region}`,
+        complianceCheck,
+        3600 // 1 hour cache
+      );
+      
+      // Track metrics
+      metrics.incrementCounter('compliance_checks_total', { region, status: complianceCheck.status });
+      
+      return complianceCheck;
+      
+    } catch (error) {
+      logger.error('Product compliance check failed:', error);
+      metrics.incrementCounter('compliance_checks_failed', { region });
+      throw error;
+    }
+  }
+
+  /**
+   * Get compliance history
+   */
+  async getComplianceHistory(productId: string, limit: number = 10, offset: number = 0): Promise<ComplianceCheck[]> {
+    try {
+      // In a real implementation, this would query from a database
+      // For now, return cached checks if available
+      const cachedHistory = await cacheService.get(`compliance:history:${productId}`);
+      if (cachedHistory) {
+        return cachedHistory.slice(offset, offset + limit);
+      }
+      
+      // Return empty array if no history
+      return [];
+    } catch (error) {
+      logger.error('Failed to get compliance history:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Verify certification
+   */
+  async verifyCertification(params: {
+    type: string;
+    certificateNumber: string;
+    issuer: string;
+  }): Promise<{
+    valid: boolean;
+    details: any;
+    expiryDate?: Date;
+    verificationMethod: string;
+  }> {
+    const { type, certificateNumber, issuer } = params;
+    
+    try {
+      // Check cache first
+      const cacheKey = `cert:${type}:${certificateNumber}:${issuer}`;
+      const cached = await cacheService.get(cacheKey);
+      if (cached) {
+        return cached;
+      }
+      
+      // Perform verification (in real implementation, this would call external APIs)
+      const result = {
+        valid: true, // Mock result
+        details: {
+          type,
+          certificateNumber,
+          issuer,
+          verifiedAt: new Date()
+        },
+        expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
+        verificationMethod: 'manual'
+      };
+      
+      // Cache result
+      await cacheService.set(cacheKey, result, 86400); // 24 hours
+      
+      return result;
+    } catch (error) {
+      logger.error('Certificate verification failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get regional requirements
+   */
+  async getRegionalRequirements(region: string, category?: string): Promise<{
+    region: string;
+    category?: string;
+    requirements: {
+      mandatory: any[];
+      recommended: any[];
+      bestPractices: any[];
+    };
+    certifications: {
+      required: string[];
+      optional: string[];
+    };
+    labelingRules: any[];
+    prohibitedIngredients: string[];
+  }> {
+    try {
+      // Get cached requirements
+      const cacheKey = `requirements:${region}:${category || 'all'}`;
+      const cached = await cacheService.get(cacheKey);
+      if (cached) {
+        return cached;
+      }
+      
+      // Build requirements (in real implementation, this would query from database)
+      const requirements = {
+        region,
+        category,
+        requirements: {
+          mandatory: this.getMandatoryRequirements(region, category),
+          recommended: this.getRecommendedRequirements(region, category),
+          bestPractices: this.getBestPractices(region, category)
+        },
+        certifications: {
+          required: this.getRequiredCertifications(region, category),
+          optional: this.getOptionalCertifications(region, category)
+        },
+        labelingRules: this.getLabelingRules(region, category),
+        prohibitedIngredients: this.getProhibitedIngredients(region)
+      };
+      
+      // Cache result
+      await cacheService.set(cacheKey, requirements, 3600);
+      
+      return requirements;
+    } catch (error) {
+      logger.error('Failed to get regional requirements:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get compliance statistics
+   */
+  async getComplianceStatistics(params: {
+    startDate?: Date;
+    endDate?: Date;
+    region?: string;
+    category?: string;
+  }): Promise<{
+    totalChecks: number;
+    passRate: number;
+    failRate: number;
+    averageRiskScore: number;
+    commonIssues: Array<{ issue: string; count: number }>;
+    certificationStats: any;
+    trends: any[];
+  }> {
+    try {
+      // In real implementation, this would aggregate from database
+      // For now, return mock statistics
+      return {
+        totalChecks: 1250,
+        passRate: 0.85,
+        failRate: 0.15,
+        averageRiskScore: 0.35,
+        commonIssues: [
+          { issue: 'Missing allergen information', count: 45 },
+          { issue: 'Incorrect nutritional labeling', count: 32 },
+          { issue: 'Invalid health claims', count: 28 }
+        ],
+        certificationStats: {
+          organic: { total: 320, valid: 310, expired: 10 },
+          kosher: { total: 180, valid: 175, expired: 5 },
+          halal: { total: 150, valid: 148, expired: 2 }
+        },
+        trends: [
+          { month: 'Jan', passRate: 0.82, checks: 180 },
+          { month: 'Feb', passRate: 0.84, checks: 195 },
+          { month: 'Mar', passRate: 0.85, checks: 210 }
+        ]
+      };
+    } catch (error) {
+      logger.error('Failed to get compliance statistics:', error);
+      throw error;
+    }
+  }
+
+  private determineComplianceStatus(checks: ComplianceCheckResult, riskScore: number): ComplianceCheck['status'] {
+    // Determine overall status based on checks and risk score
+    const criticalFailures = Object.values(checks).filter((check: any) => 
+      !check.passed && check.severity === 'critical'
+    ).length;
+    
+    if (criticalFailures > 0) {
+      return 'rejected';
+    }
+    
+    if (riskScore > 0.7) {
+      return 'requires_review';
+    }
+    
+    if (riskScore > 0.3) {
+      return 'requires_review';
+    }
+    
+    return 'approved';
+  }
+
+  private getMandatoryRequirements(region: string, category?: string): any[] {
+    // Return mandatory requirements based on region and category
+    return [
+      { id: 'REQ001', name: 'Allergen Declaration', description: 'All major allergens must be clearly declared' },
+      { id: 'REQ002', name: 'Nutritional Information', description: 'Complete nutritional panel required' }
+    ];
+  }
+
+  private getRecommendedRequirements(region: string, category?: string): any[] {
+    // Return recommended requirements
+    return [
+      { id: 'REC001', name: 'Sustainability Certification', description: 'Environmental impact certification recommended' }
+    ];
+  }
+
+  private getBestPractices(region: string, category?: string): any[] {
+    // Return best practices
+    return [
+      { id: 'BP001', name: 'QR Code Traceability', description: 'Include QR code for supply chain transparency' }
+    ];
+  }
+
+  private getRequiredCertifications(region: string, category?: string): string[] {
+    // Return required certifications based on region and category
+    const certs = [];
+    
+    if (region === 'US' || region === 'USA') {
+      certs.push('FDA');
+    }
+    
+    if (region === 'EU') {
+      certs.push('CE');
+    }
+    
+    if (category === 'organic') {
+      certs.push('USDA Organic', 'EU Organic');
+    }
+    
+    return certs;
+  }
+
+  private getOptionalCertifications(region: string, category?: string): string[] {
+    // Return optional certifications
+    return ['ISO 22000', 'BRC', 'SQF', 'IFS'];
+  }
+
+  private getLabelingRules(region: string, category?: string): any[] {
+    // Return labeling rules
+    return [
+      { rule: 'Font size minimum 1.2mm', applies: 'all' },
+      { rule: 'Country of origin required', applies: 'all' },
+      { rule: 'Best before date format: DD/MM/YYYY', applies: region === 'EU' }
+    ];
+  }
+}

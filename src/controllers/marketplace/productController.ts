@@ -827,8 +827,10 @@ export class ProductController {
         break;
 
       case 'excel':
-        // Would implement Excel export using exceljs
-        throw new ValidationError('Excel export not implemented yet');
+        exportData = await this.convertToExcel(products);
+        contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        filename = 'products.xlsx';
+        break;
 
       default:
         exportData = JSON.stringify(products, null, 2);
@@ -1161,6 +1163,114 @@ export class ProductController {
       headers.join(','),
       ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
     ].join('\n');
+  }
+
+  private async convertToExcel(products: any[]): Promise<Buffer> {
+    // Dynamic import to avoid loading if not used
+    const ExcelJS = await import('exceljs');
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Products');
+
+    // Define columns
+    worksheet.columns = [
+      { header: 'SKU', key: 'sku', width: 15 },
+      { header: 'Name', key: 'name', width: 30 },
+      { header: 'Description', key: 'description', width: 50 },
+      { header: 'Category', key: 'category', width: 20 },
+      { header: 'Subcategory', key: 'subcategory', width: 20 },
+      { header: 'Brand', key: 'brand', width: 20 },
+      { header: 'Price', key: 'price', width: 12 },
+      { header: 'Currency', key: 'currency', width: 10 },
+      { header: 'Unit', key: 'unit', width: 10 },
+      { header: 'Available Quantity', key: 'quantity', width: 18 },
+      { header: 'Status', key: 'status', width: 12 },
+      { header: 'Supplier', key: 'supplier', width: 25 },
+      { header: 'Country of Origin', key: 'origin', width: 20 },
+      { header: 'Organic', key: 'organic', width: 10 },
+      { header: 'Shelf Life', key: 'shelfLife', width: 15 },
+      { header: 'Created Date', key: 'createdAt', width: 15 }
+    ];
+
+    // Style the header row
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    };
+
+    // Add data rows
+    products.forEach(product => {
+      worksheet.addRow({
+        sku: product.sku,
+        name: product.name,
+        description: product.description || '',
+        category: product.category,
+        subcategory: product.subcategory || '',
+        brand: product.brand || '',
+        price: product.pricing.basePrice,
+        currency: product.pricing.currency,
+        unit: product.pricing.unit,
+        quantity: product.inventory?.availableQuantity || 0,
+        status: product.status,
+        supplier: product.supplier?.name || '',
+        origin: product.countryOfOrigin || '',
+        organic: product.foodSafety?.isOrganic ? 'Yes' : 'No',
+        shelfLife: product.foodSafety?.shelfLife 
+          ? `${product.foodSafety.shelfLife.value} ${product.foodSafety.shelfLife.unit}` 
+          : '',
+        createdAt: new Date(product.createdAt).toLocaleDateString()
+      });
+    });
+
+    // Add autofilter
+    worksheet.autoFilter = {
+      from: 'A1',
+      to: `P${products.length + 1}`
+    };
+
+    // Freeze the header row
+    worksheet.views = [
+      { state: 'frozen', xSplit: 0, ySplit: 1 }
+    ];
+
+    // Format price column as currency
+    worksheet.getColumn('price').numFmt = '#,##0.00';
+
+    // Add conditional formatting for status
+    worksheet.addConditionalFormatting({
+      ref: `K2:K${products.length + 1}`,
+      rules: [
+        {
+          type: 'cellValue',
+          operator: 'equal',
+          formulae: ['"active"'],
+          style: {
+            fill: {
+              type: 'pattern',
+              pattern: 'solid',
+              bgColor: { argb: 'FF90EE90' }
+            }
+          }
+        },
+        {
+          type: 'cellValue',
+          operator: 'equal',
+          formulae: ['"inactive"'],
+          style: {
+            fill: {
+              type: 'pattern',
+              pattern: 'solid',
+              bgColor: { argb: 'FFFFA500' }
+            }
+          }
+        }
+      ]
+    });
+
+    // Generate buffer
+    const buffer = await workbook.xlsx.writeBuffer();
+    return Buffer.from(buffer);
   }
 }
 

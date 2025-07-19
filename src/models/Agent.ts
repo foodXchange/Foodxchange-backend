@@ -1,8 +1,251 @@
-const mongoose = require('mongoose');
+import mongoose, { Document, Schema, Types } from 'mongoose';
 
-const agentSchema = new mongoose.Schema({
+export interface IAgent extends Document {
+  userId: Types.ObjectId;
+  agentNumber: string;
+  
+  personalInfo: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    whatsapp?: string;
+    dateOfBirth?: Date;
+    address?: {
+      street?: string;
+      city?: string;
+      state?: string;
+      country?: string;
+      postalCode?: string;
+      coordinates?: {
+        lat: number;
+        lng: number;
+      };
+    };
+    avatar?: string;
+    bio?: string;
+    languages?: string[];
+  };
+  
+  professionalInfo?: {
+    companyName?: string;
+    businessRegistration?: string;
+    taxId?: string;
+    businessAddress?: {
+      street?: string;
+      city?: string;
+      state?: string;
+      country?: string;
+      postalCode?: string;
+    };
+    yearsOfExperience?: number;
+    previousRoles?: string[];
+    linkedinProfile?: string;
+    website?: string;
+  };
+  
+  expertise?: {
+    categories?: Types.ObjectId[];
+    specializations?: string[];
+    skills?: string[];
+    certifications?: Array<{
+      name: string;
+      issuer: string;
+      number: string;
+      issueDate: Date;
+      expiryDate: Date;
+      documentUrl: string;
+      verified: boolean;
+    }>;
+    industryExperience?: Array<{
+      industry: string;
+      years: number;
+      description: string;
+    }>;
+  };
+  
+  territory?: {
+    type: 'geographic' | 'category' | 'hybrid';
+    geographic?: {
+      regions?: string[];
+      cities?: string[];
+      states?: string[];
+      countries?: string[];
+      radius?: {
+        distance: number;
+        unit: 'km' | 'miles';
+        center: {
+          lat: number;
+          lng: number;
+        };
+      };
+    };
+    categories?: Types.ObjectId[];
+    exclusivity: 'exclusive' | 'shared' | 'competitive';
+  };
+  
+  performance: {
+    tier: 'bronze' | 'silver' | 'gold' | 'platinum';
+    rating: {
+      average: number;
+      count: number;
+    };
+    stats: {
+      totalLeads: number;
+      acceptedLeads: number;
+      closedDeals: number;
+      totalRevenue: number;
+      averageResponseTime: number;
+      conversionRate: number;
+      customerSatisfaction: number;
+    };
+    metrics?: {
+      lastLoginAt?: Date;
+      totalLogins: number;
+      activeHours?: {
+        [key: string]: string[];
+      };
+      responseMetrics?: {
+        averageFirstResponse?: number;
+        averageResolution?: number;
+        totalMessages: number;
+      };
+    };
+  };
+  
+  commission: {
+    structure: 'percentage' | 'fixed' | 'hybrid';
+    baseRate: {
+      percentage: number;
+      fixedAmount: number;
+    };
+    tierBonuses: {
+      silver: number;
+      gold: number;
+      platinum: number;
+    };
+    specialBonuses: {
+      newSupplier: number;
+      newBuyer: number;
+      firstDeal: number;
+      monthlyTarget: number;
+    };
+    recurringCommission: {
+      enabled: boolean;
+      rate: number;
+      duration: number;
+    };
+    paymentTerms: {
+      frequency: 'weekly' | 'bi-weekly' | 'monthly';
+      minimumPayout: number;
+      method: 'bank_transfer' | 'check' | 'paypal' | 'stripe';
+    };
+  };
+  
+  banking?: {
+    accountName?: string;
+    bankName?: string;
+    accountNumber?: string;
+    routingNumber?: string;
+    iban?: string;
+    swiftCode?: string;
+    paypalEmail?: string;
+    stripeAccountId?: string;
+    taxForms?: Array<{
+      type: string;
+      filePath: string;
+      uploadedAt: Date;
+    }>;
+  };
+  
+  status: 'pending' | 'under_review' | 'approved' | 'active' | 'suspended' | 'inactive' | 'terminated';
+  
+  verification: {
+    identity: {
+      status: 'pending' | 'verified' | 'rejected';
+      documents?: Array<{
+        type: string;
+        url: string;
+        uploadedAt: Date;
+      }>;
+      verifiedAt?: Date;
+      verifiedBy?: Types.ObjectId;
+    };
+    business: {
+      status: 'pending' | 'verified' | 'rejected';
+      documents?: Array<{
+        type: string;
+        url: string;
+        uploadedAt: Date;
+      }>;
+      verifiedAt?: Date;
+      verifiedBy?: Types.ObjectId;
+    };
+    background: {
+      status: 'pending' | 'verified' | 'rejected';
+      checkType?: string;
+      result?: string;
+      completedAt?: Date;
+    };
+  };
+  
+  communication: {
+    preferredMethod: 'whatsapp' | 'email' | 'phone' | 'app';
+    notifications: {
+      newLeads: boolean;
+      leadUpdates: boolean;
+      commissionUpdates: boolean;
+      systemAnnouncements: boolean;
+      marketingEmails: boolean;
+    };
+    contactHours: {
+      start: string;
+      end: string;
+      timezone: string;
+    };
+  };
+  
+  onboarding: {
+    step: 'personal_info' | 'professional_info' | 'expertise' | 'territory' | 'verification' | 'banking' | 'training' | 'completed';
+    completedSteps: string[];
+    startedAt: Date;
+    completedAt?: Date;
+    trainingCompleted: boolean;
+    agreementSigned: boolean;
+    agreementSignedAt?: Date;
+  };
+  
+  internal?: {
+    notes?: string[];
+    tags?: string[];
+    assignedManager?: Types.ObjectId;
+    riskLevel: 'low' | 'medium' | 'high';
+    contractDetails?: {
+      signedAt?: Date;
+      expiresAt?: Date;
+      autoRenewal: boolean;
+      terminationNotice: number;
+    };
+  };
+  
+  lastActivity: Date;
+  isActive: boolean;
+  terminatedAt?: Date;
+  terminationReason?: string;
+  
+  // Virtual properties
+  fullName?: string;
+  tierMultiplier?: number;
+  acceptanceRate?: number;
+  conversionRate?: number;
+  
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const agentSchema = new Schema<IAgent>({
   userId: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: Schema.Types.ObjectId,
     ref: 'User',
     required: true,
     unique: true
@@ -13,7 +256,6 @@ const agentSchema = new mongoose.Schema({
     required: true
   },
   
-  // Personal Information
   personalInfo: {
     firstName: { type: String, required: true, trim: true },
     lastName: { type: String, required: true, trim: true },
@@ -37,7 +279,6 @@ const agentSchema = new mongoose.Schema({
     languages: [String]
   },
   
-  // Professional Information
   professionalInfo: {
     companyName: String,
     businessRegistration: String,
@@ -55,10 +296,9 @@ const agentSchema = new mongoose.Schema({
     website: String
   },
   
-  // Expertise and Specialization
   expertise: {
     categories: [{
-      type: mongoose.Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: 'Category'
     }],
     specializations: [{
@@ -82,7 +322,6 @@ const agentSchema = new mongoose.Schema({
     }]
   },
   
-  // Territory Management
   territory: {
     type: {
       type: String,
@@ -104,7 +343,7 @@ const agentSchema = new mongoose.Schema({
       }
     },
     categories: [{
-      type: mongoose.Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: 'Category'
     }],
     exclusivity: {
@@ -114,7 +353,6 @@ const agentSchema = new mongoose.Schema({
     }
   },
   
-  // Performance Metrics
   performance: {
     tier: {
       type: String,
@@ -130,8 +368,8 @@ const agentSchema = new mongoose.Schema({
       acceptedLeads: { type: Number, default: 0 },
       closedDeals: { type: Number, default: 0 },
       totalRevenue: { type: Number, default: 0 },
-      averageResponseTime: { type: Number, default: 0 }, // in minutes
-      conversionRate: { type: Number, default: 0 }, // percentage
+      averageResponseTime: { type: Number, default: 0 },
+      conversionRate: { type: Number, default: 0 },
       customerSatisfaction: { type: Number, default: 0 }
     },
     metrics: {
@@ -147,14 +385,13 @@ const agentSchema = new mongoose.Schema({
         sunday: [String]
       },
       responseMetrics: {
-        averageFirstResponse: Number, // minutes
-        averageResolution: Number, // hours
+        averageFirstResponse: Number,
+        averageResolution: Number,
         totalMessages: { type: Number, default: 0 }
       }
     }
   },
   
-  // Commission Structure
   commission: {
     structure: {
       type: String,
@@ -179,7 +416,7 @@ const agentSchema = new mongoose.Schema({
     recurringCommission: {
       enabled: { type: Boolean, default: true },
       rate: { type: Number, default: 0.5 },
-      duration: { type: Number, default: 12 } // months
+      duration: { type: Number, default: 12 }
     },
     paymentTerms: {
       frequency: {
@@ -196,7 +433,6 @@ const agentSchema = new mongoose.Schema({
     }
   },
   
-  // Banking and Payment Information
   banking: {
     accountName: String,
     bankName: String,
@@ -207,13 +443,12 @@ const agentSchema = new mongoose.Schema({
     paypalEmail: String,
     stripeAccountId: String,
     taxForms: [{
-      type: String, // W9, 1099, etc.
+      type: String,
       filePath: String,
       uploadedAt: Date
     }]
   },
   
-  // Status and Verification
   status: {
     type: String,
     enum: ['pending', 'under_review', 'approved', 'active', 'suspended', 'inactive', 'terminated'],
@@ -224,22 +459,22 @@ const agentSchema = new mongoose.Schema({
     identity: {
       status: { type: String, enum: ['pending', 'verified', 'rejected'], default: 'pending' },
       documents: [{
-        type: String, // passport, driver_license, etc.
+        type: String,
         url: String,
         uploadedAt: Date
       }],
       verifiedAt: Date,
-      verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+      verifiedBy: { type: Schema.Types.ObjectId, ref: 'User' }
     },
     business: {
       status: { type: String, enum: ['pending', 'verified', 'rejected'], default: 'pending' },
       documents: [{
-        type: String, // business_license, tax_certificate, etc.
+        type: String,
         url: String,
         uploadedAt: Date
       }],
       verifiedAt: Date,
-      verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+      verifiedBy: { type: Schema.Types.ObjectId, ref: 'User' }
     },
     background: {
       status: { type: String, enum: ['pending', 'verified', 'rejected'], default: 'pending' },
@@ -249,7 +484,6 @@ const agentSchema = new mongoose.Schema({
     }
   },
   
-  // Communication Preferences
   communication: {
     preferredMethod: {
       type: String,
@@ -270,7 +504,6 @@ const agentSchema = new mongoose.Schema({
     }
   },
   
-  // Onboarding Progress
   onboarding: {
     step: {
       type: String,
@@ -285,11 +518,10 @@ const agentSchema = new mongoose.Schema({
     agreementSignedAt: Date
   },
   
-  // Notes and Internal Information
   internal: {
     notes: [String],
     tags: [String],
-    assignedManager: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    assignedManager: { type: Schema.Types.ObjectId, ref: 'User' },
     riskLevel: {
       type: String,
       enum: ['low', 'medium', 'high'],
@@ -299,11 +531,10 @@ const agentSchema = new mongoose.Schema({
       signedAt: Date,
       expiresAt: Date,
       autoRenewal: { type: Boolean, default: false },
-      terminationNotice: { type: Number, default: 30 } // days
+      terminationNotice: { type: Number, default: 30 }
     }
   },
   
-  // Activity Tracking
   lastActivity: {
     type: Date,
     default: Date.now
@@ -375,4 +606,4 @@ agentSchema.index({
   'expertise.skills': 'text'
 });
 
-module.exports = mongoose.model('Agent', agentSchema);
+export const Agent = mongoose.model<IAgent>('Agent', agentSchema);

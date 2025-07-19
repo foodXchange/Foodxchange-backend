@@ -517,15 +517,33 @@ export class TwoFactorAuthService {
   private async sendSMS(phoneNumber: string, message: string): Promise<void> {
     // Implement SMS sending with Twilio
     try {
-      const twilioSid = await secureConfig.getSecret('twilioAccountSid');
-      const twilioToken = await secureConfig.getSecret('twilioAuthToken');
+      const twilioSid = await secureConfig.getSecret('twilioAccountSid') || process.env.TWILIO_ACCOUNT_SID;
+      const twilioToken = await secureConfig.getSecret('twilioAuthToken') || process.env.TWILIO_AUTH_TOKEN;
+      const twilioPhone = await secureConfig.getSecret('twilioPhoneNumber') || process.env.TWILIO_PHONE_NUMBER;
       
-      if (!twilioSid || !twilioToken) {
-        throw new Error('Twilio credentials not configured');
+      if (!twilioSid || !twilioToken || !twilioPhone) {
+        logger.warn('Twilio credentials not configured, skipping SMS send');
+        // In development, log the message instead
+        if (process.env.NODE_ENV === 'development') {
+          logger.info('Development SMS:', { to: phoneNumber, message });
+        }
+        return;
       }
 
-      // TODO: Implement actual Twilio SMS sending
-      logger.info('SMS sent successfully', { phoneNumber: phoneNumber.substring(0, 3) + '***' });
+      // Dynamic import to avoid loading Twilio if not configured
+      const twilio = await import('twilio');
+      const client = twilio.default(twilioSid, twilioToken);
+
+      const result = await client.messages.create({
+        body: message,
+        to: phoneNumber,
+        from: twilioPhone
+      });
+
+      logger.info('SMS sent successfully', { 
+        messageId: result.sid,
+        phoneNumber: phoneNumber.substring(0, 3) + '***' 
+      });
     } catch (error) {
       logger.error('Failed to send SMS:', error);
       throw error;
@@ -535,14 +553,35 @@ export class TwoFactorAuthService {
   private async sendEmail(to: string, subject: string, html: string): Promise<void> {
     // Implement email sending with SendGrid
     try {
-      const sendGridKey = await secureConfig.getSecret('sendGridApiKey');
+      const sendGridKey = await secureConfig.getSecret('sendGridApiKey') || process.env.SENDGRID_API_KEY;
+      const fromEmail = process.env.SENDGRID_FROM_EMAIL || 'noreply@foodxchange.com';
       
       if (!sendGridKey) {
-        throw new Error('SendGrid API key not configured');
+        logger.warn('SendGrid API key not configured, skipping email send');
+        // In development, log the email instead
+        if (process.env.NODE_ENV === 'development') {
+          logger.info('Development Email:', { to, subject, html: html.substring(0, 100) + '...' });
+        }
+        return;
       }
 
-      // TODO: Implement actual SendGrid email sending
-      logger.info('Email sent successfully', { to: to.substring(0, 3) + '***' });
+      // Dynamic import to avoid loading SendGrid if not configured
+      const sgMail = await import('@sendgrid/mail');
+      sgMail.default.setApiKey(sendGridKey);
+
+      const msg = {
+        to,
+        from: fromEmail,
+        subject,
+        html,
+      };
+
+      const [response] = await sgMail.default.send(msg);
+      
+      logger.info('Email sent successfully', { 
+        statusCode: response.statusCode,
+        to: to.substring(0, 3) + '***' 
+      });
     } catch (error) {
       logger.error('Failed to send email:', error);
       throw error;

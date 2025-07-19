@@ -4,7 +4,7 @@ import * as jwt from 'jsonwebtoken';
 import * as crypto from 'crypto';
 import { User } from '../../models/User';
 import { Company } from '../../models/Company';
-// import { Agent } from '../../models/Agent'; // Commented out - Agent model needs to be fixed
+import { Agent } from '../../models/Agent';
 import { 
   ValidationError, 
   AuthenticationError, 
@@ -127,22 +127,21 @@ export class AuthController {
 
       // Create agent profile if role is agent
       if (role === 'agent') {
-        // TODO: Implement agent profile creation when Agent model is available
-        // const agent = new Agent({
-        //   userId: user._id,
-        //   personalInfo: {
-        //     firstName: user.firstName,
-        //     lastName: user.lastName,
-        //     email: user.email,
-        //     phone: user.phone || ''
-        //   },
-        //   status: 'pending',
-        //   onboarding: {
-        //     step: 'personal_info',
-        //     startedAt: new Date()
-        //   }
-        // });
-        // await agent.save();
+        const agent = new Agent({
+          userId: user._id,
+          personalInfo: {
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            phone: user.phone || ''
+          },
+          status: 'pending',
+          onboarding: {
+            step: 'personal_info',
+            startedAt: new Date()
+          }
+        });
+        await agent.save();
       }
 
       // Generate email verification token

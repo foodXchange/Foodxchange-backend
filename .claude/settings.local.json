@@ -63,7 +63,9 @@
       "Bash(npm run lint:*)",
       "Bash(npx eslint:*)",
       "Bash(start http://localhost:5001/api-docs)",
-      "Bash(npm start)"
+      "Bash(npm start)",
+      "Bash(echo $PATH)",
+      "Bash(echo $SHELL)"
     ],
     "deny": []
   }

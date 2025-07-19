@@ -10,7 +10,13 @@ import { Server as SocketIOServer } from 'socket.io';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cors from 'cors';
-import rateLimit from 'express-rate-limit';
+import { 
+  rateLimit, 
+  tierRateLimit, 
+  ipRateLimit, 
+  adaptiveRateLimit,
+  rateLimitPresets 
+} from './middleware/rateLimiting';
 
 // Core optimizations
 import { configManager } from './core/config/ConfigManager';
@@ -387,13 +393,23 @@ export class OptimizedServer {
 
       logger.info('Starting FoodXchange optimized server...');
 
+      // Apply startup optimizations
+      const { applyStartupOptimizations, tunePerformance, startHealthMonitoring } = await import('./startup/optimizations');
+      tunePerformance();
+      
       // Initialize services
       await this.initializeServices();
+
+      // Apply all optimizations
+      await applyStartupOptimizations();
 
       // Configure server components
       this.configureMiddleware();
       this.configureRoutes();
       this.configureWebSocket();
+
+      // Start health monitoring
+      startHealthMonitoring();
 
       // Setup graceful shutdown
       setupGracefulShutdown(this.httpServer);
@@ -417,10 +433,13 @@ export class OptimizedServer {
         logger.info('✅ All optimizations active:');
         logger.info('   • HTTP Compression & Optimization');
         logger.info('   • Multi-level Caching (Redis + Memory)');
-        logger.info('   • Database Performance Monitoring');
+        logger.info('   • Database Performance Monitoring & Indexing');
         logger.info('   • Advanced Input Sanitization');
-        logger.info('   • Background Job Processing');
+        logger.info('   • Background Job Processing (Bull Queue)');
         logger.info('   • Comprehensive Health Checks');
+        logger.info('   • API Rate Limiting & Throttling');
+        logger.info('   • Image Optimization & Processing');
+        logger.info('   • Memory Management & Garbage Collection');
         logger.info('   • Dependency Injection Container');
         logger.info('   • Graceful Shutdown Handling');
         logger.info('='.repeat(80));

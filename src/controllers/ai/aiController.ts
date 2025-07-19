@@ -188,15 +188,68 @@ class AIController {
 
   // Helper methods (implement these based on your database models)
   async getSuppliers() {
-    // TODO: Implement based on your Supplier model
-    // Example: return await Supplier.find().lean();
-    throw new Error('getSuppliers method not implemented - please implement based on your database model');
+    try {
+      // Import models dynamically to avoid circular dependencies
+      const { User } = require('../../models/User');
+      const { Product } = require('../../models/Product');
+      
+      // Get all sellers (suppliers) with their products
+      const suppliers = await User.find({ 
+        role: 'seller',
+        accountStatus: 'active'
+      })
+      .populate('company')
+      .select('-password -refreshToken')
+      .lean();
+      
+      // Get product counts for each supplier
+      const suppliersWithStats = await Promise.all(suppliers.map(async (supplier) => {
+        const productCount = await Product.countDocuments({ 
+          supplier: supplier._id,
+          status: 'active'
+        });
+        
+        return {
+          ...supplier,
+          productCount,
+          supplierInfo: {
+            id: supplier._id,
+            name: supplier.company?.name || `${supplier.firstName} ${supplier.lastName}`,
+            email: supplier.email,
+            phone: supplier.phone,
+            companyVerified: supplier.companyVerified,
+            rating: supplier.rating || 0,
+            joinedAt: supplier.createdAt
+          }
+        };
+      }));
+      
+      return suppliersWithStats;
+    } catch (error) {
+      console.error('Error fetching suppliers:', error);
+      throw error;
+    }
   }
 
   async getProduct(productId) {
-    // TODO: Implement based on your Product model
-    // Example: return await Product.findById(productId).lean();
-    throw new Error('getProduct method not implemented - please implement based on your database model');
+    try {
+      // Import Product model dynamically
+      const { Product } = require('../../models/Product');
+      
+      const product = await Product.findById(productId)
+        .populate('supplier', 'firstName lastName email company companyVerified')
+        .populate('reviews.user', 'firstName lastName')
+        .lean();
+        
+      if (!product) {
+        throw new Error('Product not found');
+      }
+      
+      return product;
+    } catch (error) {
+      console.error('Error fetching product:', error);
+      throw error;
+    }
   }
 }
 

@@ -1,8 +1,11 @@
-import { Logger } from '../../core/logging/logger';
-import { cacheService } from '../../config/redis';
-import { metricsService } from '../../core/metrics/MetricsService';
 import { EventEmitter } from 'events';
+
 import mongoose from 'mongoose';
+
+import { cacheService } from '../../config/redis';
+import { Logger } from '../../core/logging/logger';
+import { metricsService } from '../../core/metrics/MetricsService';
+
 
 const logger = new Logger('NotificationService');
 const metrics = metricsService;
@@ -10,7 +13,7 @@ const metrics = metricsService;
 export interface Notification {
   id: string;
   userId: string;
-  type: 'rfq_created' | 'proposal_submitted' | 'proposal_accepted' | 'proposal_rejected' | 'compliance_update' | 'system_alert';
+  type: 'rfq_created' | 'proposal_submitted' | 'proposal_accepted' | 'proposal_rejected' | 'compliance_update' | 'system_alert' | 'approval_request' | 'approval_decision' | 'approval_completed' | 'approval_cancelled';
   title: string;
   message: string;
   data?: any;
@@ -64,7 +67,7 @@ export interface NotificationPreference {
 
 export class NotificationService extends EventEmitter {
   private static instance: NotificationService;
-  private cache: typeof cacheService;
+  private readonly cache: typeof cacheService;
 
   private constructor() {
     super();
@@ -82,17 +85,17 @@ export class NotificationService extends EventEmitter {
     try {
       // Get user preferences
       const preferences = await this.getUserPreferences(notificationData.userId);
-      
+
       // Get notification template
       const template = await this.getNotificationTemplate(notificationData.type);
-      
+
       // Build notification
       const notification: Notification = {
         id: new mongoose.Types.ObjectId().toString(),
         ...notificationData,
         channels: this.buildChannels(preferences, notificationData.type),
         status: 'pending',
-        createdAt: new Date(),
+        createdAt: new Date()
       };
 
       // Save notification
@@ -102,11 +105,11 @@ export class NotificationService extends EventEmitter {
       await this.sendNotification(notification, template);
 
       metrics.increment('notifications_sent');
-      
-      logger.info('Notification sent', { 
-        id: notification.id, 
+
+      logger.info('Notification sent', {
+        id: notification.id,
         type: notification.type,
-        userId: notification.userId 
+        userId: notification.userId
       });
     } catch (error) {
       logger.error('Failed to send notification', { notificationData, error });
@@ -115,23 +118,23 @@ export class NotificationService extends EventEmitter {
 
   private buildChannels(preferences: NotificationPreference, type: string): NotificationChannel[] {
     const channels: NotificationChannel[] = [];
-    
+
     if (preferences.channels.email) {
       channels.push({
         type: 'email',
         enabled: true,
-        status: 'pending',
+        status: 'pending'
       });
     }
-    
+
     if (preferences.channels.websocket) {
       channels.push({
         type: 'websocket',
         enabled: true,
-        status: 'pending',
+        status: 'pending'
       });
     }
-    
+
     return channels;
   }
 
@@ -145,9 +148,9 @@ export class NotificationService extends EventEmitter {
         sms: false,
         push: false,
         websocket: true,
-        in_app: true,
+        in_app: true
       },
-      frequency: 'immediate',
+      frequency: 'immediate'
     };
   }
 

@@ -1,10 +1,11 @@
 import express from 'express';
+
 import { OrderController } from '../controllers/OrderController';
-import { requireAuth } from '../middleware/auth';
-import { enforceTenantIsolation } from '../middleware/tenantIsolation';
 import { validateApiKey } from '../middleware/apiKeyAuth';
-import { createCustomRateLimiter } from '../middleware/rateLimiter';
+import { requireAuth } from '../middleware/auth';
 import { authorize } from '../middleware/authorize';
+import { createCustomRateLimiter } from '../middleware/rateLimiter';
+import { enforceTenantIsolation } from '../middleware/tenantIsolation';
 
 const router = express.Router();
 const orderController = new OrderController();
@@ -22,7 +23,7 @@ router.use(orderRateLimiter);
  * @desc Create a new order
  * @access Private
  */
-router.post('/', 
+router.post('/',
   authorize(['buyer', 'admin', 'manager']),
   orderController.createOrder
 );
@@ -32,7 +33,7 @@ router.post('/',
  * @desc Get orders with filtering and pagination
  * @access Private
  */
-router.get('/', 
+router.get('/',
   authorize(['buyer', 'supplier', 'admin', 'manager']),
   orderController.getOrders
 );
@@ -42,7 +43,7 @@ router.get('/',
  * @desc Get order analytics
  * @access Private
  */
-router.get('/analytics', 
+router.get('/analytics',
   authorize(['admin', 'manager']),
   orderController.getOrderAnalytics
 );
@@ -52,7 +53,7 @@ router.get('/analytics',
  * @desc Get order by ID
  * @access Private
  */
-router.get('/:id', 
+router.get('/:id',
   authorize(['buyer', 'supplier', 'admin', 'manager']),
   orderController.getOrderById
 );
@@ -62,7 +63,7 @@ router.get('/:id',
  * @desc Update order
  * @access Private
  */
-router.put('/:id', 
+router.put('/:id',
   authorize(['buyer', 'admin', 'manager']),
   orderController.updateOrder
 );
@@ -72,7 +73,7 @@ router.put('/:id',
  * @desc Process order approval
  * @access Private
  */
-router.post('/:id/approve', 
+router.post('/:id/approve',
   authorize(['manager', 'director', 'ceo', 'admin']),
   orderController.processApproval
 );
@@ -82,7 +83,7 @@ router.post('/:id/approve',
  * @desc Cancel order
  * @access Private
  */
-router.delete('/:id', 
+router.delete('/:id',
   authorize(['buyer', 'admin', 'manager']),
   orderController.cancelOrder
 );
@@ -92,7 +93,7 @@ router.delete('/:id',
  * @desc Add shipment to order
  * @access Private
  */
-router.post('/:id/shipments', 
+router.post('/:id/shipments',
   authorize(['supplier', 'admin', 'manager']),
   orderController.addShipment
 );
@@ -102,7 +103,7 @@ router.post('/:id/shipments',
  * @desc Update shipment tracking
  * @access Private
  */
-router.put('/:id/shipments/:shipmentId/tracking', 
+router.put('/:id/shipments/:shipmentId/tracking',
   authorize(['supplier', 'admin', 'manager']),
   orderController.updateShipmentTracking
 );

@@ -1,9 +1,11 @@
+import path from 'path';
+
 import { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
-import { imageOptimizationService } from '../services/optimization/ImageOptimizationService';
-import { Logger } from '../core/logging/logger';
-import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+
+import { Logger } from '../core/logging/logger';
+import { imageOptimizationService } from '../services/optimization/ImageOptimizationService';
 
 const logger = new Logger('ImageOptimizationMiddleware');
 
@@ -20,7 +22,7 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilt
     'image/avif',
     'image/svg+xml'
   ];
-  
+
   if (allowedMimes.includes(file.mimetype)) {
     cb(null, true);
   } else {
@@ -49,10 +51,10 @@ export const optimizeSingleImage = (fieldName: string) => {
         if (!req.file) {
           return next();
         }
-        
+
         const startTime = Date.now();
         const filename = `${uuidv4()}${path.extname(req.file.originalname)}`;
-        
+
         // Process the uploaded image
         const processed = await imageOptimizationService.processUploadedImage(
           req.file.buffer,
@@ -64,11 +66,11 @@ export const optimizeSingleImage = (fieldName: string) => {
             format: req.body.format
           }
         );
-        
+
         // Generate responsive variants in background
         imageOptimizationService.generateResponsiveVariants(req.file.buffer, filename)
           .catch(error => logger.error('Failed to generate variants:', error));
-        
+
         // Attach processed image info to request
         (req as any).optimizedImage = {
           filename,
@@ -78,12 +80,12 @@ export const optimizeSingleImage = (fieldName: string) => {
           height: processed.height,
           size: processed.size,
           originalSize: req.file.size,
-          compressionRatio: ((1 - processed.size / req.file.size) * 100).toFixed(2) + '%',
+          compressionRatio: `${((1 - processed.size / req.file.size) * 100).toFixed(2)  }%`,
           processingTime: Date.now() - startTime,
           hash: processed.hash,
           buffer: processed.buffer
         };
-        
+
         next();
       } catch (error) {
         logger.error('Image optimization failed:', error);
@@ -104,11 +106,11 @@ export const optimizeMultipleImages = (fieldName: string, maxCount: number = 10)
         if (!req.files || !Array.isArray(req.files)) {
           return next();
         }
-        
+
         const optimizedImages = await Promise.all(
           req.files.map(async (file) => {
             const filename = `${uuidv4()}${path.extname(file.originalname)}`;
-            
+
             const processed = await imageOptimizationService.processUploadedImage(
               file.buffer,
               filename,
@@ -119,11 +121,11 @@ export const optimizeMultipleImages = (fieldName: string, maxCount: number = 10)
                 format: req.body.format
               }
             );
-            
+
             // Generate variants in background
             imageOptimizationService.generateResponsiveVariants(file.buffer, filename)
               .catch(error => logger.error('Failed to generate variants:', error));
-            
+
             return {
               filename,
               originalName: file.originalname,
@@ -132,13 +134,13 @@ export const optimizeMultipleImages = (fieldName: string, maxCount: number = 10)
               height: processed.height,
               size: processed.size,
               originalSize: file.size,
-              compressionRatio: ((1 - processed.size / file.size) * 100).toFixed(2) + '%',
+              compressionRatio: `${((1 - processed.size / file.size) * 100).toFixed(2)  }%`,
               hash: processed.hash,
               buffer: processed.buffer
             };
           })
         );
-        
+
         (req as any).optimizedImages = optimizedImages;
         next();
       } catch (error) {
@@ -156,7 +158,7 @@ export const serveOptimizedImage = async (req: Request, res: Response, next: Nex
   try {
     const { filename } = req.params;
     const { w, h, q, f, fit, blur, sharpen } = req.query;
-    
+
     // Parse options
     const options = {
       width: w ? parseInt(w as string) : undefined,
@@ -167,28 +169,28 @@ export const serveOptimizedImage = async (req: Request, res: Response, next: Nex
       blur: blur ? parseInt(blur as string) : undefined,
       sharpen: sharpen === 'true'
     };
-    
+
     // Get optimized image
     const processed = await imageOptimizationService.getOptimizedImage(filename, options);
-    
+
     if (!processed) {
       return res.status(404).json({
         success: false,
         error: 'Image not found'
       });
     }
-    
+
     // Set appropriate headers
     res.setHeader('Content-Type', `image/${processed.format}`);
     res.setHeader('Content-Length', processed.size.toString());
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
     res.setHeader('ETag', `"${processed.hash}"`);
-    
+
     // Check if client has cached version
     if (req.headers['if-none-match'] === `"${processed.hash}"`) {
       return res.status(304).end();
     }
-    
+
     // Send image
     res.send(processed.buffer);
   } catch (error) {
@@ -203,10 +205,10 @@ export const serveOptimizedImage = async (req: Request, res: Response, next: Nex
 export const generateResponsiveMetadata = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { filename } = req.params;
-    
+
     // Generate srcset
     const srcset = await imageOptimizationService.generateSrcSet(filename);
-    
+
     // Generate picture element
     const pictureElement = await imageOptimizationService.generatePictureElement(
       filename,
@@ -217,7 +219,7 @@ export const generateResponsiveMetadata = async (req: Request, res: Response, ne
         className: req.query.class as string
       }
     );
-    
+
     res.json({
       success: true,
       data: {
@@ -256,7 +258,7 @@ export const cleanupImageCache = async (req: Request, res: Response, next: NextF
   try {
     const maxAge = req.query.maxAge ? parseInt(req.query.maxAge as string) : 7 * 24 * 60 * 60 * 1000;
     const deletedCount = await imageOptimizationService.cleanupCache(maxAge);
-    
+
     res.json({
       success: true,
       data: {
@@ -276,7 +278,7 @@ export const cleanupImageCache = async (req: Request, res: Response, next: NextF
 export const getImageStats = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const stats = await imageOptimizationService.getImageStats();
-    
+
     res.json({
       success: true,
       data: {
@@ -295,12 +297,12 @@ export const getImageStats = async (req: Request, res: Response, next: NextFunct
 // Helper function to format bytes
 function formatBytes(bytes: number, decimals = 2): string {
   if (bytes === 0) return '0 Bytes';
-  
+
   const k = 1024;
   const dm = decimals < 0 ? 0 : decimals;
   const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-  
+
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))  } ${  sizes[i]}`;
 }

@@ -1,7 +1,7 @@
 import { Logger } from '../../core/logging/logger';
 
 export class EmailService {
-  private logger: Logger;
+  private readonly logger: Logger;
 
   constructor() {
     this.logger = new Logger('EmailService');

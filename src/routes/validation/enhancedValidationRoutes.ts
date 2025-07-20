@@ -1,11 +1,13 @@
 import express from 'express';
 import { Request, Response, NextFunction } from 'express';
-import { auth } from '../../middleware/auth';
-import { validateRequest } from '../../middleware/advancedValidation';
-import { Logger } from '../../core/logging/logger';
-import { apiResponse } from '../../utils/apiResponse';
-import EnhancedValidationService from '../../services/validation/EnhancedValidationService';
 import { z } from 'zod';
+
+import { Logger } from '../../core/logging/logger';
+import { validateRequest } from '../../middleware/advancedValidation';
+import { auth } from '../../middleware/auth';
+import EnhancedValidationService from '../../services/validation/EnhancedValidationService';
+import { apiResponse } from '../../utils/apiResponse';
+
 
 const router = express.Router();
 const logger = new Logger('ValidationRoutes');
@@ -30,8 +32,8 @@ const validateProductSchema = z.object({
         length: z.number().positive(),
         width: z.number().positive(),
         height: z.number().positive(),
-        unit: z.string().default('cm'),
-      }).optional(),
+        unit: z.string().default('cm')
+      }).optional()
     }),
     pricing: z.object({
       currency: z.string().length(3).default('USD'),
@@ -39,14 +41,14 @@ const validateProductSchema = z.object({
       minimumOrder: z.number().positive(),
       discounts: z.array(z.object({
         quantity: z.number().positive(),
-        percentage: z.number().min(0).max(100),
-      })).default([]),
+        percentage: z.number().min(0).max(100)
+      })).default([])
     }),
     availability: z.object({
       inStock: z.boolean().default(true),
       quantity: z.number().min(0),
       leadTime: z.number().min(0),
-      location: z.string().min(1),
+      location: z.string().min(1)
     }),
     quality: z.object({
       certifications: z.array(z.string()).default([]),
@@ -55,15 +57,15 @@ const validateProductSchema = z.object({
         type: z.string().min(1),
         result: z.any(),
         date: z.string().refine((date) => !isNaN(Date.parse(date))),
-        lab: z.string().min(1),
-      })).default([]),
+        lab: z.string().min(1)
+      })).default([])
     }),
     sustainability: z.object({
       carbonFootprint: z.number().min(0).optional(),
       packaging: z.array(z.string()).default([]),
       certifications: z.array(z.string()).default([]),
-      sourcing: z.string().optional(),
-    }).optional(),
+      sourcing: z.string().optional()
+    }).optional()
   }),
   validationType: z.enum(['basic', 'advanced', 'compliance', 'ml_enhanced']).default('basic'),
   targetMarkets: z.array(z.string()).default([]),
@@ -72,8 +74,8 @@ const validateProductSchema = z.object({
     generateSuggestions: z.boolean().default(true),
     validateCompliance: z.boolean().default(false),
     includeMLAnalysis: z.boolean().default(false),
-    autoCorrect: z.boolean().default(false),
-  }).optional(),
+    autoCorrect: z.boolean().default(false)
+  }).optional()
 });
 
 const validateRFQSchema = z.object({
@@ -86,28 +88,28 @@ const validateRFQSchema = z.object({
       description: z.string().min(1),
       quantity: z.object({
         amount: z.number().positive(),
-        unit: z.string().min(1),
+        unit: z.string().min(1)
       }),
       qualityRequirements: z.array(z.object({
         type: z.string().min(1),
         value: z.any(),
-        required: z.boolean().default(true),
-      })).default([]),
+        required: z.boolean().default(true)
+      })).default([])
     })),
     requirements: z.object({
       totalBudget: z.number().positive(),
       deliveryDate: z.string().refine((date) => !isNaN(Date.parse(date))),
-      certifications: z.array(z.string()).default([]),
+      certifications: z.array(z.string()).default([])
     }),
-    deadline: z.string().refine((date) => !isNaN(Date.parse(date))),
+    deadline: z.string().refine((date) => !isNaN(Date.parse(date)))
   }),
   validationType: z.enum(['structure', 'content', 'compliance', 'completeness']).default('structure'),
   options: z.object({
     checkSpecifications: z.boolean().default(true),
     validateBudget: z.boolean().default(true),
     checkDeadlines: z.boolean().default(true),
-    validateRequirements: z.boolean().default(true),
-  }).optional(),
+    validateRequirements: z.boolean().default(true)
+  }).optional()
 });
 
 const validateComplianceSchema = z.object({
@@ -118,7 +120,7 @@ const validateComplianceSchema = z.object({
       type: z.string().min(1),
       number: z.string().min(1),
       issuer: z.string().min(1),
-      validUntil: z.string().refine((date) => !isNaN(Date.parse(date))),
+      validUntil: z.string().refine((date) => !isNaN(Date.parse(date)))
     })).default([]),
     ingredients: z.array(z.string()).default([]),
     allergens: z.array(z.string()).default([]),
@@ -126,15 +128,15 @@ const validateComplianceSchema = z.object({
     labeling: z.object({
       language: z.array(z.string()).default([]),
       claims: z.array(z.string()).default([]),
-      warnings: z.array(z.string()).default([]),
-    }).optional(),
+      warnings: z.array(z.string()).default([])
+    }).optional()
   }),
   validationType: z.enum(['regulatory', 'labeling', 'safety', 'import']).default('regulatory'),
   options: z.object({
     includeRecommendations: z.boolean().default(true),
     checkRegulations: z.boolean().default(true),
-    validateDocuments: z.boolean().default(false),
-  }).optional(),
+    validateDocuments: z.boolean().default(false)
+  }).optional()
 });
 
 const cornflakePatternSchema = z.object({
@@ -144,21 +146,21 @@ const cornflakePatternSchema = z.object({
   correctValues: z.array(z.string()).min(1),
   category: z.string().min(1),
   severity: z.enum(['low', 'medium', 'high', 'critical']).default('medium'),
-  tags: z.array(z.string()).default([]),
+  tags: z.array(z.string()).default([])
 });
 
 const batchValidationSchema = z.object({
   items: z.array(z.object({
     id: z.string().min(1),
     type: z.enum(['product', 'rfq', 'compliance']),
-    data: z.any(),
+    data: z.any()
   })).min(1).max(100),
   validationType: z.enum(['basic', 'advanced', 'ml_enhanced']).default('basic'),
   options: z.object({
     stopOnFirstError: z.boolean().default(false),
     includeWarnings: z.boolean().default(true),
-    generateReport: z.boolean().default(false),
-  }).optional(),
+    generateReport: z.boolean().default(false)
+  }).optional()
 });
 
 /**
@@ -220,10 +222,10 @@ router.post('/product', auth, validateRequest(validateProductSchema), async (req
     const { productData, validationType = 'basic', targetMarkets = [], options = {} } = req.body;
     const userId = req.user.id;
 
-    logger.info('Product validation requested', { 
-      validationType, 
+    logger.info('Product validation requested', {
+      validationType,
       targetMarkets: targetMarkets.length,
-      userId 
+      userId
     });
 
     const result = await EnhancedValidationService.validateProduct(
@@ -411,18 +413,18 @@ router.get('/cornflake-patterns', auth, async (req: Request, res: Response, next
       severity,
       field,
       page = 1,
-      limit = 20,
+      limit = 20
     } = req.query;
 
     const filters = {
       category: category as string,
       severity: severity as string,
-      field: field as string,
+      field: field as string
     };
 
     const pagination = {
       page: parseInt(page as string),
-      limit: parseInt(limit as string),
+      limit: parseInt(limit as string)
     };
 
     logger.info('Getting cornflake patterns', { filters, pagination });
@@ -488,10 +490,10 @@ router.post('/cornflake-patterns', auth, validateRequest(cornflakePatternSchema)
     const patternData = req.body;
     const userId = req.user.id;
 
-    logger.info('Creating cornflake pattern', { 
-      field: patternData.field, 
+    logger.info('Creating cornflake pattern', {
+      field: patternData.field,
       category: patternData.category,
-      userId 
+      userId
     });
 
     const pattern = await EnhancedValidationService.createCornflakePattern(patternData, userId);
@@ -654,10 +656,10 @@ router.post('/batch', auth, validateRequest(batchValidationSchema), async (req: 
     const { items, validationType = 'basic', options = {} } = req.body;
     const userId = req.user.id;
 
-    logger.info('Batch validation requested', { 
-      itemCount: items.length, 
-      validationType, 
-      userId 
+    logger.info('Batch validation requested', {
+      itemCount: items.length,
+      validationType,
+      userId
     });
 
     const result = await EnhancedValidationService.validateBatch(
@@ -703,7 +705,7 @@ router.get('/analytics', auth, async (req: Request, res: Response, next: NextFun
   try {
     const {
       timeframe = 'week',
-      type = 'all',
+      type = 'all'
     } = req.query;
 
     const userId = req.user.id;
@@ -759,11 +761,11 @@ router.get('/analytics', auth, async (req: Request, res: Response, next: NextFun
  */
 router.post('/suggestions', auth, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { 
-      data, 
-      dataType, 
-      includeMLAnalysis = true, 
-      maxSuggestions = 10 
+    const {
+      data,
+      dataType,
+      includeMLAnalysis = true,
+      maxSuggestions = 10
     } = req.body;
     const userId = req.user.id;
 
@@ -774,7 +776,7 @@ router.post('/suggestions', auth, async (req: Request, res: Response, next: Next
       dataType,
       {
         includeMLAnalysis,
-        maxSuggestions,
+        maxSuggestions
       }
     );
 

@@ -3,25 +3,25 @@
  * Handles business logic for AI-powered recommendations
  */
 
-import { RecommendationEngine, RFQRequirements, UserBehaviorData } from '../services/ai/RecommendationEngine';
-import { MatchingAlgorithms, BuyerRequirements, SupplierProfile, ProductProfile } from '../services/ai/MatchingAlgorithms';
+import { ApiError } from '../core/errors';
 import { Logger } from '../core/logging/logger';
 import { CacheService } from '../infrastructure/cache/CacheService';
-import { ApiError } from '../core/errors';
 
 // Import models (these would be your actual Mongoose models)
-import { Product } from '../models/Product';
-import { User } from '../models/User';
 import { Company } from '../models/Company';
 import { Order } from '../models/Order';
+import { Product } from '../models/Product';
 import { RFQ } from '../models/RFQ';
+import { User } from '../models/User';
+import { MatchingAlgorithms, BuyerRequirements, SupplierProfile, ProductProfile } from '../services/ai/MatchingAlgorithms';
+import { RecommendationEngine, RFQRequirements, UserBehaviorData } from '../services/ai/RecommendationEngine';
 
 export class RecommendationController {
   private static instance: RecommendationController;
-  private logger: Logger;
-  private recommendationEngine: RecommendationEngine;
-  private matchingAlgorithms: MatchingAlgorithms;
-  private cache: CacheService;
+  private readonly logger: Logger;
+  private readonly recommendationEngine: RecommendationEngine;
+  private readonly matchingAlgorithms: MatchingAlgorithms;
+  private readonly cache: CacheService;
 
   private constructor() {
     this.logger = new Logger('RecommendationController');
@@ -150,7 +150,7 @@ export class RecommendationController {
 
       const cacheKey = `trending_products:${category || 'all'}:${limit}`;
       const cached = await this.cache.get(cacheKey);
-      
+
       if (cached) {
         return JSON.parse(cached);
       }
@@ -315,11 +315,11 @@ export class RecommendationController {
         order.items.forEach((item: any) => {
           if (item.product) {
             recentPurchases.push(item.product._id.toString());
-            
+
             const supplierId = item.product.supplier.toString();
             supplierFrequency.set(supplierId, (supplierFrequency.get(supplierId) || 0) + 1);
-            
-            const category = item.product.category;
+
+            const {category} = item.product;
             categoryFrequency.set(category, (categoryFrequency.get(category) || 0) + 1);
           }
         });
@@ -338,10 +338,10 @@ export class RecommendationController {
         .map(entry => entry[0]);
 
       // Calculate price range from recent orders
-      const prices = recentOrders.flatMap(order => 
+      const prices = recentOrders.flatMap(order =>
         order.items.map((item: any) => item.price * item.quantity)
       );
-      
+
       const priceRange = prices.length > 0 ? {
         min: Math.min(...prices),
         max: Math.max(...prices)
@@ -365,9 +365,9 @@ export class RecommendationController {
 
   private async getSupplierProfiles(category: string): Promise<SupplierProfile[]> {
     try {
-      const suppliers = await Company.find({ 
+      const suppliers = await Company.find({
         type: 'supplier',
-        'capabilities.categories': category 
+        'capabilities.categories': category
       }).populate('certifications');
 
       return suppliers.map(supplier => ({
@@ -404,7 +404,7 @@ export class RecommendationController {
     return {
       ...requirements,
       preferredSuppliers: userBehavior.preferredSuppliers,
-      blacklistedSuppliers: [], // This would come from user settings
+      blacklistedSuppliers: [] // This would come from user settings
     };
   }
 
@@ -486,7 +486,7 @@ export class RecommendationController {
     }).limit(20);
 
     const prices = similarProducts.map(p => p.basePrice);
-    
+
     return {
       averagePrice: prices.reduce((sum, price) => sum + price, 0) / prices.length,
       priceRange: { min: Math.min(...prices), max: Math.max(...prices) },
@@ -537,7 +537,7 @@ export class RecommendationController {
   ): Promise<any[]> {
     // This would use the OpenAI service to generate intelligent pricing suggestions
     // For now, return a simplified implementation
-    const basePrice = product.basePrice;
+    const {basePrice} = product;
     const suggestions = [
       {
         type: 'market-competitive',

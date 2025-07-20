@@ -1,5 +1,6 @@
 import Redis from 'ioredis';
 import NodeCache from 'node-cache';
+
 import { Logger } from '../../core/logging/logger';
 import { MetricsService } from '../../core/metrics/MetricsService';
 
@@ -30,9 +31,9 @@ export enum CacheLevel {
 export class CacheManager {
   private static instance: CacheManager;
   private redis: Redis | null = null;
-  private memoryCache: NodeCache;
+  private readonly memoryCache: NodeCache;
   private isRedisConnected = false;
-  private cacheStats: Map<string, CacheStats> = new Map();
+  private readonly cacheStats: Map<string, CacheStats> = new Map();
 
   private constructor() {
     this.memoryCache = new NodeCache({
@@ -160,13 +161,13 @@ export class CacheManager {
 
     stats.hitRate = stats.hits / (stats.hits + stats.misses) * 100;
     stats.keys = level === 'memory' ? this.memoryCache.keys().length : stats.keys;
-    
+
     this.cacheStats.set(level, stats);
   }
 
   public async get<T>(key: string, level: CacheLevel = CacheLevel.BOTH): Promise<T | null> {
     const startTime = Date.now();
-    
+
     try {
       // Try memory cache first
       if (level === CacheLevel.MEMORY || level === CacheLevel.BOTH) {
@@ -182,12 +183,12 @@ export class CacheManager {
         const redisValue = await this.redis.get(key);
         if (redisValue !== null) {
           const parsedValue = JSON.parse(redisValue);
-          
+
           // Store in memory cache for faster access
           if (level === CacheLevel.BOTH) {
             this.memoryCache.set(key, parsedValue, 300); // 5 minutes in memory
           }
-          
+
           this.recordCacheLatency('redis', Date.now() - startTime);
           return parsedValue;
         }
@@ -202,14 +203,14 @@ export class CacheManager {
   }
 
   public async set<T>(
-    key: string, 
-    value: T, 
+    key: string,
+    value: T,
     options: CacheOptions = {},
     level: CacheLevel = CacheLevel.BOTH
   ): Promise<boolean> {
     const startTime = Date.now();
     const { ttl = 300, serialize = true } = options;
-    
+
     try {
       let success = false;
 
@@ -236,7 +237,7 @@ export class CacheManager {
 
   public async delete(key: string, level: CacheLevel = CacheLevel.BOTH): Promise<boolean> {
     const startTime = Date.now();
-    
+
     try {
       let success = false;
 
@@ -330,14 +331,14 @@ export class CacheManager {
     level: CacheLevel = CacheLevel.BOTH
   ): Promise<boolean> {
     const success = await this.set(key, value, options, level);
-    
+
     if (success && this.isRedisConnected && this.redis) {
       // Store tag associations in Redis
       for (const tag of tags) {
         await this.redis.sadd(`tag:${tag}`, key);
       }
     }
-    
+
     return success;
   }
 
@@ -353,11 +354,11 @@ export class CacheManager {
       }
 
       // Delete all keys with this tag
-      await Promise.all(keys.map(key => this.delete(key)));
-      
+      await Promise.all(keys.map(async key => this.delete(key)));
+
       // Remove tag set
       await this.redis.del(`tag:${tag}`);
-      
+
       logger.info('Cache invalidated by tag', { tag, keys: keys.length });
       return keys.length;
     } catch (error) {
@@ -368,7 +369,7 @@ export class CacheManager {
 
   public getStats(): Record<string, CacheStats> {
     const stats: Record<string, CacheStats> = {};
-    
+
     // Memory cache stats
     stats.memory = {
       hits: this.cacheStats.get('memory')?.hits || 0,
@@ -413,10 +414,10 @@ export function Cached(options: CacheOptions & { level?: CacheLevel } = {}) {
   return function(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
     const originalMethod = descriptor.value;
     const cacheManager = CacheManager.getInstance();
-    
+
     descriptor.value = async function(...args: any[]) {
       const key = `${target.constructor.name}:${propertyKey}:${JSON.stringify(args)}`;
-      
+
       return await cacheManager.getOrSet(
         key,
         () => originalMethod.apply(this, args),
@@ -424,7 +425,7 @@ export function Cached(options: CacheOptions & { level?: CacheLevel } = {}) {
         options.level || CacheLevel.BOTH
       );
     };
-    
+
     return descriptor;
   };
 }

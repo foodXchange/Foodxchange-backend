@@ -6,41 +6,41 @@ const productSchema = new mongoose.Schema({
   _id: { type: mongoose.Schema.Types.ObjectId, auto: true },
   legacyId: { type: String, unique: true, sparse: true },
   productCode: { type: String, unique: true },
-  
+
   // Basic Information
-  name: { 
-    type: String, 
-    required: true, 
+  name: {
+    type: String,
+    required: true,
     trim: true,
     maxlength: 200,
     index: 'text'
   },
-  description: { 
-    type: String, 
+  description: {
+    type: String,
     maxlength: 2000,
     index: 'text'
   },
   shortDescription: { type: String, maxlength: 500 },
-  
+
   // Supplier Information
-  supplier: { 
-    type: mongoose.Schema.Types.ObjectId, 
+  supplier: {
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'Company',
     required: true,
     index: true
   },
   supplierProductCode: String,
   supplierDescription: String,
-  
+
   // Category & Classification
-  category: { 
-    type: mongoose.Schema.Types.ObjectId, 
+  category: {
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'Category',
     index: true
   },
   categoryPath: [String], // ['Food', 'Beverages', 'Juice']
   productFamily: String,
-  
+
   // Trade Classification
   classification: {
     hsCode: String, // HS/Tariff Code
@@ -48,7 +48,7 @@ const productSchema = new mongoose.Schema({
     gtinCode: String, // Global Trade Item Number
     customCategories: [String]
   },
-  
+
   // Physical Specifications
   specifications: {
     // Weight & Dimensions
@@ -63,7 +63,7 @@ const productSchema = new mongoose.Schema({
       height: Number,
       unit: { type: String, enum: ['cm', 'in', 'mm'], default: 'cm' }
     },
-    
+
     // Packaging
     packaging: {
       type: String, // 'Bottle', 'Can', 'Box', etc.
@@ -76,7 +76,7 @@ const productSchema = new mongoose.Schema({
         height: Number
       }
     },
-    
+
     // Container Loading
     containerLoading: {
       cartons20ft: Number,
@@ -86,7 +86,7 @@ const productSchema = new mongoose.Schema({
       totalUnits20ft: Number,
       totalUnits40ft: Number
     },
-    
+
     // Storage Requirements
     storage: {
       temperature: {
@@ -105,7 +105,7 @@ const productSchema = new mongoose.Schema({
       specialRequirements: [String]
     }
   },
-  
+
   // Pricing Information (Decimal128 for precision)
   pricing: {
     unitPrice: {
@@ -124,7 +124,7 @@ const productSchema = new mongoose.Schema({
       cartonPrice: Decimal128
     }],
     terms: {
-      incoterms: { 
+      incoterms: {
         type: String,
         enum: ['EXW', 'FCA', 'CPT', 'CIP', 'DPU', 'DAP', 'DDP', 'FAS', 'FOB', 'CFR', 'CIF']
       },
@@ -135,7 +135,7 @@ const productSchema = new mongoose.Schema({
       customTerms: String
     }
   },
-  
+
   // Logistics Information
   logistics: {
     leadTime: {
@@ -148,7 +148,7 @@ const productSchema = new mongoose.Schema({
     shippingMethods: [String],
     specialHandling: [String]
   },
-  
+
   // Nutritional Information
   nutrition: {
     servingSize: {
@@ -180,7 +180,7 @@ const productSchema = new mongoose.Schema({
       dailyValue: Number
     }]
   },
-  
+
   // Allergens & Dietary Information
   dietary: {
     allergens: [{
@@ -195,7 +195,7 @@ const productSchema = new mongoose.Schema({
     additives: [String],
     preservatives: [String]
   },
-  
+
   // Compliance & Certifications
   compliance: {
     certifications: [{
@@ -223,7 +223,7 @@ const productSchema = new mongoose.Schema({
       other: [String]
     }
   },
-  
+
   // Media & Documentation (Azure Blob Storage)
   media: {
     images: [{
@@ -235,8 +235,8 @@ const productSchema = new mongoose.Schema({
     }],
     documents: [{
       name: String,
-      type: { 
-        type: String, 
+      type: {
+        type: String,
         enum: ['spec_sheet', 'safety_data', 'certificate', 'brochure', 'label', 'nutritional']
       },
       url: String, // Azure Blob Storage URL
@@ -250,11 +250,11 @@ const productSchema = new mongoose.Schema({
       duration: Number // seconds
     }]
   },
-  
+
   // Availability & Inventory
   availability: {
-    status: { 
-      type: String, 
+    status: {
+      type: String,
       enum: ['available', 'limited', 'out_of_stock', 'discontinued', 'seasonal'],
       default: 'available',
       index: true
@@ -269,7 +269,7 @@ const productSchema = new mongoose.Schema({
     },
     restockDate: Date
   },
-  
+
   // SEO & Marketing
   seo: {
     metaTitle: String,
@@ -277,7 +277,7 @@ const productSchema = new mongoose.Schema({
     keywords: [String],
     slug: { type: String, unique: true, sparse: true }
   },
-  
+
   // Analytics & Performance
   analytics: {
     views: { type: Number, default: 0 },
@@ -287,7 +287,7 @@ const productSchema = new mongoose.Schema({
     conversionRate: Number,
     lastViewedAt: Date
   },
-  
+
   // AI/ML Features (Azure AI integration)
   aiData: {
     keywords: [String], // Extracted keywords
@@ -307,7 +307,7 @@ const productSchema = new mongoose.Schema({
       lastAnalyzed: Date
     }
   },
-  
+
   // Product Relationships
   relationships: {
     variants: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
@@ -318,7 +318,7 @@ const productSchema = new mongoose.Schema({
       quantity: Number
     }]
   },
-  
+
   // Quality & Reviews
   quality: {
     rating: {
@@ -339,11 +339,11 @@ const productSchema = new mongoose.Schema({
       documents: [String]
     }]
   },
-  
+
   // Status & Workflow
   status: {
-    stage: { 
-      type: String, 
+    stage: {
+      type: String,
       enum: ['draft', 'review', 'active', 'inactive', 'archived'],
       default: 'draft',
       index: true
@@ -357,7 +357,7 @@ const productSchema = new mongoose.Schema({
       default: 'pending'
     }
   },
-  
+
   // Original Data Preservation
   originalData: {
     productId: String,
@@ -365,7 +365,7 @@ const productSchema = new mongoose.Schema({
     importedAt: Date,
     rawData: mongoose.Schema.Types.Mixed
   },
-  
+
   // Comments & Feedback
   comments: [{
     type: { type: String, enum: ['note', 'issue', 'feedback', 'quality'] },
@@ -379,16 +379,16 @@ const productSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now },
     updatedAt: Date
   }],
-  
+
   // System Fields
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   lastModifiedAt: { type: Date, default: Date.now }
-}, { 
+}, {
   timestamps: true,
-  toJSON: { 
+  toJSON: {
     virtuals: true,
-    transform: function(doc, ret) {
+    transform(doc, ret) {
       // Convert Decimal128 to numbers for JSON output
       if (ret.pricing?.unitPrice?.wholesale) {
         ret.pricing.unitPrice.wholesale = parseFloat(ret.pricing.unitPrice.wholesale.toString());
@@ -434,7 +434,7 @@ productSchema.pre('save', function(next) {
   if (this.isNew && !this.productCode) {
     this.productCode = `PRD-${Date.now().toString().slice(-8)}`;
   }
-  
+
   // Generate SEO slug if not exists
   if (this.isNew && !this.seo?.slug && this.name) {
     this.seo = this.seo || {};
@@ -443,15 +443,15 @@ productSchema.pre('save', function(next) {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '');
   }
-  
+
   // Update last modified
   this.lastModifiedAt = new Date();
-  
+
   next();
 });
 
 // Post-save middleware for AI processing
-productSchema.post('save', async function(doc) {
+productSchema.post('save', async (doc) => {
   // Trigger Azure AI analysis for new products
   if (doc.isNew) {
     // Queue for AI keyword extraction, category prediction, and price analysis

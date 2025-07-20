@@ -6,23 +6,23 @@ const agentCommissionSchema = new mongoose.Schema({
     unique: true,
     required: true
   },
-  
+
   // Agent Reference
   agentId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Agent',
     required: true
   },
-  
+
   // Commission Type
   type: {
     type: String,
-    enum: ['base_commission', 'tier_bonus', 'new_supplier_bonus', 'new_buyer_bonus', 
-           'first_deal_bonus', 'monthly_target_bonus', 'recurring_commission', 
-           'performance_bonus', 'referral_bonus', 'seasonal_bonus', 'penalty'],
+    enum: ['base_commission', 'tier_bonus', 'new_supplier_bonus', 'new_buyer_bonus',
+      'first_deal_bonus', 'monthly_target_bonus', 'recurring_commission',
+      'performance_bonus', 'referral_bonus', 'seasonal_bonus', 'penalty'],
     required: true
   },
-  
+
   // Source Transaction
   source: {
     type: {
@@ -38,7 +38,7 @@ const agentCommissionSchema = new mongoose.Schema({
     referenceNumber: String,
     description: String
   },
-  
+
   // Related Entities
   relatedEntities: {
     leadId: { type: mongoose.Schema.Types.ObjectId, ref: 'AgentLead' },
@@ -49,7 +49,7 @@ const agentCommissionSchema = new mongoose.Schema({
     supplierContactId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     parentCommissionId: { type: mongoose.Schema.Types.ObjectId, ref: 'AgentCommission' }
   },
-  
+
   // Financial Details
   financial: {
     // Base amounts
@@ -57,7 +57,7 @@ const agentCommissionSchema = new mongoose.Schema({
       amount: { type: Number, required: true },
       currency: { type: String, default: 'USD' }
     },
-    
+
     // Commission calculation
     commission: {
       rate: { type: Number, required: true, min: 0, max: 100 }, // percentage
@@ -67,7 +67,7 @@ const agentCommissionSchema = new mongoose.Schema({
       totalAmount: { type: Number, required: true },
       currency: { type: String, default: 'USD' }
     },
-    
+
     // Additional charges/deductions
     adjustments: [{
       type: {
@@ -80,7 +80,7 @@ const agentCommissionSchema = new mongoose.Schema({
       appliedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
       appliedAt: Date
     }],
-    
+
     // Tax information
     tax: {
       taxable: { type: Boolean, default: true },
@@ -89,10 +89,10 @@ const agentCommissionSchema = new mongoose.Schema({
       taxType: String, // income, sales, etc.
       taxJurisdiction: String
     },
-    
+
     // Net amount after adjustments
     netAmount: { type: Number, required: true },
-    
+
     // Exchange rate (if different from base currency)
     exchangeRate: {
       rate: { type: Number, default: 1 },
@@ -101,7 +101,7 @@ const agentCommissionSchema = new mongoose.Schema({
       rateDate: Date
     }
   },
-  
+
   // Calculation Details
   calculation: {
     method: {
@@ -109,14 +109,14 @@ const agentCommissionSchema = new mongoose.Schema({
       enum: ['percentage', 'fixed_amount', 'tiered', 'hybrid'],
       default: 'percentage'
     },
-    
+
     // Tier-based calculation
     tier: {
       current: String, // bronze, silver, gold, platinum
       multiplier: { type: Number, default: 1.0 },
       bonusEarned: { type: Number, default: 0 }
     },
-    
+
     // Performance metrics affecting commission
     performance: {
       responseTime: Number, // minutes
@@ -125,7 +125,7 @@ const agentCommissionSchema = new mongoose.Schema({
       qualityScore: Number, // 1-100
       performanceMultiplier: { type: Number, default: 1.0 }
     },
-    
+
     // Recurring commission details
     recurring: {
       isRecurring: { type: Boolean, default: false },
@@ -135,7 +135,7 @@ const agentCommissionSchema = new mongoose.Schema({
       nextPaymentDate: Date,
       expiresAt: Date
     },
-    
+
     // Calculation breakdown
     breakdown: {
       baseCalculation: String,
@@ -144,7 +144,7 @@ const agentCommissionSchema = new mongoose.Schema({
       finalCalculation: String,
       notes: String
     },
-    
+
     // Approval workflow
     approval: {
       required: { type: Boolean, default: false },
@@ -155,21 +155,21 @@ const agentCommissionSchema = new mongoose.Schema({
       rejectionReason: String
     }
   },
-  
+
   // Status and Lifecycle
   status: {
     type: String,
     enum: ['calculated', 'pending_approval', 'approved', 'rejected', 'paid', 'disputed', 'cancelled', 'expired'],
     default: 'calculated'
   },
-  
+
   lifecycle: {
     calculatedAt: { type: Date, default: Date.now },
     approvedAt: Date,
     rejectedAt: Date,
     paidAt: Date,
     cancelledAt: Date,
-    
+
     // Status history
     statusHistory: [{
       status: String,
@@ -179,7 +179,7 @@ const agentCommissionSchema = new mongoose.Schema({
       notes: String
     }]
   },
-  
+
   // Payment Processing
   payment: {
     method: {
@@ -187,7 +187,7 @@ const agentCommissionSchema = new mongoose.Schema({
       enum: ['bank_transfer', 'check', 'paypal', 'stripe', 'wire_transfer', 'cryptocurrency'],
       default: 'bank_transfer'
     },
-    
+
     // Payment details
     paymentDetails: {
       accountNumber: String,
@@ -199,7 +199,7 @@ const agentCommissionSchema = new mongoose.Schema({
       checkNumber: String,
       wireReference: String
     },
-    
+
     // Processing information
     processing: {
       batchId: String,
@@ -211,7 +211,7 @@ const agentCommissionSchema = new mongoose.Schema({
       exchangeRate: Number,
       actualAmountPaid: Number
     },
-    
+
     // Payment schedule
     schedule: {
       scheduledDate: Date,
@@ -221,7 +221,7 @@ const agentCommissionSchema = new mongoose.Schema({
       minimumThreshold: Number,
       nextPaymentDate: Date
     },
-    
+
     // Dispute handling
     dispute: {
       disputed: { type: Boolean, default: false },
@@ -233,7 +233,7 @@ const agentCommissionSchema = new mongoose.Schema({
       resolvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
     }
   },
-  
+
   // Period Information
   period: {
     type: {
@@ -248,13 +248,13 @@ const agentCommissionSchema = new mongoose.Schema({
     fiscalYear: Number,
     fiscalQuarter: Number
   },
-  
+
   // Quality and Compliance
   compliance: {
     verified: { type: Boolean, default: false },
     verifiedAt: Date,
     verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    
+
     // Compliance checks
     checks: [{
       type: String, // tax_compliance, contract_compliance, etc.
@@ -264,7 +264,7 @@ const agentCommissionSchema = new mongoose.Schema({
       result: String,
       notes: String
     }],
-    
+
     // Documentation
     documentation: [{
       type: String, // invoice, receipt, contract, etc.
@@ -272,7 +272,7 @@ const agentCommissionSchema = new mongoose.Schema({
       uploadedAt: Date,
       uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
     }],
-    
+
     // Audit trail
     auditTrail: [{
       action: String,
@@ -283,7 +283,7 @@ const agentCommissionSchema = new mongoose.Schema({
       userAgent: String
     }]
   },
-  
+
   // Analytics and Reporting
   analytics: {
     // Performance metrics
@@ -294,7 +294,7 @@ const agentCommissionSchema = new mongoose.Schema({
       profitMargin: Number,
       competitorAnalysis: String
     },
-    
+
     // Reporting categories
     reporting: {
       category: String,
@@ -305,7 +305,7 @@ const agentCommissionSchema = new mongoose.Schema({
       customerSegment: String,
       marketSegment: String
     },
-    
+
     // Seasonal patterns
     seasonality: {
       season: String,
@@ -314,7 +314,7 @@ const agentCommissionSchema = new mongoose.Schema({
       holidayImpact: String
     }
   },
-  
+
   // Notifications
   notifications: {
     sent: [{
@@ -325,7 +325,7 @@ const agentCommissionSchema = new mongoose.Schema({
       status: String,
       response: String
     }],
-    
+
     scheduled: [{
       type: String,
       scheduledFor: Date,
@@ -334,7 +334,7 @@ const agentCommissionSchema = new mongoose.Schema({
       message: String
     }]
   },
-  
+
   // Metadata
   metadata: {
     version: { type: Number, default: 1 },
@@ -344,18 +344,18 @@ const agentCommissionSchema = new mongoose.Schema({
     tags: [String],
     notes: String,
     internalNotes: String,
-    
+
     // System information
     createdBySystem: { type: Boolean, default: true },
     calculationEngine: String,
     calculationVersion: String,
     dataSource: String
   },
-  
+
   // Timestamps
   createdAt: { type: Date, default: Date.now },
   updatedAt: Date,
-  
+
   // System fields
   archived: { type: Boolean, default: false },
   archivedAt: Date,
@@ -372,14 +372,14 @@ agentCommissionSchema.pre('save', function(next) {
     const timestamp = Date.now().toString().slice(-6);
     this.commissionId = `COM-${timestamp}`;
   }
-  
+
   // Calculate net amount
   if (this.financial.commission.totalAmount !== undefined) {
-    this.financial.netAmount = this.financial.commission.totalAmount - 
-                               this.financial.commission.penaltyAmount + 
+    this.financial.netAmount = this.financial.commission.totalAmount -
+                               this.financial.commission.penaltyAmount +
                                this.financial.commission.bonusAmount;
   }
-  
+
   next();
 });
 
@@ -496,3 +496,4 @@ agentCommissionSchema.index({ agentId: 1, 'period.type': 1, 'lifecycle.calculate
 agentCommissionSchema.index({ status: 1, 'payment.schedule.dueDate': 1 });
 
 module.exports = mongoose.model('AgentCommission', agentCommissionSchema);
+export default mongoose.model('AgentCommission', agentCommissionSchema);

@@ -1,10 +1,12 @@
 import { Request, Response } from 'express';
-import { Logger } from '../../core/logging/logger';
-import { ValidationError, NotFoundError } from '../../core/errors';
-import { User } from '../../models/User';
-import { Product } from '../../models/Product';
-import { asyncHandler } from '../../core/errors';
 import mongoose from 'mongoose';
+
+import { ValidationError, NotFoundError } from '../../core/errors';
+import { asyncHandler } from '../../core/errors';
+import { Logger } from '../../core/logging/logger';
+import { Product } from '../../models/Product';
+import { User } from '../../models/User';
+
 
 const logger = new Logger('SupplierController');
 
@@ -71,7 +73,7 @@ export class SupplierController {
       // Enhance supplier data with additional info
       const enhancedSuppliers = await Promise.all(suppliers.map(async (supplier) => {
         // Get product count and categories
-        const products = await Product.find({ 
+        const products = await Product.find({
           supplier: supplier._id,
           status: 'active'
         }).select('category').lean();
@@ -86,17 +88,18 @@ export class SupplierController {
 
         // Filter by location if specified
         if (location && supplier.company) {
-          const supplierLocation = `${supplier.company.city || ''} ${supplier.company.country || ''}`.toLowerCase();
+          const companyData = supplier.company as any;
+          const supplierLocation = `${companyData.city || ''} ${companyData.country || ''}`.toLowerCase();
           if (!supplierLocation.includes((location as string).toLowerCase())) {
             return null;
           }
         }
 
         // Filter by certifications if specified
-        if (certifications && supplier.certifications) {
+        if (certifications && (supplier as any).certifications) {
           const reqCerts = (certifications as string).split(',');
-          const hasCerts = reqCerts.every(cert => 
-            supplier.certifications.some(c => c.toLowerCase().includes(cert.toLowerCase()))
+          const hasCerts = reqCerts.every(cert =>
+            (supplier as any).certifications.some((c: string) => c.toLowerCase().includes(cert.toLowerCase()))
           );
           if (!hasCerts) {
             return null;
@@ -105,17 +108,17 @@ export class SupplierController {
 
         return {
           id: supplier._id,
-          name: supplier.company?.name || `${supplier.firstName} ${supplier.lastName}`,
+          name: (supplier.company as any)?.name || `${supplier.firstName} ${supplier.lastName}`,
           email: supplier.email,
           phone: supplier.phone,
           avatar: supplier.avatar,
           company: supplier.company,
           companyVerified: supplier.companyVerified,
-          rating: supplier.rating || 0,
-          reviewCount: supplier.reviewCount || 0,
+          rating: (supplier as any).rating || 0,
+          reviewCount: (supplier as any).reviewCount || 0,
           productCount,
           categories,
-          certifications: supplier.certifications || [],
+          certifications: (supplier as any).certifications || [],
           joinedAt: supplier.createdAt,
           lastActive: supplier.lastLoginAt,
           badges: this.getSupplierBadges(supplier, productCount)
@@ -160,8 +163,8 @@ export class SupplierController {
         role: 'seller',
         accountStatus: 'active'
       })
-      .populate('company')
-      .select('-password -refreshToken');
+        .populate('company')
+        .select('-password -refreshToken');
 
       if (!supplier) {
         throw new NotFoundError('Supplier not found');
@@ -172,34 +175,34 @@ export class SupplierController {
         supplier: supplier._id,
         status: 'active'
       })
-      .select('name category images pricing.basePrice rating reviewCount')
-      .sort('-rating')
-      .limit(10)
-      .lean();
+        .select('name category images pricing.basePrice rating reviewCount')
+        .sort('-rating')
+        .limit(10)
+        .lean();
 
       // Get statistics
-      const stats = await this.getSupplierStatistics(supplier._id);
+      const stats = await this.getSupplierStatistics(supplier._id.toString());
 
       res.json({
         success: true,
         data: {
           supplier: {
             id: supplier._id,
-            name: supplier.company?.name || `${supplier.firstName} ${supplier.lastName}`,
+            name: (supplier.company as any)?.name || `${supplier.firstName} ${supplier.lastName}`,
             email: supplier.email,
             phone: supplier.phone,
             avatar: supplier.avatar,
             bio: supplier.bio,
             company: supplier.company,
             companyVerified: supplier.companyVerified,
-            rating: supplier.rating || 0,
-            reviewCount: supplier.reviewCount || 0,
-            certifications: supplier.certifications || [],
+            rating: (supplier as any).rating || 0,
+            reviewCount: (supplier as any).reviewCount || 0,
+            certifications: (supplier as any).certifications || [],
             verificationDocuments: supplier.verificationDocuments || [],
             joinedAt: supplier.createdAt,
             lastActive: supplier.lastLoginAt,
             badges: this.getSupplierBadges(supplier, products.length),
-            socialProfiles: supplier.socialProfiles || {}
+            socialProfiles: (supplier as any).socialProfiles || {}
           },
           products: products.slice(0, 10),
           statistics: stats
@@ -348,13 +351,13 @@ export class SupplierController {
 
         return {
           id: supplier._id,
-          name: supplier.company?.name || `${supplier.firstName} ${supplier.lastName}`,
+          name: (supplier.company as any)?.name || `${supplier.firstName} ${supplier.lastName}`,
           email: supplier.email,
           company: supplier.company,
           companyVerified: supplier.companyVerified,
-          rating: supplier.rating || 0,
+          rating: (supplier as any).rating || 0,
           productCount,
-          relevanceScore: supplier.score || 1
+          relevanceScore: (supplier as any).score || 1
         };
       }));
 
@@ -386,11 +389,11 @@ export class SupplierController {
         companyVerified: true,
         rating: { $gte: 4.5 }
       })
-      .populate('company')
-      .select('-password -refreshToken')
-      .sort('-rating -reviewCount')
-      .limit(parseInt(limit as string))
-      .lean();
+        .populate('company')
+        .select('-password -refreshToken')
+        .sort('-rating -reviewCount')
+        .limit(parseInt(limit as string))
+        .lean();
 
       const enhancedSuppliers = await Promise.all(suppliers.map(async (supplier) => {
         const productCount = await Product.countDocuments({
@@ -402,17 +405,17 @@ export class SupplierController {
           supplier: supplier._id,
           status: 'active'
         })
-        .select('name images pricing.basePrice')
-        .sort('-rating')
-        .limit(3)
-        .lean();
+          .select('name images pricing.basePrice')
+          .sort('-rating')
+          .limit(3)
+          .lean();
 
         return {
           id: supplier._id,
-          name: supplier.company?.name || `${supplier.firstName} ${supplier.lastName}`,
-          logo: supplier.company?.logo || supplier.avatar,
-          rating: supplier.rating,
-          reviewCount: supplier.reviewCount,
+          name: (supplier.company as any)?.name || `${supplier.firstName} ${supplier.lastName}`,
+          logo: (supplier.company as any)?.logo || supplier.avatar,
+          rating: (supplier as any).rating,
+          reviewCount: (supplier as any).reviewCount,
           productCount,
           topProducts,
           badges: this.getSupplierBadges(supplier, productCount)
@@ -474,7 +477,7 @@ export class SupplierController {
 
   // Helper methods
 
-  private async getSupplierStatistics(supplierId: mongoose.Types.ObjectId): Promise<any> {
+  private async getSupplierStatistics(supplierId: string | mongoose.Types.ObjectId): Promise<any> {
     const [
       totalProducts,
       activeProducts,
@@ -523,7 +526,7 @@ export class SupplierController {
 
     const accountAge = Date.now() - new Date(supplier.createdAt).getTime();
     const yearInMs = 365 * 24 * 60 * 60 * 1000;
-    
+
     if (accountAge > 2 * yearInMs) {
       badges.push('Trusted Partner');
     } else if (accountAge > yearInMs) {

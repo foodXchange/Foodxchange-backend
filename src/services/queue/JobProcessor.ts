@@ -1,7 +1,9 @@
-import Bull, { Queue, Job, JobOptions, QueueScheduler, Worker } from 'bull';
-import { Logger } from '../../core/logging/logger';
 import { EventEmitter } from 'events';
 import { performance } from 'perf_hooks';
+
+import Bull, { Queue, Job, JobOptions, QueueScheduler, Worker } from 'bull';
+
+import { Logger } from '../../core/logging/logger';
 
 const logger = new Logger('JobProcessor');
 
@@ -37,12 +39,12 @@ type JobHandler = (job: Job<JobData>) => Promise<any>;
 
 export class JobProcessor extends EventEmitter {
   private static instance: JobProcessor;
-  private queues: Map<string, Queue> = new Map();
-  private workers: Map<string, Worker> = new Map();
-  private schedulers: Map<string, QueueScheduler> = new Map();
-  private handlers: Map<string, JobHandler> = new Map();
-  private metrics: Map<string, JobMetrics> = new Map();
-  private redisConfig: any;
+  private readonly queues: Map<string, Queue> = new Map();
+  private readonly workers: Map<string, Worker> = new Map();
+  private readonly schedulers: Map<string, QueueScheduler> = new Map();
+  private readonly handlers: Map<string, JobHandler> = new Map();
+  private readonly metrics: Map<string, JobMetrics> = new Map();
+  private readonly redisConfig: any;
 
   private constructor() {
     super();
@@ -52,7 +54,7 @@ export class JobProcessor extends EventEmitter {
       password: process.env.REDIS_PASSWORD,
       db: parseInt(process.env.REDIS_QUEUE_DB || '2')
     };
-    
+
     // Initialize default queues
     this.initializeDefaultQueues();
   }
@@ -94,7 +96,7 @@ export class JobProcessor extends EventEmitter {
    */
   createQueue(name: string, options?: Bull.QueueOptions): Queue {
     if (this.queues.has(name)) {
-      return this.queues.get(name)!;
+      return this.queues.get(name);
     }
 
     const queue = new Bull(name, {
@@ -131,7 +133,7 @@ export class JobProcessor extends EventEmitter {
     this.queues.set(name, queue);
     this.workers.set(name, worker);
     this.schedulers.set(name, scheduler);
-    
+
     // Initialize metrics
     this.metrics.set(name, {
       processed: 0,
@@ -199,7 +201,7 @@ export class JobProcessor extends EventEmitter {
     const startTime = performance.now();
     const { type, payload, metadata } = job.data;
 
-    logger.info(`Processing job`, {
+    logger.info('Processing job', {
       queue: job.queue.name,
       jobId: job.id,
       type,
@@ -218,7 +220,7 @@ export class JobProcessor extends EventEmitter {
       // Update metrics
       this.updateMetrics(job.queue.name, 'completed', duration);
 
-      logger.info(`Job completed`, {
+      logger.info('Job completed', {
         queue: job.queue.name,
         jobId: job.id,
         type,
@@ -232,11 +234,11 @@ export class JobProcessor extends EventEmitter {
       };
     } catch (error) {
       const duration = performance.now() - startTime;
-      
+
       // Update metrics
       this.updateMetrics(job.queue.name, 'failed', duration);
 
-      logger.error(`Job failed`, error, {
+      logger.error('Job failed', error, {
         queue: job.queue.name,
         jobId: job.id,
         type,
@@ -291,16 +293,16 @@ export class JobProcessor extends EventEmitter {
     this.registerHandler('processImage', async (job) => {
       const { filename, operations } = job.data.payload;
       const { imageOptimizationService } = await import('../optimization/ImageOptimizationService');
-      
+
       // Update job progress
       await job.updateProgress(10);
-      
+
       const result = await imageOptimizationService.processUploadedImage(
         Buffer.from(operations.buffer, 'base64'),
         filename,
         operations.options
       );
-      
+
       await job.updateProgress(100);
       return result;
     });
@@ -356,21 +358,21 @@ export class JobProcessor extends EventEmitter {
   private setupWorkerEvents(worker: Worker, name: string): void {
     worker.on('completed', (job, result) => {
       logger.info(`Job completed: ${job.id} in ${name}`);
-      this.emit('job:completed', { 
-        queue: name, 
-        jobId: job.id, 
+      this.emit('job:completed', {
+        queue: name,
+        jobId: job.id,
         result,
-        duration: result.duration 
+        duration: result.duration
       });
     });
 
     worker.on('failed', (job, error) => {
       logger.error(`Job failed: ${job?.id} in ${name}`, error);
-      this.emit('job:failed', { 
-        queue: name, 
-        jobId: job?.id, 
+      this.emit('job:failed', {
+        queue: name,
+        jobId: job?.id,
         error: error.message,
-        attempt: job?.attemptsMade 
+        attempt: job?.attemptsMade
       });
     });
 
@@ -389,7 +391,7 @@ export class JobProcessor extends EventEmitter {
       if (!queue) {
         throw new Error(`Queue ${queueName} not found`);
       }
-      
+
       const [waiting, active, completed, failed, delayed] = await Promise.all([
         queue.getWaitingCount(),
         queue.getActiveCount(),
@@ -398,8 +400,8 @@ export class JobProcessor extends EventEmitter {
         queue.getDelayedCount()
       ]);
 
-      const metrics = this.metrics.get(queueName)!;
-      
+      const metrics = this.metrics.get(queueName);
+
       return {
         name: queueName,
         waiting,
@@ -414,11 +416,11 @@ export class JobProcessor extends EventEmitter {
 
     // Get metrics for all queues
     const allMetrics: Record<string, any> = {};
-    
+
     for (const [name, queue] of this.queues) {
       allMetrics[name] = await this.getQueueMetrics(name);
     }
-    
+
     return allMetrics;
   }
 
@@ -433,7 +435,7 @@ export class JobProcessor extends EventEmitter {
 
     await queue.clean(grace, 'completed');
     await queue.clean(grace * 2, 'failed');
-    
+
     logger.info(`Cleaned old jobs from ${queueName}`);
   }
 
@@ -445,7 +447,7 @@ export class JobProcessor extends EventEmitter {
     if (!queue) {
       throw new Error(`Queue ${queueName} not found`);
     }
-    
+
     await queue.pause();
     logger.info(`Queue paused: ${queueName}`);
   }
@@ -455,7 +457,7 @@ export class JobProcessor extends EventEmitter {
     if (!queue) {
       throw new Error(`Queue ${queueName} not found`);
     }
-    
+
     await queue.resume();
     logger.info(`Queue resumed: ${queueName}`);
   }
@@ -519,7 +521,7 @@ export class JobProcessor extends EventEmitter {
    */
   async start(): Promise<void> {
     logger.info('Starting job processor...');
-    
+
     // Start all workers
     for (const [name, worker] of this.workers) {
       if (!worker.isRunning()) {
@@ -527,10 +529,10 @@ export class JobProcessor extends EventEmitter {
         logger.info(`Worker started: ${name}`);
       }
     }
-    
+
     // Schedule cleanup jobs
     await this.scheduleCleanupJobs();
-    
+
     logger.info('Job processor started');
   }
 
@@ -539,32 +541,32 @@ export class JobProcessor extends EventEmitter {
    */
   async stop(): Promise<void> {
     logger.info('Stopping job processor...');
-    
+
     // Close all workers
     for (const [name, worker] of this.workers) {
       await worker.close();
       logger.info(`Worker stopped: ${name}`);
     }
-    
+
     // Close all schedulers
     for (const [name, scheduler] of this.schedulers) {
       await scheduler.close();
       logger.info(`Scheduler stopped: ${name}`);
     }
-    
+
     // Close all queues
     for (const [name, queue] of this.queues) {
       await queue.close();
       logger.info(`Queue closed: ${name}`);
     }
-    
+
     logger.info('Job processor stopped');
   }
 
   /**
    * Helper methods
    */
-  
+
   private generateCorrelationId(): string {
     return `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
@@ -572,26 +574,26 @@ export class JobProcessor extends EventEmitter {
   private updateMetrics(queueName: string, status: 'completed' | 'failed', duration: number): void {
     const metrics = this.metrics.get(queueName);
     if (!metrics) return;
-    
+
     metrics.processed++;
     if (status === 'completed') {
       metrics.completed++;
     } else {
       metrics.failed++;
     }
-    
+
     // Update average processing time
-    metrics.averageProcessingTime = 
+    metrics.averageProcessingTime =
       (metrics.averageProcessingTime * (metrics.processed - 1) + duration) / metrics.processed;
   }
 
   private async updateQueueCounts(queueName: string): Promise<void> {
     const queue = this.queues.get(queueName);
     if (!queue) return;
-    
+
     const metrics = this.metrics.get(queueName);
     if (!metrics) return;
-    
+
     [metrics.waiting, metrics.active, metrics.delayed] = await Promise.all([
       queue.getWaitingCount(),
       queue.getActiveCount(),

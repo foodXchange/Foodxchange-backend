@@ -1,7 +1,9 @@
-import { Order, IOrder } from '../models/Order';
-import { BaseRepository } from './base/BaseRepository';
 import { FilterQuery } from 'mongoose';
+
 import { cacheService, cacheKeys } from '../config/redis';
+import { Order, IOrder } from '../models/Order';
+
+import { BaseRepository } from './base/BaseRepository';
 
 export class OrderRepository extends BaseRepository<IOrder> {
   constructor() {
@@ -20,17 +22,17 @@ export class OrderRepository extends BaseRepository<IOrder> {
     } = {}
   ): Promise<any> {
     const filter: FilterQuery<IOrder> = { tenantId };
-    
+
     if (options.status) {
       filter.status = options.status;
     }
-    
+
     if (options.startDate || options.endDate) {
       filter.createdAt = {};
       if (options.startDate) filter.createdAt.$gte = options.startDate;
       if (options.endDate) filter.createdAt.$lte = options.endDate;
     }
-    
+
     return this.paginate(
       filter,
       options.page || 1,
@@ -72,7 +74,7 @@ export class OrderRepository extends BaseRepository<IOrder> {
       updatedBy: userId,
       notes
     };
-    
+
     const order = await this.model.findByIdAndUpdate(
       orderId,
       {
@@ -81,19 +83,19 @@ export class OrderRepository extends BaseRepository<IOrder> {
       },
       { new: true }
     ).exec();
-    
+
     if (order) {
       // Invalidate cache
       await cacheService.del(cacheKeys.order(orderId));
     }
-    
+
     return order;
   }
 
   // Calculate order statistics
   async getOrderStats(tenantId: string, period: 'day' | 'week' | 'month' | 'year' = 'month'): Promise<any> {
     const dateRange = this.getDateRange(period);
-    
+
     const stats = await this.model.aggregate([
       {
         $match: {
@@ -140,7 +142,7 @@ export class OrderRepository extends BaseRepository<IOrder> {
         }
       }
     ]).exec();
-    
+
     return stats[0] || {
       totalOrders: 0,
       totalValue: 0,
@@ -171,13 +173,13 @@ export class OrderRepository extends BaseRepository<IOrder> {
         'payment.updatedAt': new Date()
       }
     };
-    
+
     if (paymentDetails) {
       update.$set['payment.transactionId'] = paymentDetails.transactionId;
       update.$set['payment.method'] = paymentDetails.method;
       update.$set['payment.amount'] = paymentDetails.amount;
     }
-    
+
     return this.update(orderId, update);
   }
 
@@ -202,7 +204,7 @@ export class OrderRepository extends BaseRepository<IOrder> {
   async getOrdersRequiringAction(tenantId: string): Promise<IOrder[]> {
     const twoDaysAgo = new Date();
     twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-    
+
     return this.findAll({
       tenantId,
       $or: [
@@ -217,7 +219,7 @@ export class OrderRepository extends BaseRepository<IOrder> {
   private getDateRange(period: string): { start: Date; end: Date } {
     const end = new Date();
     const start = new Date();
-    
+
     switch (period) {
       case 'day':
         start.setDate(start.getDate() - 1);
@@ -232,7 +234,7 @@ export class OrderRepository extends BaseRepository<IOrder> {
         start.setFullYear(start.getFullYear() - 1);
         break;
     }
-    
+
     return { start, end };
   }
 
@@ -243,9 +245,9 @@ export class OrderRepository extends BaseRepository<IOrder> {
     endDate: Date,
     groupBy: 'day' | 'week' | 'month' = 'day'
   ): Promise<any[]> {
-    const dateFormat = groupBy === 'day' ? '%Y-%m-%d' : 
-                      groupBy === 'week' ? '%Y-%U' : '%Y-%m';
-    
+    const dateFormat = groupBy === 'day' ? '%Y-%m-%d' :
+      groupBy === 'week' ? '%Y-%U' : '%Y-%m';
+
     return this.model.aggregate([
       {
         $match: {

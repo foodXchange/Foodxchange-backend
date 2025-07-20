@@ -19,7 +19,7 @@ const complianceQueue = new Bull('compliance-queue', { redis: redisConfig });
 emailQueue.process(async (job) => {
   const { type, data } = job.data;
   const emailService = require('../services/emailService');
-  
+
   switch (type) {
     case 'meeting_invitation':
       await emailService.sendMeetingInvitation(data.email, data.meeting);
@@ -42,7 +42,7 @@ emailQueue.process(async (job) => {
 analyticsQueue.process(async (job) => {
   const { userId, period } = job.data;
   const AnalyticsService = require('../services/analytics/AnalyticsService');
-  
+
   await AnalyticsService.generateUserAnalytics(userId, period);
 });
 
@@ -50,9 +50,9 @@ analyticsQueue.process(async (job) => {
 matchingQueue.process(async (job) => {
   const { buyerId, requirements } = job.data;
   const SmartMatchingService = require('../services/matching/SmartMatchingService');
-  
+
   const matches = await SmartMatchingService.findSupplierMatches(buyerId, requirements);
-  
+
   // Store matches or send notifications
   if (matches.length > 0) {
     emailQueue.add({
@@ -66,14 +66,14 @@ matchingQueue.process(async (job) => {
 scoringQueue.process(async (job) => {
   const { supplierId } = job.data;
   const SupplierScoringService = require('../services/scoring/SupplierScoringService');
-  
+
   await SupplierScoringService.calculateSupplierScore(supplierId);
 });
 
 // Compliance Queue Processor
 complianceQueue.process(async (job) => {
   const ComplianceService = require('../services/compliance/ComplianceService');
-  
+
   // Check for expiring certifications
   await ComplianceService.checkExpiringCertifications();
 });
@@ -86,14 +86,14 @@ const scheduleJobs = () => {
     { period: 'daily' },
     { repeat: { cron: '0 2 * * *' } } // 2 AM daily
   );
-  
+
   // Weekly supplier scoring
   scoringQueue.add(
     'weekly-scoring',
     {},
     { repeat: { cron: '0 3 * * 1' } } // Monday 3 AM
   );
-  
+
   // Daily compliance check
   complianceQueue.add(
     'compliance-check',

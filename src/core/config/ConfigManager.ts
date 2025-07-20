@@ -1,8 +1,11 @@
-import { z } from 'zod';
-import { Logger } from '../logging/logger';
-import * as path from 'path';
 import * as fs from 'fs';
+import * as path from 'path';
+
 import * as dotenv from 'dotenv';
+import { z } from 'zod';
+
+import { Logger } from '../logging/logger';
+
 
 const logger = new Logger('ConfigManager');
 
@@ -11,7 +14,7 @@ const environmentSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'staging', 'production']).default('development'),
   PORT: z.coerce.number().min(1000).max(65535).default(5000),
   HOST: z.string().default('0.0.0.0'),
-  
+
   // Database configuration
   MONGODB_URI: z.string().url(),
   DB_NAME: z.string().default('foodxchange'),
@@ -22,33 +25,33 @@ const environmentSchema = z.object({
   DB_SOCKET_TIMEOUT: z.coerce.number().min(1000).default(45000),
   DB_WRITE_TIMEOUT: z.coerce.number().min(1000).default(2500),
   DB_MONITORING_INTERVAL: z.coerce.number().min(10000).default(60000),
-  
+
   // Redis configuration
   REDIS_URL: z.string().url().optional(),
   REDIS_TTL: z.coerce.number().min(60).default(300),
   REDIS_MAX_RETRIES: z.coerce.number().min(1).default(3),
   REDIS_RETRY_DELAY: z.coerce.number().min(100).default(1000),
-  
+
   // Authentication configuration
   JWT_SECRET: z.string().min(32),
   JWT_EXPIRES_IN: z.string().default('1h'),
   JWT_REFRESH_SECRET: z.string().min(32),
   JWT_REFRESH_EXPIRES_IN: z.string().default('30d'),
   BCRYPT_ROUNDS: z.coerce.number().min(10).max(15).default(12),
-  
+
   // API configuration
   API_PREFIX: z.string().default('/api/v1'),
   API_RATE_LIMIT_WINDOW: z.coerce.number().min(60000).default(900000), // 15 minutes
   API_RATE_LIMIT_MAX: z.coerce.number().min(1).default(100),
   API_TIMEOUT: z.coerce.number().min(1000).default(30000),
   API_MAX_REQUEST_SIZE: z.coerce.number().min(1024).default(10485760), // 10MB
-  
+
   // Security configuration
   CORS_ORIGIN: z.string().default('*'),
   CORS_CREDENTIALS: z.coerce.boolean().default(true),
   HELMET_ENABLED: z.coerce.boolean().default(true),
   SECURITY_HEADERS_ENABLED: z.coerce.boolean().default(true),
-  
+
   // Logging configuration
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
   LOG_DIR: z.string().default('logs'),
@@ -56,7 +59,7 @@ const environmentSchema = z.object({
   LOG_TO_FILE: z.coerce.boolean().default(true),
   LOG_MAX_SIZE: z.string().default('20m'),
   LOG_MAX_FILES: z.string().default('14d'),
-  
+
   // Email configuration
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().min(1).max(65535).optional(),
@@ -64,12 +67,12 @@ const environmentSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   EMAIL_FROM: z.string().email().optional(),
-  
+
   // File upload configuration
   UPLOAD_MAX_SIZE: z.coerce.number().min(1024).default(5242880), // 5MB
   UPLOAD_ALLOWED_TYPES: z.string().default('image/jpeg,image/png,image/gif,application/pdf'),
   UPLOAD_DIR: z.string().default('uploads'),
-  
+
   // External service configuration
   AZURE_STORAGE_CONNECTION_STRING: z.string().optional(),
   AZURE_STORAGE_CONTAINER: z.string().default('uploads'),
@@ -77,13 +80,13 @@ const environmentSchema = z.object({
   AZURE_OPENAI_ENDPOINT: z.string().url().optional(),
   AZURE_COGNITIVE_SERVICES_KEY: z.string().optional(),
   AZURE_COGNITIVE_SERVICES_ENDPOINT: z.string().url().optional(),
-  
+
   // Monitoring configuration
   METRICS_ENABLED: z.coerce.boolean().default(true),
   METRICS_PORT: z.coerce.number().min(1000).max(65535).default(9090),
   HEALTH_CHECK_ENABLED: z.coerce.boolean().default(true),
   PERFORMANCE_MONITORING_ENABLED: z.coerce.boolean().default(true),
-  
+
   // Feature flags
   FEATURE_USER_REGISTRATION: z.coerce.boolean().default(true),
   FEATURE_EMAIL_VERIFICATION: z.coerce.boolean().default(true),
@@ -91,7 +94,7 @@ const environmentSchema = z.object({
   FEATURE_ANALYTICS: z.coerce.boolean().default(true),
   FEATURE_CACHING: z.coerce.boolean().default(true),
   FEATURE_RATE_LIMITING: z.coerce.boolean().default(true),
-  
+
   // Development configuration
   DEV_MOCK_EXTERNAL_SERVICES: z.coerce.boolean().default(false),
   DEV_SEED_DATABASE: z.coerce.boolean().default(false),
@@ -113,8 +116,8 @@ export class ConfigManager {
   private static instance: ConfigManager;
   private config: EnvironmentConfig;
   private validationResult: ConfigValidationResult;
-  private loadedAt: Date;
-  private configSources: string[] = [];
+  private readonly loadedAt: Date;
+  private readonly configSources: string[] = [];
 
   private constructor() {
     this.loadedAt = new Date();
@@ -131,10 +134,10 @@ export class ConfigManager {
   private loadConfiguration(): void {
     // Load environment files in order of precedence
     this.loadEnvironmentFiles();
-    
+
     // Validate configuration
     this.validationResult = this.validateConfiguration();
-    
+
     if (!this.validationResult.isValid) {
       logger.error('Configuration validation failed', {
         errors: this.validationResult.errors,
@@ -145,7 +148,7 @@ export class ConfigManager {
 
     // Parse and set configuration
     this.config = environmentSchema.parse(process.env);
-    
+
     // Log configuration status
     this.logConfigurationStatus();
   }
@@ -182,7 +185,7 @@ export class ConfigManager {
         for (const issue of error.issues) {
           const path = issue.path.join('.');
           errors.push(`${path}: ${issue.message}`);
-          
+
           if (issue.code === 'invalid_type' && issue.received === 'undefined') {
             missingRequired.push(path);
           }
@@ -211,11 +214,11 @@ export class ConfigManager {
       if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
         errors.push('JWT_SECRET must be at least 32 characters in production');
       }
-      
-      if (!process.env.MONGODB_URI || !process.env.MONGODB_URI.includes('mongodb')) {
+
+      if (!process.env.MONGODB_URI?.includes('mongodb')) {
         errors.push('MONGODB_URI must be a valid MongoDB connection string in production');
       }
-      
+
       if (process.env.LOG_LEVEL === 'debug') {
         warnings.push('DEBUG log level is not recommended for production');
       }
@@ -302,7 +305,7 @@ export class ConfigManager {
     socketTimeout: number;
     writeTimeout: number;
     monitoringInterval: number;
-  } {
+    } {
     return {
       uri: this.config.MONGODB_URI,
       name: this.config.DB_NAME,
@@ -321,7 +324,7 @@ export class ConfigManager {
     ttl: number;
     maxRetries: number;
     retryDelay: number;
-  } {
+    } {
     return {
       url: this.config.REDIS_URL,
       ttl: this.config.REDIS_TTL,
@@ -335,7 +338,7 @@ export class ConfigManager {
     expiresIn: string;
     refreshSecret: string;
     refreshExpiresIn: string;
-  } {
+    } {
     return {
       secret: this.config.JWT_SECRET,
       expiresIn: this.config.JWT_EXPIRES_IN,
@@ -350,7 +353,7 @@ export class ConfigManager {
     rateLimitMax: number;
     timeout: number;
     maxRequestSize: number;
-  } {
+    } {
     return {
       prefix: this.config.API_PREFIX,
       rateLimitWindow: this.config.API_RATE_LIMIT_WINDOW,
@@ -367,7 +370,7 @@ export class ConfigManager {
     toFile: boolean;
     maxSize: string;
     maxFiles: string;
-  } {
+    } {
     return {
       level: this.config.LOG_LEVEL,
       dir: this.config.LOG_DIR,
@@ -383,7 +386,7 @@ export class ConfigManager {
     corsCredentials: boolean;
     helmetEnabled: boolean;
     securityHeadersEnabled: boolean;
-  } {
+    } {
     return {
       corsOrigin: this.config.CORS_ORIGIN,
       corsCredentials: this.config.CORS_CREDENTIALS,
@@ -494,9 +497,9 @@ DEV_ENABLE_DEBUG_ROUTES=false
     sources: string[];
     validation: ConfigValidationResult;
     features: Record<string, boolean>;
-  } {
+    } {
     const features: Record<string, boolean> = {};
-    
+
     // Extract feature flags
     for (const [key, value] of Object.entries(this.config)) {
       if (key.startsWith('FEATURE_')) {

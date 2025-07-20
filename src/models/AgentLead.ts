@@ -6,7 +6,7 @@ const agentLeadSchema = new mongoose.Schema({
     unique: true,
     required: true
   },
-  
+
   // Lead Source
   source: {
     type: {
@@ -23,7 +23,7 @@ const agentLeadSchema = new mongoose.Schema({
       enum: ['RFQ', 'SampleRequest', 'Request', 'Product']
     }
   },
-  
+
   // Lead Details
   leadInfo: {
     title: { type: String, required: true, trim: true },
@@ -59,7 +59,7 @@ const agentLeadSchema = new mongoose.Schema({
       }
     }
   },
-  
+
   // Buyer Information
   buyer: {
     userId: {
@@ -90,7 +90,7 @@ const agentLeadSchema = new mongoose.Schema({
       preferredPaymentTerms: String
     }
   },
-  
+
   // Agent Assignment
   assignment: {
     method: {
@@ -132,14 +132,14 @@ const agentLeadSchema = new mongoose.Schema({
     acceptedAt: Date,
     protectedUntil: Date // 30-day exclusivity period
   },
-  
+
   // Lead Status and Tracking
   status: {
     type: String,
     enum: ['pending', 'assigned', 'accepted', 'in_progress', 'quoted', 'negotiating', 'closed_won', 'closed_lost', 'expired', 'cancelled'],
     default: 'pending'
   },
-  
+
   workflow: {
     currentStep: {
       type: String,
@@ -150,7 +150,7 @@ const agentLeadSchema = new mongoose.Schema({
     nextAction: String,
     dueDate: Date
   },
-  
+
   // Lead Interaction Timeline
   interactions: [{
     type: {
@@ -178,7 +178,7 @@ const agentLeadSchema = new mongoose.Schema({
     completedAt: { type: Date, default: Date.now },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
   }],
-  
+
   // Supplier Matching and Proposals
   suppliers: [{
     supplierId: {
@@ -201,7 +201,7 @@ const agentLeadSchema = new mongoose.Schema({
     },
     contactedAt: Date,
     responseTime: Number, // hours
-    
+
     // Proposal Details
     proposal: {
       submittedAt: Date,
@@ -231,7 +231,7 @@ const agentLeadSchema = new mongoose.Schema({
       documents: [String],
       notes: String
     },
-    
+
     // Evaluation
     evaluation: {
       scores: [{
@@ -246,7 +246,7 @@ const agentLeadSchema = new mongoose.Schema({
       recommendation: String
     }
   }],
-  
+
   // Commission and Financial Details
   financial: {
     estimatedCommission: {
@@ -274,12 +274,12 @@ const agentLeadSchema = new mongoose.Schema({
       amount: Number
     }
   },
-  
+
   // Performance Metrics
   metrics: {
     responseTime: {
       firstResponse: Number, // minutes
-      averageResponse: Number, // minutes
+      averageResponse: Number // minutes
     },
     timeToClose: Number, // hours
     touchPoints: { type: Number, default: 0 },
@@ -289,7 +289,7 @@ const agentLeadSchema = new mongoose.Schema({
     proposalsGenerated: { type: Number, default: 0 },
     conversionProbability: { type: Number, min: 0, max: 100 }
   },
-  
+
   // Lead Scoring and AI Insights
   scoring: {
     leadScore: { type: Number, min: 0, max: 100 },
@@ -314,7 +314,7 @@ const agentLeadSchema = new mongoose.Schema({
       }]
     }
   },
-  
+
   // Compliance and Quality
   compliance: {
     requiredCertifications: [String],
@@ -330,7 +330,7 @@ const agentLeadSchema = new mongoose.Schema({
       notes: String
     }
   },
-  
+
   // Feedback and Quality Control
   feedback: {
     buyerFeedback: {
@@ -352,7 +352,7 @@ const agentLeadSchema = new mongoose.Schema({
       improvements: String
     }
   },
-  
+
   // Timestamps and Tracking
   deadlines: {
     responseDeadline: Date,
@@ -360,16 +360,16 @@ const agentLeadSchema = new mongoose.Schema({
     decisionDeadline: Date,
     deliveryDeadline: Date
   },
-  
+
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
   closedAt: Date,
-  
+
   // System Fields
   version: { type: Number, default: 1 },
   archived: { type: Boolean, default: false },
   archivedAt: Date,
-  
+
   // Tags and Categories
   tags: [String],
   internalNotes: [String]
@@ -443,3 +443,4 @@ agentLeadSchema.index({ 'leadInfo.category': 1, status: 1, 'leadInfo.urgency': 1
 agentLeadSchema.index({ 'assignment.assignedAgents.status': 1, 'assignment.assignedAgents.assignedAt': 1 });
 
 module.exports = mongoose.model('AgentLead', agentLeadSchema);
+export default mongoose.model('AgentLead', agentLeadSchema);

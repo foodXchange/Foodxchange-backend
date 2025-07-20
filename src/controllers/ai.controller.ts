@@ -1,24 +1,21 @@
 import { Request, Response } from 'express';
+
 import { AuthRequest } from '../middleware/auth.middleware';
 import { Product } from '../models/Product';
 import { RFQ } from '../models/RFQ';
+import { computerVisionService } from '../services/azure/computerVision.service';
+import { documentIntelligenceService } from '../services/azure/documentIntelligence.service';
 import { OpenAIService } from '../services/azure/openAI.service';
-import { ComputerVisionService } from '../services/azure/computerVision.service';
-import { DocumentIntelligenceService } from '../services/azure/documentIntelligence.service';
-import { AzureStorageService } from '../services/azure/storage.service';
+import { storageService } from '../services/azure/storage.service';
 
 // Initialize services (lazy loading)
 let openAIService: OpenAIService;
-let visionService: ComputerVisionService;
-let documentService: DocumentIntelligenceService;
-let storageService: AzureStorageService;
+const visionService = computerVisionService;
+const documentService = documentIntelligenceService;
 
 const getServices = () => {
   if (!openAIService) {
     openAIService = new OpenAIService();
-    visionService = new ComputerVisionService();
-    documentService = new DocumentIntelligenceService();
-    storageService = new AzureStorageService();
   }
   return { openAIService, visionService, documentService, storageService };
 };
@@ -41,7 +38,7 @@ export const analyzeProductImage = async (req: AuthRequest, res: Response) => {
 
     // Analyze image with Computer Vision
     const imageAnalysis = await visionService.analyzeProductImage(imageUrl);
-    
+
     // Generate insights with OpenAI
     const insights = await openAIService.generateProductInsights({
       imageAnalysis,
@@ -302,6 +299,7 @@ export const uploadFile = async (req: AuthRequest, res: Response) => {
       req.file.buffer,
       req.file.mimetype,
       {
+        originalName: req.file.originalname,
         uploadedBy: req.user?.id || 'unknown',
         entityType: 'order',
         entityId: 'ai-upload'

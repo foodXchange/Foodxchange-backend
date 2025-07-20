@@ -1,20 +1,21 @@
 import { Request, Response } from 'express';
-import { getRecommendationService } from '../services/ai/RecommendationService';
-import { Logger } from '../core/logging/logger';
+
 import { ValidationError } from '../core/errors';
+import { Logger } from '../core/logging/logger';
+import { getRecommendationService } from '../services/ai/RecommendationService';
 
 const logger = new Logger('RecommendationController');
 
 export class RecommendationController {
-  private recommendationService = getRecommendationService();
+  private readonly recommendationService = getRecommendationService();
 
   /**
    * Get personalized product recommendations
    */
   async getPersonalizedRecommendations(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
-      const userId = req.userId!;
+      const {tenantId} = req;
+      const {userId} = req;
       const {
         limit = 20,
         categories,
@@ -54,8 +55,8 @@ export class RecommendationController {
    */
   async advancedSearch(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
-      const userId = req.userId!;
+      const {tenantId} = req;
+      const {userId} = req;
       const { q: query } = req.query;
 
       if (!query || (query as string).trim().length < 2) {
@@ -90,7 +91,7 @@ export class RecommendationController {
       });
     } catch (error) {
       logger.error('Advanced search error:', error);
-      
+
       if (error instanceof ValidationError) {
         res.status(400).json({
           success: false,
@@ -110,7 +111,7 @@ export class RecommendationController {
    */
   async getSearchSuggestions(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
+      const {tenantId} = req;
       const { q: query } = req.query;
 
       if (!query || (query as string).length < 2) {
@@ -146,8 +147,8 @@ export class RecommendationController {
    */
   async getRecommendationsByCategory(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
-      const userId = req.userId!;
+      const {tenantId} = req;
+      const {userId} = req;
       const { category } = req.params;
       const { limit = 10 } = req.query;
 
@@ -171,7 +172,7 @@ export class RecommendationController {
       });
     } catch (error) {
       logger.error('Get recommendations by category error:', error);
-      
+
       if (error instanceof ValidationError) {
         res.status(400).json({
           success: false,
@@ -191,8 +192,8 @@ export class RecommendationController {
    */
   async getTrendingProducts(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
-      const userId = req.userId!;
+      const {tenantId} = req;
+      const {userId} = req;
       const { categories, limit = 10 } = req.query;
 
       const options = {
@@ -226,8 +227,8 @@ export class RecommendationController {
    */
   async getSimilarProducts(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
-      const userId = req.userId!;
+      const {tenantId} = req;
+      const {userId} = req;
       const { productId } = req.params;
       const { limit = 6 } = req.query;
 
@@ -250,7 +251,7 @@ export class RecommendationController {
       });
     } catch (error) {
       logger.error('Get similar products error:', error);
-      
+
       if (error instanceof ValidationError) {
         res.status(400).json({
           success: false,
@@ -270,8 +271,8 @@ export class RecommendationController {
    */
   async getRecommendationsForRFQ(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
-      const userId = req.userId!;
+      const {tenantId} = req;
+      const {userId} = req;
       const { rfqId } = req.params;
       const { limit = 10 } = req.query;
 
@@ -296,7 +297,7 @@ export class RecommendationController {
       });
     } catch (error) {
       logger.error('Get recommendations for RFQ error:', error);
-      
+
       if (error instanceof ValidationError) {
         res.status(400).json({
           success: false,
@@ -316,8 +317,8 @@ export class RecommendationController {
    */
   async getSeasonalRecommendations(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
-      const userId = req.userId!;
+      const {tenantId} = req;
+      const {userId} = req;
       const { limit = 10 } = req.query;
 
       const seasonalRecommendations = await this.recommendationService.getSeasonalRecommendations(
@@ -344,8 +345,8 @@ export class RecommendationController {
    */
   async getLocationBasedRecommendations(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
-      const userId = req.userId!;
+      const {tenantId} = req;
+      const {userId} = req;
       const { location } = req.query;
       const { limit = 10 } = req.query;
 
@@ -366,7 +367,7 @@ export class RecommendationController {
       });
     } catch (error) {
       logger.error('Get location-based recommendations error:', error);
-      
+
       if (error instanceof ValidationError) {
         res.status(400).json({
           success: false,
@@ -386,11 +387,11 @@ export class RecommendationController {
    */
   async trackRecommendationInteraction(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
-      const userId = req.userId!;
-      const { 
-        recommendationId, 
-        productId, 
+      const {tenantId} = req;
+      const {userId} = req;
+      const {
+        recommendationId,
+        productId,
         action, // 'view', 'click', 'add_to_cart', 'purchase'
         position,
         recommendationType
@@ -420,7 +421,7 @@ export class RecommendationController {
       });
     } catch (error) {
       logger.error('Track recommendation interaction error:', error);
-      
+
       if (error instanceof ValidationError) {
         res.status(400).json({
           success: false,

@@ -1,5 +1,6 @@
-import { jobProcessor } from './JobProcessor';
 import { Logger } from '../../core/logging/logger';
+
+import { jobProcessor } from './JobProcessor';
 
 const logger = new Logger('JobHelpers');
 
@@ -30,13 +31,13 @@ export async function queueEmail(
       priority: options?.priority || 0,
       delay: options?.delay
     });
-    
-    logger.info(`Email job queued`, {
+
+    logger.info('Email job queued', {
       jobId: job.id,
       to: Array.isArray(to) ? to.join(', ') : to,
       subject
     });
-    
+
     return job;
   } catch (error) {
     logger.error('Failed to queue email job', error);
@@ -63,12 +64,12 @@ export async function queueSMS(
       priority: options?.priority || 0,
       delay: options?.delay
     });
-    
-    logger.info(`SMS job queued`, {
+
+    logger.info('SMS job queued', {
       jobId: job.id,
       to
     });
-    
+
     return job;
   } catch (error) {
     logger.error('Failed to queue SMS job', error);
@@ -100,14 +101,14 @@ export async function queueExport(
     }, {
       priority: 1 // Higher priority for user-initiated exports
     });
-    
-    logger.info(`Export job queued`, {
+
+    logger.info('Export job queued', {
       jobId: job.id,
       type,
       format,
       userId
     });
-    
+
     return job;
   } catch (error) {
     logger.error('Failed to queue export job', error);
@@ -139,14 +140,14 @@ export async function queueImport(
     }, {
       priority: 1
     });
-    
-    logger.info(`Import job queued`, {
+
+    logger.info('Import job queued', {
       jobId: job.id,
       type,
       fileUrl,
       userId
     });
-    
+
     return job;
   } catch (error) {
     logger.error('Failed to queue import job', error);
@@ -177,13 +178,13 @@ export async function queueAnalytics(
     }, {
       priority: options?.schedule ? -1 : 0 // Lower priority for scheduled reports
     });
-    
-    logger.info(`Analytics job queued`, {
+
+    logger.info('Analytics job queued', {
       jobId: job.id,
       reportType,
       dateRange
     });
-    
+
     return job;
   } catch (error) {
     logger.error('Failed to queue analytics job', error);
@@ -211,12 +212,12 @@ export async function queueImageProcessing(
     }, {
       priority: 0
     });
-    
-    logger.info(`Image processing job queued`, {
+
+    logger.info('Image processing job queued', {
       jobId: job.id,
       filename
     });
-    
+
     return job;
   } catch (error) {
     logger.error('Failed to queue image processing job', error);
@@ -245,13 +246,13 @@ export async function queueNotification(
     }, {
       priority: 2 // High priority for notifications
     });
-    
-    logger.info(`Notification job queued`, {
+
+    logger.info('Notification job queued', {
       jobId: job.id,
       userId,
       type: notification.type
     });
-    
+
     return job;
   } catch (error) {
     logger.error('Failed to queue notification job', error);
@@ -273,13 +274,13 @@ export async function queueCleanup(
     }, {
       priority: -5 // Very low priority
     });
-    
-    logger.info(`Cleanup job queued`, {
+
+    logger.info('Cleanup job queued', {
       jobId: job.id,
       type,
       olderThan
     });
-    
+
     return job;
   } catch (error) {
     logger.error('Failed to queue cleanup job', error);
@@ -295,17 +296,17 @@ export async function waitForJob(jobId: string, queueName: string, timeout: numb
   if (!queue) {
     throw new Error(`Queue ${queueName} not found`);
   }
-  
+
   const job = await queue.getJob(jobId);
   if (!job) {
     throw new Error(`Job ${jobId} not found`);
   }
-  
+
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       reject(new Error('Job timeout'));
     }, timeout);
-    
+
     job.finished().then(result => {
       clearTimeout(timer);
       resolve(result);
@@ -335,7 +336,7 @@ export async function scheduleRecurringJobs() {
       },
       '0 2 * * *' // 2 AM daily
     );
-    
+
     // Weekly cleanup
     await jobProcessor.scheduleRecurringJob(
       'cleanup',
@@ -347,7 +348,7 @@ export async function scheduleRecurringJobs() {
       },
       '0 3 * * 0' // 3 AM on Sundays
     );
-    
+
     // Hourly cache cleanup
     await jobProcessor.scheduleRecurringJob(
       'cleanup',
@@ -359,7 +360,7 @@ export async function scheduleRecurringJobs() {
       },
       '0 * * * *' // Every hour
     );
-    
+
     logger.info('Recurring jobs scheduled');
   } catch (error) {
     logger.error('Failed to schedule recurring jobs', error);
@@ -371,7 +372,7 @@ export async function scheduleRecurringJobs() {
  */
 export function onJobProgress(callback: (event: any) => void) {
   jobProcessor.on('job:progress', callback);
-  
+
   // Return unsubscribe function
   return () => {
     jobProcessor.off('job:progress', callback);
@@ -383,7 +384,7 @@ export function onJobProgress(callback: (event: any) => void) {
  */
 export function onJobComplete(callback: (event: any) => void) {
   jobProcessor.on('job:completed', callback);
-  
+
   // Return unsubscribe function
   return () => {
     jobProcessor.off('job:completed', callback);
@@ -395,7 +396,7 @@ export function onJobComplete(callback: (event: any) => void) {
  */
 export function onJobFailed(callback: (event: any) => void) {
   jobProcessor.on('job:failed', callback);
-  
+
   // Return unsubscribe function
   return () => {
     jobProcessor.off('job:failed', callback);

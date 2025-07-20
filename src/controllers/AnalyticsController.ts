@@ -1,19 +1,20 @@
 import { Request, Response } from 'express';
-import { getAnalyticsService } from '../services/analytics/AnalyticsService';
-import { Logger } from '../core/logging/logger';
+
 import { ValidationError } from '../core/errors';
+import { Logger } from '../core/logging/logger';
+import { getAnalyticsService } from '../services/analytics/AnalyticsService';
 
 const logger = new Logger('AnalyticsController');
 
 export class AnalyticsController {
-  private analyticsService = getAnalyticsService();
+  private readonly analyticsService = getAnalyticsService();
 
   /**
    * Get dashboard metrics
    */
   async getDashboardMetrics(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
+      const {tenantId} = req;
       const { startDate, endDate, compareWith } = req.query;
 
       const filters: any = {};
@@ -42,7 +43,7 @@ export class AnalyticsController {
    */
   async generateReport(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
+      const {tenantId} = req;
       const { startDate, endDate, category, companyId, productId, userId, groupBy } = req.query;
 
       if (!startDate || !endDate) {
@@ -69,7 +70,7 @@ export class AnalyticsController {
       });
     } catch (error) {
       logger.error('Generate report error:', error);
-      
+
       if (error instanceof ValidationError) {
         res.status(400).json({
           success: false,
@@ -89,7 +90,7 @@ export class AnalyticsController {
    */
   async getRealTimeAnalytics(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
+      const {tenantId} = req;
       const analytics = await this.analyticsService.getRealTimeAnalytics(tenantId);
 
       res.json({
@@ -111,14 +112,14 @@ export class AnalyticsController {
    */
   async trackEvent(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
-      const userId = req.userId;
+      const {tenantId} = req;
+      const {userId} = req;
       const eventData = {
         ...req.body,
         tenantId,
         userId,
         timestamp: new Date(),
-        sessionId: req.sessionId,
+        sessionId: (req as any).sessionId || req.headers['x-session-id'] as string,
         userAgent: req.get('User-Agent'),
         ipAddress: req.ip
       };
@@ -143,7 +144,7 @@ export class AnalyticsController {
    */
   async getAnalyticsByCategory(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
+      const {tenantId} = req;
       const { category } = req.params;
       const { startDate, endDate, limit = 100 } = req.query;
 
@@ -173,7 +174,7 @@ export class AnalyticsController {
    */
   async getTopProducts(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
+      const {tenantId} = req;
       const { startDate, endDate, limit = 10 } = req.query;
 
       const endDateObj = endDate ? new Date(endDate as string) : new Date();
@@ -200,7 +201,7 @@ export class AnalyticsController {
    */
   async getRevenueTrends(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
+      const {tenantId} = req;
       const { startDate, endDate, groupBy = 'month' } = req.query;
 
       const endDateObj = endDate ? new Date(endDate as string) : new Date();
@@ -227,7 +228,7 @@ export class AnalyticsController {
    */
   async getUserAnalytics(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
+      const {tenantId} = req;
       const { startDate, endDate } = req.query;
 
       const endDateObj = endDate ? new Date(endDate as string) : new Date();
@@ -258,7 +259,7 @@ export class AnalyticsController {
    */
   async getExportData(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
+      const {tenantId} = req;
       const { type, startDate, endDate, format = 'json' } = req.query;
 
       if (!startDate || !endDate) {
@@ -299,7 +300,7 @@ export class AnalyticsController {
       });
     } catch (error) {
       logger.error('Get export data error:', error);
-      
+
       if (error instanceof ValidationError) {
         res.status(400).json({
           success: false,

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { rateLimitingService } from '../services/security/RateLimitingService';
+
 import { Logger } from '../core/logging/logger';
+import { rateLimitingService } from '../services/security/RateLimitingService';
 
 const logger = new Logger('RateLimitingMiddleware');
 
@@ -44,7 +45,7 @@ export const rateLimit = (options: RateLimitOptions = {}) => {
       }
 
       const key = keyGenerator(req);
-      
+
       // Check blacklist first
       const blacklistCheck = await rateLimitingService.isBlacklisted(key);
       if (blacklistCheck.blocked) {
@@ -88,7 +89,7 @@ export const rateLimit = (options: RateLimitOptions = {}) => {
 
       if (!result.allowed) {
         logger.warn(`Rate limit exceeded for key: ${key}`);
-        
+
         if (result.info.retryAfter) {
           res.setHeader('Retry-After', result.info.retryAfter);
         }
@@ -153,14 +154,14 @@ export const tierRateLimit = () => {
       // Set tier-specific headers
       res.setHeader('X-RateLimit-Tier', result.info.tier);
       res.setHeader('X-RateLimit-Limit', JSON.stringify(result.info.limits));
-      
+
       if (result.info.remaining !== undefined) {
         res.setHeader('X-RateLimit-Remaining', result.info.remaining);
       }
 
       if (!result.allowed) {
         logger.warn(`Tier rate limit exceeded for user: ${userId} (${userTier})`);
-        
+
         return res.status(429).json({
           success: false,
           error: {
@@ -188,7 +189,7 @@ export const ipRateLimit = (options?: { windowMs?: number; max?: number }) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
       const ip = getClientIP(req);
-      
+
       const result = await rateLimitingService.checkIPLimit(ip, {
         windowMs: options?.windowMs,
         maxRequests: options?.max
@@ -196,7 +197,7 @@ export const ipRateLimit = (options?: { windowMs?: number; max?: number }) => {
 
       if (!result.allowed) {
         logger.warn(`IP rate limit exceeded: ${ip}`);
-        
+
         return res.status(429).json({
           success: false,
           error: {
@@ -221,7 +222,7 @@ export const apiKeyRateLimit = (options?: { windowMs?: number; max?: number }) =
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
       const apiKey = req.headers['x-api-key'] as string;
-      
+
       if (!apiKey) {
         return next();
       }
@@ -238,7 +239,7 @@ export const apiKeyRateLimit = (options?: { windowMs?: number; max?: number }) =
 
       if (!result.allowed) {
         logger.warn(`API key rate limit exceeded: ${apiKey.substring(0, 8)}...`);
-        
+
         return res.status(429).json({
           success: false,
           error: {
@@ -269,7 +270,7 @@ export const endpointRateLimit = (
     try {
       const actualEndpoint = endpoint || req.route?.path || req.path;
       const key = defaultKeyGenerator(req);
-      
+
       const result = await rateLimitingService.checkEndpointLimit(
         actualEndpoint,
         key,
@@ -281,7 +282,7 @@ export const endpointRateLimit = (
 
       if (!result.allowed) {
         logger.warn(`Endpoint rate limit exceeded: ${actualEndpoint} for ${key}`);
-        
+
         return res.status(429).json({
           success: false,
           error: {
@@ -308,7 +309,7 @@ export const adaptiveRateLimit = (baseLimit: number = 100) => {
     try {
       const key = defaultKeyGenerator(req);
       const systemLoad = await getSystemLoad();
-      
+
       const result = await rateLimitingService.checkAdaptiveLimit(
         key,
         baseLimit,
@@ -322,7 +323,7 @@ export const adaptiveRateLimit = (baseLimit: number = 100) => {
 
       if (!result.allowed) {
         logger.warn(`Adaptive rate limit exceeded for ${key} (load: ${systemLoad})`);
-        
+
         return res.status(503).json({
           success: false,
           error: {
@@ -352,7 +353,7 @@ export const distributedRateLimit = (
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
       const key = defaultKeyGenerator(req);
-      
+
       const result = await rateLimitingService.checkDistributedLimit(
         key,
         limit,
@@ -361,7 +362,7 @@ export const distributedRateLimit = (
 
       if (!result.allowed) {
         logger.warn(`Distributed rate limit exceeded for ${key}`);
-        
+
         return res.status(429).json({
           success: false,
           error: {
@@ -382,7 +383,7 @@ export const distributedRateLimit = (
 // Helper functions
 
 function defaultKeyGenerator(req: Request): string {
-  const user = (req as any).user;
+  const {user} = (req as any);
   if (user?.id) {
     return `user:${user.id}`;
   }
@@ -402,7 +403,7 @@ async function getSystemLoad(): Promise<number> {
   const usage = process.memoryUsage();
   const totalMemory = require('os').totalmem();
   const memoryLoad = usage.heapUsed / totalMemory;
-  
+
   // Could also factor in CPU usage, active connections, etc.
   return Math.min(memoryLoad * 2, 1); // Scale to 0-1
 }
@@ -412,9 +413,9 @@ export const rateLimitPresets = {
   strict: rateLimit({ windowMs: 60000, max: 10 }),
   standard: rateLimit({ windowMs: 60000, max: 100 }),
   relaxed: rateLimit({ windowMs: 60000, max: 1000 }),
-  
+
   auth: {
-    login: rateLimit({ 
+    login: rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes
       max: 5,
       skipSuccessfulRequests: true
@@ -428,7 +429,7 @@ export const rateLimitPresets = {
       max: 3
     })
   },
-  
+
   api: {
     read: rateLimit({ windowMs: 60000, max: 1000 }),
     write: rateLimit({ windowMs: 60000, max: 100 }),

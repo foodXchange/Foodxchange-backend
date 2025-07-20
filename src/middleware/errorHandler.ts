@@ -1,14 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
-import { 
-  ApiError, 
-  ValidationError, 
-  AuthenticationError, 
-  AuthorizationError, 
-  NotFoundError, 
+
+import {
+  ApiError,
+  ValidationError,
+  AuthenticationError,
+  AuthorizationError,
+  NotFoundError,
   ConflictError,
   RateLimitError,
   DatabaseError,
-  ExternalServiceError 
+  ExternalServiceError
 } from '../core/errors';
 import { Logger } from '../core/logging/logger';
 import { MetricsService } from '../core/metrics/MetricsService';
@@ -40,7 +41,7 @@ const getStatusCode = (error: Error): number => {
   if (error instanceof DatabaseError) return 500;
   if (error instanceof ExternalServiceError) return 502;
   if (error instanceof ApiError) return error.statusCode || 500;
-  
+
   // Handle specific error types
   if (error.name === 'ValidationError') return 400;
   if (error.name === 'CastError') return 400;
@@ -48,7 +49,7 @@ const getStatusCode = (error: Error): number => {
   if (error.name === 'JsonWebTokenError') return 401;
   if (error.name === 'TokenExpiredError') return 401;
   if (error.name === 'MulterError') return 400;
-  
+
   return 500;
 };
 
@@ -62,7 +63,7 @@ const getErrorCode = (error: Error): string => {
   if (error instanceof RateLimitError) return 'RATE_LIMIT_EXCEEDED';
   if (error instanceof DatabaseError) return 'DATABASE_ERROR';
   if (error instanceof ExternalServiceError) return 'EXTERNAL_SERVICE_ERROR';
-  
+
   // Handle specific error types
   if (error.name === 'ValidationError') return 'VALIDATION_ERROR';
   if (error.name === 'CastError') return 'INVALID_INPUT';
@@ -70,7 +71,7 @@ const getErrorCode = (error: Error): string => {
   if (error.name === 'JsonWebTokenError') return 'INVALID_TOKEN';
   if (error.name === 'TokenExpiredError') return 'TOKEN_EXPIRED';
   if (error.name === 'MulterError') return 'FILE_UPLOAD_ERROR';
-  
+
   return 'INTERNAL_SERVER_ERROR';
 };
 
@@ -85,7 +86,7 @@ const formatValidationError = (error: any): any => {
       }))
     };
   }
-  
+
   // Handle Mongoose validation errors
   if (error.name === 'ValidationError' && error.errors) {
     return {
@@ -96,7 +97,7 @@ const formatValidationError = (error: any): any => {
       }))
     };
   }
-  
+
   // Handle Mongoose cast errors
   if (error.name === 'CastError') {
     return {
@@ -105,7 +106,7 @@ const formatValidationError = (error: any): any => {
       value: error.value
     };
   }
-  
+
   // Handle MongoDB duplicate key errors
   if (error.name === 'MongoError' && error.code === 11000) {
     const field = Object.keys(error.keyValue)[0];
@@ -115,7 +116,7 @@ const formatValidationError = (error: any): any => {
       value: error.keyValue[field]
     };
   }
-  
+
   return undefined;
 };
 
@@ -123,7 +124,7 @@ const formatValidationError = (error: any): any => {
 const shouldExposeError = (error: Error): boolean => {
   // Always expose our custom API errors
   if (error instanceof ApiError) return true;
-  
+
   // Expose validation errors
   if (error.name === 'ValidationError') return true;
   if (error.name === 'CastError') return true;
@@ -131,7 +132,7 @@ const shouldExposeError = (error: Error): boolean => {
   if (error.name === 'JsonWebTokenError') return true;
   if (error.name === 'TokenExpiredError') return true;
   if (error.name === 'MulterError') return true;
-  
+
   return false;
 };
 
@@ -140,7 +141,7 @@ const getSafeErrorMessage = (error: Error): string => {
   if (shouldExposeError(error)) {
     return error.message;
   }
-  
+
   // Generic message for unexpected errors
   return 'An unexpected error occurred. Please try again later.';
 };
@@ -149,7 +150,7 @@ const getSafeErrorMessage = (error: Error): string => {
 const logError = (error: Error, req: Request): void => {
   const statusCode = getStatusCode(error);
   const errorCode = getErrorCode(error);
-  
+
   const errorContext = {
     url: req.url,
     method: req.method,
@@ -160,7 +161,7 @@ const logError = (error: Error, req: Request): void => {
     statusCode,
     stack: error.stack
   };
-  
+
   // Log based on severity
   if (statusCode >= 500) {
     logger.error('Server error:', error.message, errorContext);
@@ -169,7 +170,7 @@ const logError = (error: Error, req: Request): void => {
   } else {
     logger.info('Request error:', error.message, errorContext);
   }
-  
+
   // Track metrics
   metricsService.incrementCounter('api_errors_total', {
     method: req.method,
@@ -188,12 +189,12 @@ export const errorHandler = (
 ): void => {
   // Log the error
   logError(error, req);
-  
+
   const statusCode = getStatusCode(error);
   const errorCode = getErrorCode(error);
   const message = getSafeErrorMessage(error);
   const details = formatValidationError(error);
-  
+
   // Create standardized error response
   const errorResponse: ErrorResponse = {
     success: false,
@@ -206,7 +207,7 @@ export const errorHandler = (
       ...(details && { details })
     }
   };
-  
+
   // Send error response
   res.status(statusCode).json(errorResponse);
 };
@@ -223,7 +224,7 @@ export const notFoundHandler = (req: Request, res: Response): void => {
       statusCode: 404
     }
   };
-  
+
   // Log 404 errors
   logger.warn('404 Not Found:', {
     url: req.url,
@@ -231,7 +232,7 @@ export const notFoundHandler = (req: Request, res: Response): void => {
     ip: req.ip,
     userAgent: req.get('User-Agent')
   });
-  
+
   // Track 404 metrics
   metricsService.incrementCounter('api_errors_total', {
     method: req.method,
@@ -239,7 +240,7 @@ export const notFoundHandler = (req: Request, res: Response): void => {
     status_code: '404',
     error_code: 'NOT_FOUND'
   });
-  
+
   res.status(404).json(errorResponse);
 };
 
@@ -259,7 +260,7 @@ export const gracefulShutdown = (server: any): void => {
       process.exit(0);
     });
   });
-  
+
   process.on('SIGINT', () => {
     logger.info('SIGINT received, shutting down gracefully');
     server.close(() => {
@@ -267,13 +268,13 @@ export const gracefulShutdown = (server: any): void => {
       process.exit(0);
     });
   });
-  
+
   // Handle uncaught exceptions
   process.on('uncaughtException', (error: Error) => {
     logger.error('Uncaught Exception:', error);
     process.exit(1);
   });
-  
+
   // Handle unhandled promise rejections
   process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
     logger.error('Unhandled Rejection at:', promise, 'reason:', reason);

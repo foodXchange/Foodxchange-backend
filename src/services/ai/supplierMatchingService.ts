@@ -8,16 +8,16 @@ class SupplierMatchingService {
   async analyzeRFQ(rfqText) {
     try {
       const textClient = this.aiService.getTextAnalyticsClient();
-      
-      const documents = [{ 
-        id: '1', 
-        text: rfqText, 
-        language: 'en' 
+
+      const documents = [{
+        id: '1',
+        text: rfqText,
+        language: 'en'
       }];
 
       // Extract key phrases
       const keyPhraseResults = await textClient.extractKeyPhrases(documents);
-      const keyPhrases = keyPhraseResults[0].keyPhrases;
+      const {keyPhrases} = keyPhraseResults[0];
 
       // Analyze sentiment
       const sentimentResults = await textClient.analyzeSentiment(documents);
@@ -25,7 +25,7 @@ class SupplierMatchingService {
 
       // Recognize entities
       const entityResults = await textClient.recognizeEntities(documents);
-      const entities = entityResults[0].entities;
+      const {entities} = entityResults[0];
 
       return {
         keyPhrases,
@@ -57,7 +57,7 @@ class SupplierMatchingService {
     };
 
     // Extract products from entities
-    const productEntities = entities.filter(e => 
+    const productEntities = entities.filter(e =>
       e.category === 'Product' || e.category === 'Other'
     );
     requirements.products = productEntities.map(e => e.text);
@@ -68,7 +68,7 @@ class SupplierMatchingService {
 
     // Extract quantities from key phrases
     const quantityPattern = /\d+\s*(kg|ton|tonnes|lb|pounds|cases|boxes|units)/gi;
-    requirements.quantities = keyPhrases.filter(phrase => 
+    requirements.quantities = keyPhrases.filter(phrase =>
       quantityPattern.test(phrase)
     );
 
@@ -77,7 +77,7 @@ class SupplierMatchingService {
       'organic', 'kosher', 'halal', 'haccp', 'fda', 'eu', 'certified',
       'premium', 'grade', 'dop', 'brc', 'iso'
     ];
-    
+
     requirements.certifications = keyPhrases.filter(phrase => {
       const lowerPhrase = phrase.toLowerCase();
       return certificationTerms.some(term => lowerPhrase.includes(term));
@@ -88,7 +88,7 @@ class SupplierMatchingService {
       'premium', 'high-quality', 'fresh', 'grade-a', 'top-quality',
       'excellent', 'superior', 'finest', 'best'
     ];
-    
+
     requirements.qualityTerms = keyPhrases.filter(phrase => {
       const lowerPhrase = phrase.toLowerCase();
       return qualityTerms.some(term => lowerPhrase.includes(term));
@@ -102,7 +102,7 @@ class SupplierMatchingService {
 
     for (const supplier of suppliers) {
       const matchScore = this.calculateMatchScore(supplier, rfqAnalysis);
-      
+
       if (matchScore.totalScore > 0.3) { // Minimum relevance threshold
         matchedSuppliers.push({
           supplier,

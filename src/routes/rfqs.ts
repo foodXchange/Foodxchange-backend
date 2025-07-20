@@ -1,27 +1,28 @@
 import express from 'express';
-import multer from 'multer';
-import { requireAuth } from '../middleware/auth';
-import { 
-  extractTenantContext, 
-  enforceTenantIsolation, 
-  requireTenantFeature,
-  checkTenantLimits,
-  tenantFeatures 
-} from '../middleware/tenantIsolation';
-import { RFQController } from '../controllers/RFQController';
-import { 
-  validateRequest, 
-  commonValidations, 
-  foodValidations,
-  sanitizers 
-} from '../middleware/advancedValidation';
 import { body, param, query } from 'express-validator';
-import { 
-  apiRateLimiter, 
-  rfqRateLimiter, 
-  uploadRateLimiter 
+import multer from 'multer';
+
+import { RFQController } from '../controllers/RFQController';
+import {
+  validateRequest,
+  commonValidations,
+  foodValidations,
+  sanitizers
+} from '../middleware/advancedValidation';
+import { requireAuth } from '../middleware/auth';
+import {
+  apiRateLimiter,
+  rfqRateLimiter,
+  uploadRateLimiter
 } from '../middleware/rateLimiter';
 import { fileUploadSecurity } from '../middleware/security';
+import {
+  extractTenantContext,
+  enforceTenantIsolation,
+  requireTenantFeature,
+  checkTenantLimits,
+  tenantFeatures
+} from '../middleware/tenantIsolation';
 
 const router = express.Router();
 const rfqController = new RFQController();
@@ -211,7 +212,7 @@ router.post('/',
     body('category').notEmpty().isIn(['beverages', 'dairy', 'meat', 'seafood', 'produce', 'packaged_foods', 'bakery', 'frozen', 'organic', 'ingredients', 'other']),
     body('tags').optional().isArray(),
     body('tags.*').isString(),
-    
+
     // Items validation
     body('items').isArray({ min: 1 }),
     body('items.*.name').notEmpty(),
@@ -221,7 +222,7 @@ router.post('/',
     body('items.*.specifications').optional().isString(),
     body('items.*.requiredCertifications').optional().isArray(),
     body('items.*.preferredBrands').optional().isArray(),
-    
+
     // Delivery validation
     body('deliveryLocation.address').notEmpty(),
     body('deliveryLocation.city').notEmpty(),
@@ -229,21 +230,21 @@ router.post('/',
     body('deliveryLocation.postalCode').notEmpty(),
     body('deliveryTerms.incoterm').notEmpty().isIn(['EXW', 'FCA', 'CPT', 'CIP', 'DAP', 'DPU', 'DDP', 'FAS', 'FOB', 'CFR', 'CIF']),
     body('deliverySchedule.type').optional().isIn(['one-time', 'recurring', 'flexible']),
-    
+
     // Payment terms
     body('paymentTerms.method').optional().isIn(['net30', 'net60', 'net90', 'cod', 'prepaid', 'custom']),
     body('paymentTerms.currency').optional().isLength({ min: 3, max: 3 }),
-    
+
     // Timeline
     body('dueDate').isISO8601().toDate(),
     body('validUntil').isISO8601().toDate(),
-    
+
     // Status and visibility
     body('status').optional().isIn(['draft', 'published']),
     body('visibility').optional().isIn(['public', 'private', 'invited']),
     body('invitedSuppliers').optional().isArray(),
     body('invitedSuppliers.*').isMongoId(),
-    
+
     // Selection criteria
     body('selectionCriteria.priceWeight').optional().isInt({ min: 0, max: 100 }),
     body('selectionCriteria.qualityWeight').optional().isInt({ min: 0, max: 100 }),
@@ -251,12 +252,12 @@ router.post('/',
     body('selectionCriteria.paymentTermsWeight').optional().isInt({ min: 0, max: 100 }),
     body('selectionCriteria.certificationWeight').optional().isInt({ min: 0, max: 100 }),
     body('selectionCriteria.sustainabilityWeight').optional().isInt({ min: 0, max: 100 }),
-    
+
     // Compliance
     body('compliance.requiredCertifications').optional().isArray(),
     body('compliance.requiredDocuments').optional().isArray(),
     body('compliance.qualityStandards').optional().isArray(),
-    
+
     // Additional requirements
     body('additionalRequirements.sampleRequired').optional().isBoolean(),
     body('additionalRequirements.siteVisitRequired').optional().isBoolean(),
@@ -416,7 +417,7 @@ router.put('/:id/quotes/:quoteId',
   enforceTenantIsolation,
   [
     param('id').isMongoId(),
-    param('quoteId').isMongoId(),
+    param('quoteId').isMongoId()
     // Same validation as submit quote
   ],
   validateRequest,

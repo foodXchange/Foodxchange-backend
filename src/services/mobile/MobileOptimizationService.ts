@@ -1,9 +1,9 @@
 import { Logger } from '../../core/logging/logger';
-import { Product } from '../../models/Product';
+import { Company } from '../../models/Company';
 import { Order } from '../../models/Order';
+import { Product } from '../../models/Product';
 import { RFQ } from '../../models/RFQ';
 import { User } from '../../models/User';
-import { Company } from '../../models/Company';
 import { getAnalyticsService } from '../analytics/AnalyticsService';
 
 const logger = new Logger('MobileOptimizationService');
@@ -91,7 +91,7 @@ export interface IMobileDashboard {
 }
 
 export class MobileOptimizationService {
-  private analyticsService = getAnalyticsService();
+  private readonly analyticsService = getAnalyticsService();
 
   /**
    * Get mobile-optimized product list with pagination
@@ -121,11 +121,11 @@ export class MobileOptimizationService {
 
       // Build query
       const query: any = { tenantId, isActive: true };
-      
+
       if (filters.category) {
         query.category = filters.category;
       }
-      
+
       if (filters.search) {
         query.$or = [
           { name: { $regex: filters.search, $options: 'i' } },
@@ -133,22 +133,22 @@ export class MobileOptimizationService {
           { category: { $regex: filters.search, $options: 'i' } }
         ];
       }
-      
+
       if (filters.priceRange) {
         query.price = {
           $gte: filters.priceRange.min,
           $lte: filters.priceRange.max
         };
       }
-      
+
       if (filters.location) {
         query.location = { $regex: filters.location, $options: 'i' };
       }
-      
+
       if (filters.organic !== undefined) {
         query.isOrganic = filters.organic;
       }
-      
+
       if (filters.certified !== undefined) {
         query.isCertified = filters.certified;
       }
@@ -169,7 +169,7 @@ export class MobileOptimizationService {
       const mobileProducts: IMobileProduct[] = products.map(product => ({
         id: product._id.toString(),
         name: product.name,
-        description: product.description.substring(0, 150) + '...', // Truncate for mobile
+        description: `${product.description.substring(0, 150)  }...`, // Truncate for mobile
         price: product.price,
         currency: product.currency,
         category: product.category,
@@ -317,7 +317,7 @@ export class MobileOptimizationService {
       const mobileRFQs: IMobileRFQ[] = rfqs.map(rfq => ({
         id: rfq._id.toString(),
         title: rfq.title,
-        description: rfq.description.substring(0, 100) + '...', // Truncate for mobile
+        description: `${rfq.description.substring(0, 100)  }...`, // Truncate for mobile
         category: rfq.category,
         status: rfq.status,
         budget: rfq.budget,
@@ -424,7 +424,7 @@ export class MobileOptimizationService {
       const mobileProduct = {
         id: product._id.toString(),
         name: product.name,
-        description: product.description.substring(0, 150) + '...',
+        description: `${product.description.substring(0, 150)  }...`,
         fullDescription: product.description,
         price: product.price,
         currency: product.currency,
@@ -467,7 +467,7 @@ export class MobileOptimizationService {
   }> {
     try {
       const searchRegex = { $regex: query, $options: 'i' };
-      
+
       const [products, categories, suppliers] = await Promise.all([
         Product.find({
           tenantId,
@@ -477,24 +477,24 @@ export class MobileOptimizationService {
             { description: searchRegex }
           ]
         })
-        .select('name category price')
-        .limit(limit)
-        .lean(),
-        
+          .select('name category price')
+          .limit(limit)
+          .lean(),
+
         Product.distinct('category', {
           tenantId,
           isActive: true,
           category: searchRegex
         }).limit(5),
-        
+
         Company.find({
           tenantId,
           name: searchRegex,
           type: 'supplier'
         })
-        .select('name location')
-        .limit(5)
-        .lean()
+          .select('name location')
+          .limit(5)
+          .lean()
       ]);
 
       return {

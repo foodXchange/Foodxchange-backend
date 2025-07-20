@@ -1,20 +1,23 @@
 ﻿const express = require('express');
+
 const router = express.Router();
-const sellerController = require('../controllers/seller/sellerController');
-const productController = require('../controllers/seller/productController');
-const proposalController = require('../controllers/seller/proposalController');
-const orderController = require('../controllers/seller/orderController');
+const multer = require('multer');
+
 const analyticsController = require('../controllers/seller/analyticsController');
 const notificationController = require('../controllers/seller/notificationController');
+const orderController = require('../controllers/seller/orderController');
+const productController = require('../controllers/seller/productController');
+const proposalController = require('../controllers/seller/proposalController');
+const sellerController = require('../controllers/seller/sellerController');
 const { authenticateSeller } = require('../middleware/auth');
 const { validateRegistration, validateLogin } = require('../validators/seller');
-const multer = require('multer');
+
 
 // Configure multer for file uploads
 const upload = multer({ dest: 'uploads/temp/' });
 
 // Public routes
-router.post('/register', 
+router.post('/register',
   upload.fields([
     { name: 'companyLogo', maxCount: 1 },
     { name: 'profileImages', maxCount: 5 },
@@ -35,21 +38,21 @@ router.get('/dashboard', sellerController.getDashboard);
 // Profile
 router.get('/profile', sellerController.getProfile);
 router.put('/profile', sellerController.updateProfile);
-router.post('/documents', 
+router.post('/documents',
   upload.array('documents', 10),
   sellerController.uploadDocuments
 );
 
 // Products
 router.get('/products', productController.getSellerProducts);
-router.post('/products', 
+router.post('/products',
   upload.array('productImages', 5),
   productController.createProduct
 );
 router.get('/products/:id', productController.getProduct);
 router.put('/products/:id', productController.updateProduct);
 router.delete('/products/:id', productController.deleteProduct);
-router.post('/products/bulk-import', 
+router.post('/products/bulk-import',
   upload.single('csvFile'),
   productController.bulkImport
 );

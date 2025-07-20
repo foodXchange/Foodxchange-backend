@@ -1,5 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
 import compression from 'compression';
+import { Request, Response, NextFunction } from 'express';
+
 import { Logger } from '../core/logging/logger';
 import { MetricsService } from '../core/metrics/MetricsService';
 
@@ -24,8 +25,8 @@ export const compressionMiddleware = compression({
     // Don't compress images, videos, or audio
     const contentType = res.getHeader('content-type') as string;
     if (contentType) {
-      if (contentType.startsWith('image/') || 
-          contentType.startsWith('video/') || 
+      if (contentType.startsWith('image/') ||
+          contentType.startsWith('video/') ||
           contentType.startsWith('audio/') ||
           contentType.includes('application/pdf') ||
           contentType.includes('application/zip') ||
@@ -106,7 +107,7 @@ export const timeoutMiddleware = (timeoutMs: number = 30000) => {
 export const requestSizeLimitMiddleware = (limitBytes: number = 10 * 1024 * 1024) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     const contentLength = req.headers['content-length'];
-    
+
     if (contentLength && parseInt(contentLength) > limitBytes) {
       logger.warn('Request size limit exceeded', {
         url: req.url,
@@ -139,10 +140,10 @@ export const requestSizeLimitMiddleware = (limitBytes: number = 10 * 1024 * 1024
 // Response time tracking middleware
 export const responseTimeMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   const startTime = Date.now();
-  
+
   res.on('finish', () => {
     const responseTime = Date.now() - startTime;
-    
+
     // Record response time metrics
     metricsService.recordTimer('api_response_time_seconds', responseTime / 1000, {
       method: req.method,
@@ -189,13 +190,13 @@ export const cspMiddleware = (req: Request, res: Response, next: NextFunction): 
 
 // Request ID middleware for correlation
 export const requestIdMiddleware = (req: Request, res: Response, next: NextFunction): void => {
-  const requestId = req.headers['x-request-id'] as string || 
+  const requestId = req.headers['x-request-id'] as string ||
                    req.headers['x-correlation-id'] as string ||
                    generateRequestId();
-  
+
   req.id = requestId;
   res.setHeader('X-Request-ID', requestId);
-  
+
   next();
 };
 
@@ -207,13 +208,13 @@ const generateRequestId = (): string => {
 // ETag support for conditional requests
 export const etagMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   const originalSend = res.send;
-  
+
   res.send = function(data: any) {
     if (req.method === 'GET' && res.statusCode === 200) {
       // Generate simple ETag based on content
       const etag = generateETag(data);
       res.setHeader('ETag', etag);
-      
+
       // Check if client has cached version
       const clientEtag = req.headers['if-none-match'];
       if (clientEtag === etag) {
@@ -221,10 +222,10 @@ export const etagMiddleware = (req: Request, res: Response, next: NextFunction):
         return res.end();
       }
     }
-    
+
     return originalSend.call(this, data);
   };
-  
+
   next();
 };
 
@@ -232,13 +233,13 @@ export const etagMiddleware = (req: Request, res: Response, next: NextFunction):
 const generateETag = (data: any): string => {
   const content = typeof data === 'string' ? data : JSON.stringify(data);
   let hash = 0;
-  
+
   for (let i = 0; i < content.length; i++) {
     const char = content.charCodeAt(i);
     hash = ((hash << 5) - hash) + char;
     hash = hash & hash; // Convert to 32-bit integer
   }
-  
+
   return `"${Math.abs(hash).toString(16)}"`;
 };
 
@@ -251,7 +252,7 @@ export const preflightMiddleware = (req: Request, res: Response, next: NextFunct
     res.status(200).end();
     return;
   }
-  
+
   next();
 };
 
@@ -268,7 +269,7 @@ export const healthCheckMiddleware = (req: Request, res: Response, next: NextFun
     });
     return;
   }
-  
+
   next();
 };
 

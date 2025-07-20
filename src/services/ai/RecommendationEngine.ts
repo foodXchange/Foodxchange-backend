@@ -5,8 +5,9 @@
 
 import { Logger } from '../../core/logging/logger';
 import { CacheService } from '../../infrastructure/cache/CacheService';
-import { OpenAIWrapper } from './OpenAIWrapper';
 import { MetricsService } from '../../infrastructure/monitoring/MetricsService';
+
+import { OpenAIWrapper } from './OpenAIWrapper';
 
 export interface RecommendationScore {
   score: number;
@@ -63,10 +64,10 @@ export interface UserBehaviorData {
 
 export class RecommendationEngine {
   private static instance: RecommendationEngine;
-  private logger: Logger;
-  private cache: CacheService;
-  private openAI: any; // OpenAIService
-  private metrics: MetricsService;
+  private readonly logger: Logger;
+  private readonly cache: CacheService;
+  private readonly openAI: any; // OpenAIService
+  private readonly metrics: MetricsService;
 
   private constructor() {
     this.logger = new Logger('RecommendationEngine');
@@ -91,12 +92,12 @@ export class RecommendationEngine {
     limit: number = 10
   ): Promise<ProductRecommendation[]> {
     const startTime = Date.now();
-    
+
     try {
-      this.logger.info('Generating product recommendations', { 
+      this.logger.info('Generating product recommendations', {
         category: rfqRequirements.productCategory,
         quantity: rfqRequirements.quantity,
-        urgency: rfqRequirements.urgency 
+        urgency: rfqRequirements.urgency
       });
 
       // Check cache first
@@ -116,7 +117,7 @@ export class RecommendationEngine {
 
       // Cache results for 30 minutes
       await this.cache.set(cacheKey, JSON.stringify(recommendations), 1800);
-      
+
       this.metrics.incrementCounter('recommendation_generated');
       this.metrics.recordTimer('recommendation_generation_time', Date.now() - startTime);
 
@@ -141,9 +142,9 @@ export class RecommendationEngine {
     const startTime = Date.now();
 
     try {
-      this.logger.info('Generating supplier recommendations', { 
+      this.logger.info('Generating supplier recommendations', {
         category: productCategory,
-        requirements: Object.keys(requirements) 
+        requirements: Object.keys(requirements)
       });
 
       const cacheKey = this.generateCacheKey('supplier-rec', { productCategory, ...requirements }, userBehavior);
@@ -161,7 +162,7 @@ export class RecommendationEngine {
       );
 
       await this.cache.set(cacheKey, JSON.stringify(recommendations), 1800);
-      
+
       this.metrics.incrementCounter('supplier_recommendation_generated');
       this.metrics.recordTimer('supplier_recommendation_time', Date.now() - startTime);
 
@@ -192,7 +193,7 @@ export class RecommendationEngine {
       });
 
       const similarProducts = this.parseAIResponse<ProductRecommendation[]>(response);
-      
+
       this.metrics.incrementCounter('similar_products_generated');
       return similarProducts.slice(0, limit);
 
@@ -219,7 +220,7 @@ export class RecommendationEngine {
       });
 
       const recommendations = this.parseAIResponse<ProductRecommendation[]>(response);
-      
+
       this.metrics.incrementCounter('personalized_recommendations_generated');
       return recommendations.slice(0, limit);
 
@@ -238,7 +239,7 @@ export class RecommendationEngine {
     userBehavior?: UserBehaviorData
   ): Promise<RecommendationScore> {
     const prompt = this.buildScoringPrompt(item, requirements, userBehavior);
-    
+
     const response = await this.openAI.generateCompletion(prompt, {
       maxTokens: 1000,
       temperature: 0.2
@@ -256,14 +257,14 @@ export class RecommendationEngine {
     limit: number = 10
   ): Promise<ProductRecommendation[]> {
     const prompt = this.buildProductRecommendationPrompt(requirements, userBehavior);
-    
+
     const response = await this.openAI.generateCompletion(prompt, {
       maxTokens: 4000,
       temperature: 0.3
     });
 
     const recommendations = this.parseAIResponse<ProductRecommendation[]>(response);
-    
+
     // Apply business logic filters and enhancements
     return this.enhanceRecommendations(recommendations, requirements, userBehavior)
       .slice(0, limit);
@@ -279,7 +280,7 @@ export class RecommendationEngine {
     limit: number = 10
   ): Promise<SupplierRecommendation[]> {
     const prompt = this.buildSupplierRecommendationPrompt(productCategory, requirements, userBehavior);
-    
+
     const response = await this.openAI.generateCompletion(prompt, {
       maxTokens: 3000,
       temperature: 0.3
@@ -477,7 +478,7 @@ Return in standard product recommendation JSON format.
     userBehavior?: UserBehaviorData
   ): ProductRecommendation {
     // Apply urgency boost
-    if (requirements.urgency === 'high' && recommendation.estimatedDelivery! <= 3) {
+    if (requirements.urgency === 'high' && recommendation.estimatedDelivery <= 3) {
       recommendation.score.score += 0.1;
       recommendation.score.factors.push('fast delivery for urgent request');
     }
@@ -520,10 +521,10 @@ Return in standard product recommendation JSON format.
       });
 
       this.metrics.incrementCounter(`recommendation_${action}`);
-      
+
       // Store feedback for ML model improvement
       // This would integrate with your analytics/ML pipeline
-      
+
     } catch (error) {
       this.logger.error('Failed to track recommendation feedback', { error });
     }

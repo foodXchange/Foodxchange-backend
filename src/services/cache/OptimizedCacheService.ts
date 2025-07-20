@@ -1,8 +1,10 @@
-import Redis from 'ioredis';
-import { Logger } from '../../core/logging/logger';
 import { createHash } from 'crypto';
 import { promisify } from 'util';
 import { gzip, gunzip } from 'zlib';
+
+import Redis from 'ioredis';
+
+import { Logger } from '../../core/logging/logger';
 
 const gzipAsync = promisify(gzip);
 const gunzipAsync = promisify(gunzip);
@@ -25,9 +27,9 @@ interface CacheStats {
 }
 
 export class OptimizedCacheService {
-  private redis: Redis;
-  private defaultTTL: number = 3600; // 1 hour
-  private compressionThreshold: number = 1024; // 1KB
+  private readonly redis: Redis;
+  private readonly defaultTTL: number = 3600; // 1 hour
+  private readonly compressionThreshold: number = 1024; // 1KB
   private stats: CacheStats = {
     hits: 0,
     misses: 0,
@@ -66,7 +68,7 @@ export class OptimizedCacheService {
   async get<T>(key: string, options?: { parse?: boolean }): Promise<T | null> {
     try {
       const value = await this.redis.get(this.formatKey(key));
-      
+
       if (!value) {
         this.stats.misses++;
         this.updateHitRate();
@@ -103,7 +105,7 @@ export class OptimizedCacheService {
       // Compress if value is large
       if (options?.compress !== false && stringValue.length > this.compressionThreshold) {
         const compressed = await gzipAsync(stringValue);
-        stringValue = 'gzip:' + compressed.toString('base64');
+        stringValue = `gzip:${  compressed.toString('base64')}`;
       }
 
       // Set with expiration
@@ -129,22 +131,22 @@ export class OptimizedCacheService {
     try {
       const formattedKeys = keys.map(k => this.formatKey(k));
       const values = await this.redis.mget(...formattedKeys);
-      
+
       return Promise.all(values.map(async (value, index) => {
         if (!value) {
           this.stats.misses++;
           return null;
         }
-        
+
         this.stats.hits++;
-        
+
         // Handle decompression
         if (value.startsWith('gzip:')) {
           const compressed = Buffer.from(value.substring(5), 'base64');
           const decompressed = await gunzipAsync(compressed);
           return JSON.parse(decompressed.toString('utf8'));
         }
-        
+
         return JSON.parse(value);
       }));
     } catch (error) {
@@ -174,7 +176,7 @@ export class OptimizedCacheService {
     try {
       const keys = await this.redis.keys(this.formatKey(pattern));
       if (keys.length === 0) return 0;
-      
+
       const result = await this.redis.del(...keys);
       this.stats.deletes += result;
       return result;
@@ -190,22 +192,22 @@ export class OptimizedCacheService {
   async deleteByTags(tags: string[]): Promise<number> {
     try {
       let allKeys: string[] = [];
-      
+
       for (const tag of tags) {
         const keys = await this.redis.smembers(`tag:${tag}`);
         allKeys = allKeys.concat(keys);
       }
-      
+
       // Remove duplicates
       allKeys = [...new Set(allKeys)];
-      
+
       if (allKeys.length === 0) return 0;
-      
+
       const result = await this.redis.del(...allKeys);
-      
+
       // Clean up tag sets
-      await Promise.all(tags.map(tag => this.redis.del(`tag:${tag}`)));
-      
+      await Promise.all(tags.map(async tag => this.redis.del(`tag:${tag}`)));
+
       this.stats.deletes += result;
       return result;
     } catch (error) {
@@ -230,10 +232,10 @@ export class OptimizedCacheService {
 
     // Generate value
     const value = await factory();
-    
+
     // Store in cache
     await this.set(key, value, options);
-    
+
     return value;
   }
 
@@ -247,13 +249,13 @@ export class OptimizedCacheService {
   ): Promise<T> {
     const staleKey = `stale:${key}`;
     const lockKey = `lock:${key}`;
-    
+
     // Try to get fresh value
     const cached = await this.get<T>(key);
     if (cached !== null) {
       return cached;
     }
-    
+
     // Try to get stale value while revalidating
     const stale = await this.get<T>(staleKey);
     if (stale !== null) {
@@ -272,12 +274,12 @@ export class OptimizedCacheService {
       }
       return stale;
     }
-    
+
     // No cache at all, generate value
     const value = await factory();
     await this.set(key, value, { ttl: options?.staleTime || 300 });
     await this.set(staleKey, value, { ttl: 86400 });
-    
+
     return value;
   }
 
@@ -292,7 +294,7 @@ export class OptimizedCacheService {
   ): Promise<void> {
     // Write to cache first
     await this.set(key, value, options);
-    
+
     // Then persist to database
     try {
       await persist(value);
@@ -328,12 +330,12 @@ export class OptimizedCacheService {
    */
   async warmUp(warmUpFunctions: Array<() => Promise<void>>): Promise<void> {
     logger.info('Starting cache warm-up...');
-    
+
     const startTime = Date.now();
-    await Promise.all(warmUpFunctions.map(fn => fn().catch(error => {
+    await Promise.all(warmUpFunctions.map(async fn => fn().catch(error => {
       logger.error('Warm-up function failed:', error);
     })));
-    
+
     const duration = Date.now() - startTime;
     logger.info(`Cache warm-up completed in ${duration}ms`);
   }
@@ -357,7 +359,7 @@ export class OptimizedCacheService {
   }
 
   private async addToTags(key: string, tags: string[]): Promise<void> {
-    await Promise.all(tags.map(tag => 
+    await Promise.all(tags.map(async tag =>
       this.redis.sadd(`tag:${tag}`, key)
     ));
   }
@@ -383,12 +385,12 @@ export const optimizedCache = new OptimizedCacheService();
 export function Cacheable(options?: CacheOptions) {
   return function (target: any, propertyName: string, descriptor: PropertyDescriptor) {
     const originalMethod = descriptor.value;
-    
+
     descriptor.value = async function (...args: any[]) {
       const cacheKey = `${target.constructor.name}:${propertyName}:${OptimizedCacheService.generateKey(args)}`;
       return optimizedCache.remember(cacheKey, () => originalMethod.apply(this, args), options);
     };
-    
+
     return descriptor;
   };
 }
@@ -396,18 +398,18 @@ export function Cacheable(options?: CacheOptions) {
 export function CacheEvict(patterns: string[]) {
   return function (target: any, propertyName: string, descriptor: PropertyDescriptor) {
     const originalMethod = descriptor.value;
-    
+
     descriptor.value = async function (...args: any[]) {
       const result = await originalMethod.apply(this, args);
-      
+
       // Evict cache after method execution
-      await Promise.all(patterns.map(pattern => 
+      await Promise.all(patterns.map(async pattern =>
         optimizedCache.deletePattern(pattern)
       ));
-      
+
       return result;
     };
-    
+
     return descriptor;
   };
 }

@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
+
 import { Logger } from '../../core/logging/logger';
+
 import { IndexManager } from './IndexManager';
 
 const logger = new Logger('MigrationManager');
@@ -24,9 +26,9 @@ export interface MigrationRecord {
 
 export class MigrationManager {
   private static instance: MigrationManager;
-  private migrations: Map<string, Migration> = new Map();
-  private migrationCollection = 'migrations';
-  private indexManager: IndexManager;
+  private readonly migrations: Map<string, Migration> = new Map();
+  private readonly migrationCollection = 'migrations';
+  private readonly indexManager: IndexManager;
 
   private constructor() {
     this.indexManager = IndexManager.getInstance();
@@ -56,10 +58,10 @@ export class MigrationManager {
         const collections = ['users', 'companies', 'analyticsevents'];
         for (const collection of collections) {
           try {
-            const db = mongoose.connection.db;
+            const {db} = mongoose.connection;
             const coll = db.collection(collection);
             const indexes = await coll.listIndexes().toArray();
-            
+
             for (const index of indexes) {
               if (index.name !== '_id_') {
                 await coll.dropIndex(index.name);
@@ -81,9 +83,9 @@ export class MigrationManager {
       description: 'Add progressive profiling and security fields to users',
       up: async () => {
         logger.info('Adding progressive profiling fields to users...');
-        const db = mongoose.connection.db;
+        const {db} = mongoose.connection;
         const users = db.collection('users');
-        
+
         await users.updateMany(
           { onboardingStep: { $exists: false } },
           {
@@ -110,14 +112,14 @@ export class MigrationManager {
             }
           }
         );
-        
+
         logger.info('User enhancements migration completed');
       },
       down: async () => {
         logger.info('Removing progressive profiling fields from users...');
-        const db = mongoose.connection.db;
+        const {db} = mongoose.connection;
         const users = db.collection('users');
-        
+
         await users.updateMany(
           {},
           {
@@ -134,7 +136,7 @@ export class MigrationManager {
             }
           }
         );
-        
+
         logger.info('User enhancements rollback completed');
       }
     });
@@ -146,9 +148,9 @@ export class MigrationManager {
       description: 'Add verification and business fields to companies',
       up: async () => {
         logger.info('Adding verification fields to companies...');
-        const db = mongoose.connection.db;
+        const {db} = mongoose.connection;
         const companies = db.collection('companies');
-        
+
         await companies.updateMany(
           { verificationStatus: { $exists: false } },
           {
@@ -170,14 +172,14 @@ export class MigrationManager {
             }
           }
         );
-        
+
         logger.info('Company enhancements migration completed');
       },
       down: async () => {
         logger.info('Removing verification fields from companies...');
-        const db = mongoose.connection.db;
+        const {db} = mongoose.connection;
         const companies = db.collection('companies');
-        
+
         await companies.updateMany(
           {},
           {
@@ -191,7 +193,7 @@ export class MigrationManager {
             }
           }
         );
-        
+
         logger.info('Company enhancements rollback completed');
       }
     });
@@ -203,41 +205,41 @@ export class MigrationManager {
       description: 'Optimize analytics collection with TTL indexes',
       up: async () => {
         logger.info('Optimizing analytics collection with TTL indexes...');
-        const db = mongoose.connection.db;
+        const {db} = mongoose.connection;
         const analytics = db.collection('analyticsevents');
-        
+
         // Create TTL index for automatic cleanup (90 days)
         await analytics.createIndex(
           { timestamp: 1 },
           { expireAfterSeconds: 7776000, background: true }
         );
-        
+
         // Add processed field to existing documents
         await analytics.updateMany(
           { processed: { $exists: false } },
           { $set: { processed: false } }
         );
-        
+
         logger.info('Analytics TTL optimization completed');
       },
       down: async () => {
         logger.info('Removing TTL optimization from analytics...');
-        const db = mongoose.connection.db;
+        const {db} = mongoose.connection;
         const analytics = db.collection('analyticsevents');
-        
+
         // Drop TTL index
         try {
           await analytics.dropIndex('timestamp_1');
         } catch (error) {
           logger.warn('TTL index may not exist:', error);
         }
-        
+
         // Remove processed field
         await analytics.updateMany(
           {},
           { $unset: { processed: '' } }
         );
-        
+
         logger.info('Analytics TTL rollback completed');
       }
     });
@@ -251,35 +253,35 @@ export class MigrationManager {
 
   public async runMigrations(): Promise<void> {
     logger.info('Starting database migrations...');
-    
+
     await this.ensureMigrationCollection();
-    
+
     const appliedMigrations = await this.getAppliedMigrations();
     const appliedIds = new Set(appliedMigrations.map(m => m.migrationId));
-    
+
     const sortedMigrations = Array.from(this.migrations.values())
       .sort((a, b) => a.id.localeCompare(b.id));
-    
+
     let appliedCount = 0;
-    
+
     for (const migration of sortedMigrations) {
       if (!appliedIds.has(migration.id)) {
         await this.runMigration(migration);
         appliedCount++;
       }
     }
-    
+
     logger.info(`Migration completed: ${appliedCount} migrations applied`);
   }
 
   public async runMigration(migration: Migration): Promise<void> {
     logger.info(`Running migration: ${migration.id} - ${migration.description}`);
-    
+
     const startTime = Date.now();
-    
+
     try {
       await migration.up();
-      
+
       const record: MigrationRecord = {
         migrationId: migration.id,
         version: migration.version,
@@ -287,9 +289,9 @@ export class MigrationManager {
         appliedAt: new Date(),
         checksum: this.calculateChecksum(migration)
       };
-      
+
       await this.saveMigrationRecord(record);
-      
+
       const duration = Date.now() - startTime;
       logger.info(`Migration completed: ${migration.id} (${duration}ms)`);
     } catch (error) {
@@ -303,9 +305,9 @@ export class MigrationManager {
     if (!migration) {
       throw new Error(`Migration not found: ${migrationId}`);
     }
-    
+
     logger.info(`Rolling back migration: ${migrationId}`);
-    
+
     try {
       await migration.down();
       await this.removeMigrationRecord(migrationId);
@@ -317,7 +319,7 @@ export class MigrationManager {
   }
 
   public async getAppliedMigrations(): Promise<MigrationRecord[]> {
-    const db = mongoose.connection.db;
+    const {db} = mongoose.connection;
     const collection = db.collection(this.migrationCollection);
     return await collection.find({}).sort({ appliedAt: 1 }).toArray();
   }
@@ -325,7 +327,7 @@ export class MigrationManager {
   public async getPendingMigrations(): Promise<Migration[]> {
     const appliedMigrations = await this.getAppliedMigrations();
     const appliedIds = new Set(appliedMigrations.map(m => m.migrationId));
-    
+
     return Array.from(this.migrations.values())
       .filter(migration => !appliedIds.has(migration.id))
       .sort((a, b) => a.id.localeCompare(b.id));
@@ -340,7 +342,7 @@ export class MigrationManager {
   }> {
     const appliedMigrations = await this.getAppliedMigrations();
     const pendingMigrations = await this.getPendingMigrations();
-    
+
     return {
       total: this.migrations.size,
       applied: appliedMigrations.length,
@@ -356,20 +358,20 @@ export class MigrationManager {
   }> {
     const issues: string[] = [];
     const appliedMigrations = await this.getAppliedMigrations();
-    
+
     for (const record of appliedMigrations) {
       const migration = this.migrations.get(record.migrationId);
       if (!migration) {
         issues.push(`Applied migration not found in code: ${record.migrationId}`);
         continue;
       }
-      
+
       const currentChecksum = this.calculateChecksum(migration);
       if (record.checksum !== currentChecksum) {
         issues.push(`Migration checksum mismatch: ${record.migrationId}`);
       }
     }
-    
+
     return {
       valid: issues.length === 0,
       issues
@@ -377,12 +379,12 @@ export class MigrationManager {
   }
 
   private async ensureMigrationCollection(): Promise<void> {
-    const db = mongoose.connection.db;
+    const {db} = mongoose.connection;
     const collections = await db.listCollections().toArray();
     const migrationCollectionExists = collections.some(
       collection => collection.name === this.migrationCollection
     );
-    
+
     if (!migrationCollectionExists) {
       await db.createCollection(this.migrationCollection);
       logger.info('Created migrations collection');
@@ -390,13 +392,13 @@ export class MigrationManager {
   }
 
   private async saveMigrationRecord(record: MigrationRecord): Promise<void> {
-    const db = mongoose.connection.db;
+    const {db} = mongoose.connection;
     const collection = db.collection(this.migrationCollection);
     await collection.insertOne(record);
   }
 
   private async removeMigrationRecord(migrationId: string): Promise<void> {
-    const db = mongoose.connection.db;
+    const {db} = mongoose.connection;
     const collection = db.collection(this.migrationCollection);
     await collection.deleteOne({ migrationId });
   }
@@ -410,7 +412,7 @@ export class MigrationManager {
       upFunction: migration.up.toString(),
       downFunction: migration.down.toString()
     });
-    
+
     // Simple hash function (in production, use crypto.createHash)
     let hash = 0;
     for (let i = 0; i < content.length; i++) {
@@ -418,7 +420,7 @@ export class MigrationManager {
       hash = ((hash << 5) - hash) + char;
       hash = hash & hash; // Convert to 32bit integer
     }
-    
+
     return Math.abs(hash).toString(16);
   }
 }

@@ -1,12 +1,14 @@
-import express from 'express';
-import { ExportController } from '../../controllers/ExportController';
-import { requireAuth } from '../../middleware/auth';
-import { enforceTenantIsolation } from '../../middleware/tenantIsolation';
-import { createCustomRateLimiter } from '../../middleware/rateLimiter';
-import { authorize } from '../../middleware/authorize';
-import { asyncHandler } from '../../core/errors';
-import multer from 'multer';
 import * as path from 'path';
+
+import express from 'express';
+import multer from 'multer';
+
+import { ExportController } from '../../controllers/ExportController';
+import { asyncHandler } from '../../core/errors';
+import { requireAuth } from '../../middleware/auth';
+import { authorize } from '../../middleware/authorize';
+import { createCustomRateLimiter } from '../../middleware/rateLimiter';
+import { enforceTenantIsolation } from '../../middleware/tenantIsolation';
 
 const router = express.Router();
 const exportController = new ExportController();
@@ -21,8 +23,8 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    const uniqueSuffix = `${Date.now()  }-${  Math.round(Math.random() * 1E9)}`;
+    cb(null, `${file.fieldname  }-${  uniqueSuffix  }${path.extname(file.originalname)}`);
   }
 });
 
@@ -34,7 +36,7 @@ const upload = multer({
   fileFilter: (req, file, cb) => {
     const allowedTypes = ['.csv', '.xlsx', '.json'];
     const ext = path.extname(file.originalname).toLowerCase();
-    
+
     if (allowedTypes.includes(ext)) {
       cb(null, true);
     } else {
@@ -53,7 +55,7 @@ router.use(exportRateLimiter);
  * @desc Export products to CSV, Excel, or JSON
  * @access Private
  */
-router.get('/products', 
+router.get('/products',
   authorize(['admin', 'manager', 'analyst']),
   asyncHandler(exportController.exportProducts.bind(exportController))
 );
@@ -63,7 +65,7 @@ router.get('/products',
  * @desc Export orders to CSV, Excel, or JSON
  * @access Private
  */
-router.get('/orders', 
+router.get('/orders',
   authorize(['admin', 'manager', 'analyst']),
   asyncHandler(exportController.exportOrders.bind(exportController))
 );
@@ -73,7 +75,7 @@ router.get('/orders',
  * @desc Export RFQs to CSV, Excel, or JSON
  * @access Private
  */
-router.get('/rfqs', 
+router.get('/rfqs',
   authorize(['admin', 'manager', 'analyst']),
   asyncHandler(exportController.exportRFQs.bind(exportController))
 );
@@ -83,7 +85,7 @@ router.get('/rfqs',
  * @desc Export analytics data
  * @access Private
  */
-router.get('/analytics', 
+router.get('/analytics',
   authorize(['admin', 'manager', 'analyst']),
   asyncHandler(exportController.exportAnalytics.bind(exportController))
 );
@@ -93,7 +95,7 @@ router.get('/analytics',
  * @desc Import products from CSV, Excel, or JSON
  * @access Private
  */
-router.post('/import/products', 
+router.post('/import/products',
   authorize(['admin', 'manager']),
   upload.single('file'),
   asyncHandler(exportController.importProducts.bind(exportController))
@@ -104,7 +106,7 @@ router.post('/import/products',
  * @desc Import orders from CSV, Excel, or JSON
  * @access Private
  */
-router.post('/import/orders', 
+router.post('/import/orders',
   authorize(['admin', 'manager']),
   upload.single('file'),
   asyncHandler(exportController.importOrders.bind(exportController))
@@ -115,7 +117,7 @@ router.post('/import/orders',
  * @desc Get export template for data type
  * @access Private
  */
-router.get('/template/:dataType/:format', 
+router.get('/template/:dataType/:format',
   authorize(['admin', 'manager', 'analyst']),
   asyncHandler(exportController.getExportTemplate.bind(exportController))
 );
@@ -125,7 +127,7 @@ router.get('/template/:dataType/:format',
  * @desc Download export file
  * @access Private
  */
-router.get('/download/:fileName', 
+router.get('/download/:fileName',
   authorize(['admin', 'manager', 'analyst', 'user']),
   asyncHandler(exportController.downloadFile.bind(exportController))
 );
@@ -135,7 +137,7 @@ router.get('/download/:fileName',
  * @desc Get export/import history
  * @access Private
  */
-router.get('/history', 
+router.get('/history',
   authorize(['admin', 'manager', 'analyst']),
   asyncHandler(exportController.getExportHistory.bind(exportController))
 );
@@ -145,7 +147,7 @@ router.get('/history',
  * @desc Get available export options for data type
  * @access Private
  */
-router.get('/options/:dataType', 
+router.get('/options/:dataType',
   authorize(['admin', 'manager', 'analyst']),
   asyncHandler(exportController.getExportOptions.bind(exportController))
 );

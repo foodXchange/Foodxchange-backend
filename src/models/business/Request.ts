@@ -6,32 +6,32 @@ const requestSchema = new mongoose.Schema({
   _id: { type: mongoose.Schema.Types.ObjectId, auto: true },
   legacyId: { type: String, unique: true, sparse: true },
   requestNumber: { type: String, unique: true },
-  
+
   // Basic Information
-  title: { 
-    type: String, 
-    required: true, 
+  title: {
+    type: String,
+    required: true,
     maxlength: 200,
     index: 'text'
   },
-  description: { 
-    type: String, 
+  description: {
+    type: String,
     required: true,
     maxlength: 5000,
     index: 'text'
   },
   brief: String,
-  
+
   // Buyer Information
-  buyer: { 
-    type: mongoose.Schema.Types.ObjectId, 
+  buyer: {
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'Company',
     required: true,
     index: true
   },
   buyerContacts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  
+
   // Product Requirements
   requirements: {
     category: String,
@@ -49,7 +49,7 @@ const requestSchema = new mongoose.Schema({
       max: Decimal128,
       currency: { type: String, default: 'USD' }
     },
-    
+
     // Delivery Requirements
     delivery: {
       location: {
@@ -62,7 +62,7 @@ const requestSchema = new mongoose.Schema({
       flexibleDates: Boolean,
       urgency: { type: String, enum: ['low', 'medium', 'high', 'urgent'] }
     },
-    
+
     // Packaging & Branding
     packaging: {
       preference: String,
@@ -70,7 +70,7 @@ const requestSchema = new mongoose.Schema({
       brandingRequirements: String,
       privateLabelRequired: Boolean
     },
-    
+
     // Quality & Compliance
     quality: {
       certifications: [String],
@@ -78,7 +78,7 @@ const requestSchema = new mongoose.Schema({
       inspectionRequired: Boolean,
       samplesRequired: Boolean
     },
-    
+
     // Payment & Terms
     terms: {
       paymentTerms: { type: String, enum: ['NET15', 'NET30', 'NET60', 'COD', 'LC'] },
@@ -87,7 +87,7 @@ const requestSchema = new mongoose.Schema({
       volumeCommitment: String
     }
   },
-  
+
   // Compliance Requirements
   compliance: {
     kosher: {
@@ -110,7 +110,7 @@ const requestSchema = new mongoose.Schema({
       documentation: [String]
     }
   },
-  
+
   // Request Line Items (Detailed Product Specs)
   lineItems: [{
     itemNumber: Number,
@@ -136,11 +136,11 @@ const requestSchema = new mongoose.Schema({
     nutritionalRequirements: String,
     additionalDetails: String
   }],
-  
+
   // Status & Workflow
   status: {
-    stage: { 
-      type: String, 
+    stage: {
+      type: String,
       enum: ['draft', 'review', 'published', 'closed', 'awarded', 'cancelled'],
       default: 'draft',
       index: true
@@ -151,14 +151,14 @@ const requestSchema = new mongoose.Schema({
     publishedAt: Date,
     closedAt: Date
   },
-  
+
   // Visibility & Access
   visibility: {
     type: { type: String, enum: ['public', 'private', 'invited'], default: 'public' },
     invitedSuppliers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Company' }],
     restrictedCountries: [String]
   },
-  
+
   // Evaluation Criteria
   evaluation: {
     criteria: [{
@@ -169,7 +169,7 @@ const requestSchema = new mongoose.Schema({
     }],
     method: { type: String, enum: ['weighted_score', 'ranking', 'pass_fail'] }
   },
-  
+
   // Media & Documentation
   media: {
     images: [String], // Azure URLs
@@ -181,7 +181,7 @@ const requestSchema = new mongoose.Schema({
     }],
     benchmarkImages: [String]
   },
-  
+
   // AI Features
   aiData: {
     suggestedSuppliers: [{
@@ -198,7 +198,7 @@ const requestSchema = new mongoose.Schema({
     keywords: [String],
     lastAnalyzed: Date
   },
-  
+
   // Analytics
   analytics: {
     views: { type: Number, default: 0 },
@@ -206,7 +206,7 @@ const requestSchema = new mongoose.Schema({
     supplierInterest: { type: Number, default: 0 },
     conversionRate: Number
   },
-  
+
   // Communications
   communications: [{
     type: { type: String, enum: ['question', 'clarification', 'amendment', 'announcement'] },
@@ -218,7 +218,7 @@ const requestSchema = new mongoose.Schema({
     isPublic: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now }
   }],
-  
+
   // Related Records
   linkedRecords: {
     sourcing: [String],
@@ -227,7 +227,7 @@ const requestSchema = new mongoose.Schema({
     adaptations: [String],
     orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }]
   },
-  
+
   // Comments & Feedback
   comments: [{
     type: { type: String, enum: ['note', 'feedback', 'issue', 'system'] },
@@ -237,7 +237,7 @@ const requestSchema = new mongoose.Schema({
     tags: [String],
     createdAt: { type: Date, default: Date.now }
   }],
-  
+
   // Original Data
   originalData: {
     requestId: Number,
@@ -245,7 +245,7 @@ const requestSchema = new mongoose.Schema({
     importedAt: Date,
     rawData: mongoose.Schema.Types.Mixed
   }
-}, { 
+}, {
   timestamps: true,
   toJSON: { virtuals: true },
   toObject: { virtuals: true }

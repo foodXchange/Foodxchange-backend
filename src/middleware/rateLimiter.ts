@@ -1,10 +1,14 @@
+import { Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import RedisStore from 'rate-limit-redis';
-import { Request, Response } from 'express';
+
 import { redisClient } from '../config/redis';
 import { Logger } from '../core/logging/logger';
 
 const logger = new Logger('RateLimiter');
+
+// Check if we're using a mock Redis client
+const isMockRedis = !redisClient.call || typeof redisClient.call !== 'function';
 
 /**
  * Create a rate limiter with tenant-aware configuration
@@ -30,7 +34,7 @@ export const createRateLimiter = (options: {
         tenantId: req.tenantId,
         userId: req.userId
       });
-      
+
       res.status(429).json({
         success: false,
         error: {
@@ -49,30 +53,33 @@ export const createRateLimiter = (options: {
     }
   };
 
-  return rateLimit({
+  const rateLimitOptions: any = {
     ...defaults,
-    ...options,
-    store: new RedisStore({
-      client: redisClient as any,
+    ...options
+  };
+
+  // Only use RedisStore if we have a real Redis client
+  if (!isMockRedis) {
+    rateLimitOptions.store = new RedisStore({
+      client: redisClient,
       prefix: 'rl:',
-      sendCommand: (...args: string[]) => (redisClient as any).call(...args)
-    })
-  });
+      sendCommand: (...args: string[]) => (redisClient).call(...args)
+    });
+  } else {
+    logger.warn('Using in-memory rate limiting (Redis mock detected)');
+  }
+
+  return rateLimit(rateLimitOptions);
 };
 
 /**
  * Tenant-aware dynamic rate limiter
  */
 export const createDynamicRateLimiter = () => {
-  return rateLimit({
+  const options: any = {
     windowMs: 60 * 1000, // 1 minute
     standardHeaders: true,
     legacyHeaders: false,
-    store: new RedisStore({
-      client: redisClient as any,
-      prefix: 'drl:',
-      sendCommand: (...args: string[]) => (redisClient as any).call(...args)
-    }),
     max: (req: Request) => {
       // Dynamic limit based on subscription tier
       if (req.tenantContext) {
@@ -90,7 +97,7 @@ export const createDynamicRateLimiter = () => {
     },
     handler: (req: Request, res: Response) => {
       const limit = req.tenantContext?.limits.apiCallsPerMinute || 30;
-      
+
       logger.warn('Dynamic rate limit exceeded', {
         ip: req.ip,
         path: req.path,
@@ -99,7 +106,7 @@ export const createDynamicRateLimiter = () => {
         limit,
         tier: req.tenantContext?.subscriptionTier
       });
-      
+
       res.status(429).json({
         success: false,
         error: {
@@ -112,7 +119,20 @@ export const createDynamicRateLimiter = () => {
         }
       });
     }
-  });
+  };
+
+  // Only use RedisStore if we have a real Redis client
+  if (!isMockRedis) {
+    options.store = new RedisStore({
+      client: redisClient,
+      prefix: 'drl:',
+      sendCommand: (...args: string[]) => (redisClient).call(...args)
+    });
+  } else {
+    logger.warn('Using in-memory dynamic rate limiting (Redis mock detected)');
+  }
+
+  return rateLimit(options);
 };
 
 // Pre-configured rate limiters for different endpoints
@@ -194,7 +214,7 @@ export const suspiciousActivityLimiter = createRateLimiter({
   keyGenerator: (req: Request) => {
     // Track by multiple factors
     const userAgent = req.headers['user-agent'] || 'unknown';
-    const ip = req.ip;
+    const {ip} = req;
     const fingerprint = `${ip}:${userAgent}`;
     return `suspicious:${fingerprint}`;
   }
@@ -240,7 +260,7 @@ export const createCustomRateLimiter = (
  * Middleware to track API usage for billing
  */
 export const trackApiUsage = async (req: Request, res: Response, next: Function) => {
-  if (req.tenantId) {
+  if (req.tenantId && !isMockRedis) {
     try {
       const key = `api_usage:${req.tenantId}:${new Date().toISOString().slice(0, 10)}`;
       await redisClient.incr(key);
@@ -248,6 +268,9 @@ export const trackApiUsage = async (req: Request, res: Response, next: Function)
     } catch (error) {
       logger.error('Failed to track API usage:', error);
     }
+  } else if (req.tenantId && isMockRedis) {
+    // In development with mock Redis, just log the usage
+    logger.debug(`API usage tracked (mock): ${req.tenantId} - ${req.path}`);
   }
   next();
 };
@@ -257,14 +280,25 @@ export const trackApiUsage = async (req: Request, res: Response, next: Function)
  */
 export const getRateLimitStatus = async (req: Request, limitName: string = 'api') => {
   try {
+    if (isMockRedis) {
+      // Return a default status for mock Redis
+      const limit = req.tenantContext?.limits.apiCallsPerMinute || 30;
+      return {
+        limit,
+        current: 0,
+        remaining: limit,
+        resetIn: 60
+      };
+    }
+
     const key = `rl:${limitName}:${req.tenantId || req.ip}`;
     const count = await redisClient.get(key);
     const ttl = await redisClient.ttl(key);
-    
+
     const limit = req.tenantContext?.limits.apiCallsPerMinute || 30;
     const current = parseInt(count || '0');
     const remaining = Math.max(0, limit - current);
-    
+
     return {
       limit,
       current,

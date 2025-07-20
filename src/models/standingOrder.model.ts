@@ -33,23 +33,23 @@ export interface IMLAlgorithmParameters {
   forecastingModel: 'arima' | 'prophet' | 'lstm' | 'ensemble';
   seasonalityDetection: boolean;
   trendAnalysis: boolean;
-  
+
   // Quantity optimization
   enableQuantityOptimization: boolean;
   safetyStockMultiplier: number;
   leadTimeDays: number;
   serviceLevel: number; // Target service level (e.g., 95%)
-  
+
   // Price optimization
   enablePriceOptimization: boolean;
   priceElasticity: number;
   competitorPricing: boolean;
-  
+
   // Pattern learning
   learningRate: number;
   minDataPoints: number;
   confidenceThreshold: number;
-  
+
   // Anomaly detection
   enableAnomalyDetection: boolean;
   anomalyThreshold: number;
@@ -57,14 +57,14 @@ export interface IMLAlgorithmParameters {
 
 export interface IDeliverySchedule {
   recurrencePattern: RecurrencePattern;
-  
+
   // For daily
   everyNDays?: number;
-  
+
   // For weekly
   daysOfWeek?: DayOfWeek[];
   everyNWeeks?: number;
-  
+
   // For monthly
   dayOfMonth?: number;
   monthlyWeekday?: {
@@ -72,16 +72,16 @@ export interface IDeliverySchedule {
     dayOfWeek: DayOfWeek;
   };
   everyNMonths?: number;
-  
+
   // For custom
   customCronExpression?: string;
-  
+
   // Delivery time preferences
   preferredDeliveryTime?: {
     start: string; // HH:mm format
     end: string;
   };
-  
+
   // Blackout dates
   blackoutDates?: Date[];
   holidayCalendar?: string; // Reference to holiday calendar
@@ -91,23 +91,23 @@ export interface IOrderTemplate {
   product: Types.ObjectId;
   productName: string;
   sku: string;
-  
+
   // Quantity configuration
   baseQuantity: number;
   unit: string;
   minQuantity?: number;
   maxQuantity?: number;
   quantityIncrements?: number;
-  
+
   // ML-driven adjustments
   enableMLAdjustments: boolean;
   historicalAverageQuantity?: number;
   quantityVariance?: number;
-  
+
   // Pricing
   negotiatedPrice?: number;
   maxPrice?: number;
-  
+
   // Product-specific requirements
   requiresTemperatureControl?: boolean;
   temperatureRange?: {
@@ -132,7 +132,7 @@ export interface IOrderHistory {
 
 export interface IMLInsights {
   lastUpdated: Date;
-  
+
   // Demand insights
   predictedNextQuantity?: number;
   demandTrend: 'increasing' | 'stable' | 'decreasing';
@@ -140,17 +140,17 @@ export interface IMLInsights {
     type: 'weekly' | 'monthly' | 'quarterly' | 'yearly';
     peakPeriods: string[];
   };
-  
+
   // Optimization recommendations
   recommendedQuantity?: number;
   recommendedFrequency?: RecurrencePattern;
   costSavingOpportunity?: number;
-  
+
   // Performance metrics
   forecastAccuracy?: number;
   orderFulfillmentRate?: number;
   averageQualityScore?: number;
-  
+
   // Alerts
   alerts?: {
     type: 'stockout_risk' | 'overstock_risk' | 'price_anomaly' | 'quality_issue';
@@ -166,27 +166,27 @@ export interface IStandingOrder extends Document {
   buyerName: string;
   supplier: Types.ObjectId;
   supplierName: string;
-  
+
   // Order configuration
   name: string;
   description?: string;
   status: StandingOrderStatus;
   priority: 'low' | 'medium' | 'high';
-  
+
   // Schedule
   deliverySchedule: IDeliverySchedule;
   startDate: Date;
   endDate?: Date;
   nextOrderDate?: Date;
-  
+
   // Order template
   orderTemplate: IOrderTemplate[];
-  
+
   // ML configuration
   mlEnabled: boolean;
   mlAlgorithmParameters: IMLAlgorithmParameters;
   mlInsights?: IMLInsights;
-  
+
   // Automation rules
   automationRules: {
     autoApprove: boolean;
@@ -198,12 +198,12 @@ export interface IStandingOrder extends Document {
     };
     notificationRecipients: string[];
   };
-  
+
   // Order history
   orderHistory: IOrderHistory[];
   totalOrdersGenerated: number;
   lastOrderDate?: Date;
-  
+
   // Delivery preferences
   deliveryAddress: {
     addressLine1: string;
@@ -216,7 +216,7 @@ export interface IStandingOrder extends Document {
     contactPhone: string;
   };
   specialInstructions?: string;
-  
+
   // Financial
   paymentTerms: string;
   budgetLimit?: {
@@ -225,15 +225,15 @@ export interface IStandingOrder extends Document {
     currentSpend: number;
     resetDate: Date;
   };
-  
+
   // Compliance
   requiredCertifications?: string[];
   complianceDocuments?: string[];
-  
+
   // Metadata
   tags?: string[];
   customFields?: Record<string, any>;
-  
+
   createdAt: Date;
   updatedAt: Date;
   createdBy: Types.ObjectId;
@@ -242,27 +242,27 @@ export interface IStandingOrder extends Document {
 
 const MLAlgorithmParametersSchema = new Schema<IMLAlgorithmParameters>({
   enableDemandForecasting: { type: Boolean, default: true },
-  forecastingModel: { 
-    type: String, 
+  forecastingModel: {
+    type: String,
     enum: ['arima', 'prophet', 'lstm', 'ensemble'],
     default: 'ensemble'
   },
   seasonalityDetection: { type: Boolean, default: true },
   trendAnalysis: { type: Boolean, default: true },
-  
+
   enableQuantityOptimization: { type: Boolean, default: true },
   safetyStockMultiplier: { type: Number, default: 1.5 },
   leadTimeDays: { type: Number, default: 3 },
   serviceLevel: { type: Number, default: 95, min: 0, max: 100 },
-  
+
   enablePriceOptimization: { type: Boolean, default: false },
   priceElasticity: { type: Number, default: 1 },
   competitorPricing: { type: Boolean, default: false },
-  
+
   learningRate: { type: Number, default: 0.01 },
   minDataPoints: { type: Number, default: 10 },
   confidenceThreshold: { type: Number, default: 0.8 },
-  
+
   enableAnomalyDetection: { type: Boolean, default: true },
   anomalyThreshold: { type: Number, default: 2.5 }
 }, { _id: false });
@@ -273,26 +273,26 @@ const DeliveryScheduleSchema = new Schema<IDeliverySchedule>({
     enum: Object.values(RecurrencePattern),
     required: true
   },
-  
+
   everyNDays: Number,
-  
+
   daysOfWeek: [{ type: Number, enum: Object.values(DayOfWeek) }],
   everyNWeeks: Number,
-  
+
   dayOfMonth: { type: Number, min: 1, max: 31 },
   monthlyWeekday: {
     week: { type: Number, enum: [1, 2, 3, 4, -1] },
     dayOfWeek: { type: Number, enum: Object.values(DayOfWeek) }
   },
   everyNMonths: Number,
-  
+
   customCronExpression: String,
-  
+
   preferredDeliveryTime: {
     start: String,
     end: String
   },
-  
+
   blackoutDates: [Date],
   holidayCalendar: String
 }, { _id: false });
@@ -305,20 +305,20 @@ const OrderTemplateSchema = new Schema<IOrderTemplate>({
   },
   productName: { type: String, required: true },
   sku: { type: String, required: true },
-  
+
   baseQuantity: { type: Number, required: true, min: 0 },
   unit: { type: String, required: true },
   minQuantity: { type: Number, min: 0 },
   maxQuantity: { type: Number, min: 0 },
   quantityIncrements: { type: Number, min: 1 },
-  
+
   enableMLAdjustments: { type: Boolean, default: true },
   historicalAverageQuantity: Number,
   quantityVariance: Number,
-  
+
   negotiatedPrice: { type: Number, min: 0 },
   maxPrice: { type: Number, min: 0 },
-  
+
   requiresTemperatureControl: Boolean,
   temperatureRange: {
     min: Number,
@@ -361,7 +361,7 @@ const StandingOrderSchema = new Schema<IStandingOrder>({
     index: true
   },
   supplierName: { type: String, required: true },
-  
+
   name: { type: String, required: true },
   description: String,
   status: {
@@ -375,7 +375,7 @@ const StandingOrderSchema = new Schema<IStandingOrder>({
     enum: ['low', 'medium', 'high'],
     default: 'medium'
   },
-  
+
   deliverySchedule: {
     type: DeliveryScheduleSchema,
     required: true
@@ -389,18 +389,18 @@ const StandingOrderSchema = new Schema<IStandingOrder>({
     type: Date,
     index: true
   },
-  
+
   orderTemplate: {
     type: [OrderTemplateSchema],
     required: true,
     validate: {
-      validator: function(templates: IOrderTemplate[]) {
+      validator(templates: IOrderTemplate[]) {
         return templates.length > 0;
       },
       message: 'Standing order must have at least one product'
     }
   },
-  
+
   mlEnabled: { type: Boolean, default: true },
   mlAlgorithmParameters: {
     type: MLAlgorithmParametersSchema,
@@ -421,16 +421,16 @@ const StandingOrderSchema = new Schema<IStandingOrder>({
     orderFulfillmentRate: Number,
     averageQualityScore: Number,
     alerts: [{
-      type: { 
-        type: String, 
-        enum: ['stockout_risk', 'overstock_risk', 'price_anomaly', 'quality_issue'] 
+      type: {
+        type: String,
+        enum: ['stockout_risk', 'overstock_risk', 'price_anomaly', 'quality_issue']
       },
       message: String,
       severity: { type: String, enum: ['low', 'medium', 'high'] },
       timestamp: Date
     }]
   },
-  
+
   automationRules: {
     autoApprove: { type: Boolean, default: false },
     autoApproveTreshold: Number,
@@ -441,11 +441,11 @@ const StandingOrderSchema = new Schema<IStandingOrder>({
     },
     notificationRecipients: [String]
   },
-  
+
   orderHistory: [OrderHistorySchema],
   totalOrdersGenerated: { type: Number, default: 0 },
   lastOrderDate: Date,
-  
+
   deliveryAddress: {
     addressLine1: { type: String, required: true },
     addressLine2: String,
@@ -457,7 +457,7 @@ const StandingOrderSchema = new Schema<IStandingOrder>({
     contactPhone: { type: String, required: true }
   },
   specialInstructions: String,
-  
+
   paymentTerms: { type: String, required: true },
   budgetLimit: {
     amount: { type: Number, min: 0 },
@@ -465,16 +465,16 @@ const StandingOrderSchema = new Schema<IStandingOrder>({
     currentSpend: { type: Number, default: 0 },
     resetDate: Date
   },
-  
+
   requiredCertifications: [String],
   complianceDocuments: [String],
-  
+
   tags: [String],
   customFields: {
     type: Map,
     of: Schema.Types.Mixed
   },
-  
+
   createdBy: {
     type: Schema.Types.ObjectId,
     ref: 'User',
@@ -501,54 +501,54 @@ StandingOrderSchema.methods.calculateNextOrderDate = function(): Date | null {
   if (this.status !== StandingOrderStatus.ACTIVE) {
     return null;
   }
-  
+
   const schedule = this.deliverySchedule;
   const baseDate = this.lastOrderDate || this.startDate;
-  let nextDate = new Date(baseDate);
-  
+  const nextDate = new Date(baseDate);
+
   switch (schedule.recurrencePattern) {
     case RecurrencePattern.DAILY:
       nextDate.setDate(nextDate.getDate() + (schedule.everyNDays || 1));
       break;
-      
+
     case RecurrencePattern.WEEKLY:
       // Implementation for weekly pattern
       nextDate.setDate(nextDate.getDate() + 7 * (schedule.everyNWeeks || 1));
       break;
-      
+
     case RecurrencePattern.MONTHLY:
       nextDate.setMonth(nextDate.getMonth() + (schedule.everyNMonths || 1));
       if (schedule.dayOfMonth) {
         nextDate.setDate(schedule.dayOfMonth);
       }
       break;
-      
+
     case RecurrencePattern.QUARTERLY:
       nextDate.setMonth(nextDate.getMonth() + 3);
       break;
   }
-  
+
   // Check blackout dates
   if (schedule.blackoutDates) {
-    while (schedule.blackoutDates.some(date => 
+    while (schedule.blackoutDates.some(date =>
       date.toDateString() === nextDate.toDateString()
     )) {
       nextDate.setDate(nextDate.getDate() + 1);
     }
   }
-  
+
   // Check if past end date
   if (this.endDate && nextDate > this.endDate) {
     return null;
   }
-  
+
   return nextDate;
 };
 
 StandingOrderSchema.methods.generateOrder = async function(userId: Types.ObjectId) {
   // This method would create an actual order based on the template
   // Implementation would involve creating an Order document
-  
+
   const orderData = {
     buyer: this.buyer,
     supplier: this.supplier,
@@ -556,8 +556,8 @@ StandingOrderSchema.methods.generateOrder = async function(userId: Types.ObjectI
       product: template.product,
       productName: template.productName,
       sku: template.sku,
-      quantity: this.mlEnabled && this.mlInsights?.recommendedQuantity 
-        ? this.mlInsights.recommendedQuantity 
+      quantity: this.mlEnabled && this.mlInsights?.recommendedQuantity
+        ? this.mlInsights.recommendedQuantity
         : template.baseQuantity,
       unit: template.unit,
       unitPrice: template.negotiatedPrice || 0,
@@ -568,12 +568,12 @@ StandingOrderSchema.methods.generateOrder = async function(userId: Types.ObjectI
     specialInstructions: this.specialInstructions,
     standingOrderReference: this._id
   };
-  
+
   // Record in history
   this.totalOrdersGenerated += 1;
   this.lastOrderDate = new Date();
   this.nextOrderDate = this.calculateNextOrderDate();
-  
+
   return this.save();
 };
 
@@ -596,17 +596,17 @@ StandingOrderSchema.pre('save', function(next) {
     const random = Math.random().toString(36).substr(2, 6).toUpperCase();
     this.standingOrderId = `STO-${year}${month}-${random}`;
   }
-  
+
   // Calculate next order date if not set
   if (!this.nextOrderDate && this.status === StandingOrderStatus.ACTIVE) {
     this.nextOrderDate = this.calculateNextOrderDate();
   }
-  
+
   // Check budget limits
   if (this.budgetLimit && this.budgetLimit.currentSpend >= this.budgetLimit.amount) {
     this.status = StandingOrderStatus.PAUSED;
   }
-  
+
   next();
 });
 

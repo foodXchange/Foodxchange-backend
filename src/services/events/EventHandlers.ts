@@ -1,21 +1,21 @@
-import { getServiceBusService, ServiceBusEvent } from '../azure/ServiceBusService';
-import { getRealtimeEventService } from '../realtime/RealtimeEventService';
-import { getSignalRService } from '../azure/SignalRService';
 import { Logger } from '../../core/logging/logger';
-import { sendEmail } from '../../utils/email';
-import { sendSMS } from '../../utils/sms';
+import { Company } from '../../models/Company';
 import { Order } from '../../models/Order';
+import { Product } from '../../models/Product';
 import { RFQ } from '../../models/RFQ';
 import { User } from '../../models/User';
-import { Product } from '../../models/Product';
-import { Company } from '../../models/Company';
+import { sendEmail } from '../../utils/email';
+import { sendSMS } from '../../utils/sms';
+import { getServiceBusService, ServiceBusEvent } from '../azure/ServiceBusService';
+import { getSignalRService } from '../azure/SignalRService';
+import { getRealtimeEventService } from '../realtime/RealtimeEventService';
 
 const logger = new Logger('EventHandlers');
 
 export class EventHandlers {
-  private serviceBusService = getServiceBusService();
-  private realtimeEventService = getRealtimeEventService();
-  private signalRService = getSignalRService();
+  private readonly serviceBusService = getServiceBusService();
+  private readonly realtimeEventService = getRealtimeEventService();
+  private readonly signalRService = getSignalRService();
 
   /**
    * Initialize event handlers
@@ -24,10 +24,10 @@ export class EventHandlers {
     try {
       // Initialize service bus
       await this.serviceBusService.initialize();
-      
+
       // Set up event listeners
       this.setupEventListeners();
-      
+
       logger.info('Event handlers initialized successfully');
     } catch (error) {
       logger.error('Failed to initialize event handlers:', error);
@@ -102,7 +102,7 @@ export class EventHandlers {
   private async handleOrderCreated(event: ServiceBusEvent): Promise<void> {
     try {
       const { orderId, buyerId, supplierId, orderNumber, totalAmount, currency } = event.data;
-      
+
       // Send welcome email to both parties
       const [buyer, supplier] = await Promise.all([
         User.findById(buyerId),
@@ -128,7 +128,7 @@ export class EventHandlers {
       }
 
       // Send analytics event
-      await this.serviceBusService.sendAnalyticsEvent('order_placed', orderId, 'order', event.tenantId, event.userId!, {
+      await this.serviceBusService.sendAnalyticsEvent('order_placed', orderId, 'order', event.tenantId, event.userId, {
         orderNumber,
         totalAmount,
         currency,
@@ -145,12 +145,12 @@ export class EventHandlers {
   private async handleOrderUpdated(event: ServiceBusEvent): Promise<void> {
     try {
       const { orderId, oldStatus, newStatus } = event.data;
-      
+
       // Send real-time update
-      await this.realtimeEventService.emitOrderStatusUpdate(orderId, oldStatus, newStatus, event.userId!, event.tenantId);
-      
+      await this.realtimeEventService.emitOrderStatusUpdate(orderId, oldStatus, newStatus, event.userId, event.tenantId);
+
       // Send analytics event
-      await this.serviceBusService.sendAnalyticsEvent('order_status_changed', orderId, 'order', event.tenantId, event.userId!, {
+      await this.serviceBusService.sendAnalyticsEvent('order_status_changed', orderId, 'order', event.tenantId, event.userId, {
         oldStatus,
         newStatus
       });
@@ -164,7 +164,7 @@ export class EventHandlers {
   private async handleOrderApproved(event: ServiceBusEvent): Promise<void> {
     try {
       const { orderId, approver, comments } = event.data;
-      
+
       const order = await Order.findById(orderId).populate('buyer supplier');
       if (!order) return;
 
@@ -200,7 +200,7 @@ export class EventHandlers {
   private async handleOrderRejected(event: ServiceBusEvent): Promise<void> {
     try {
       const { orderId, rejector, comments } = event.data;
-      
+
       const order = await Order.findById(orderId).populate('buyer supplier');
       if (!order) return;
 
@@ -236,7 +236,7 @@ export class EventHandlers {
   private async handleOrderCancelled(event: ServiceBusEvent): Promise<void> {
     try {
       const { orderId, reason } = event.data;
-      
+
       const order = await Order.findById(orderId).populate('buyer supplier');
       if (!order) return;
 
@@ -273,7 +273,7 @@ export class EventHandlers {
   private async handleOrderShipped(event: ServiceBusEvent): Promise<void> {
     try {
       const { orderId, shipmentId, carrier, trackingNumber } = event.data;
-      
+
       const order = await Order.findById(orderId).populate('buyer');
       if (!order) return;
 
@@ -284,11 +284,11 @@ export class EventHandlers {
           to: buyer.email,
           subject: `Order ${order.orderNumber} Shipped`,
           template: 'order_shipped',
-          data: { 
+          data: {
             orderNumber: order.orderNumber,
             carrier,
             trackingNumber,
-            shipmentId 
+            shipmentId
           }
         });
       }
@@ -310,7 +310,7 @@ export class EventHandlers {
   private async handleOrderDelivered(event: ServiceBusEvent): Promise<void> {
     try {
       const { orderId, deliveryDate } = event.data;
-      
+
       const order = await Order.findById(orderId).populate('buyer supplier');
       if (!order) return;
 
@@ -339,7 +339,7 @@ export class EventHandlers {
       }
 
       // Send analytics event
-      await this.serviceBusService.sendAnalyticsEvent('order_delivered', orderId, 'order', event.tenantId, event.userId!, {
+      await this.serviceBusService.sendAnalyticsEvent('order_delivered', orderId, 'order', event.tenantId, event.userId, {
         orderNumber: order.orderNumber,
         deliveryDate,
         totalAmount: order.totalAmount
@@ -357,12 +357,12 @@ export class EventHandlers {
   private async handleRFQCreated(event: ServiceBusEvent): Promise<void> {
     try {
       const { rfqId, title, submissionDeadline } = event.data;
-      
+
       // Notify potential suppliers
-      const suppliers = await User.find({ 
-        tenantId: event.tenantId, 
+      const suppliers = await User.find({
+        tenantId: event.tenantId,
         role: 'supplier',
-        isActive: true 
+        isActive: true
       });
 
       for (const supplier of suppliers) {
@@ -385,7 +385,7 @@ export class EventHandlers {
   private async handleRFQQuoteReceived(event: ServiceBusEvent): Promise<void> {
     try {
       const { rfqId, supplierId, quoteAmount, currency } = event.data;
-      
+
       const rfq = await RFQ.findById(rfqId).populate('buyer');
       if (!rfq) return;
 
@@ -396,11 +396,11 @@ export class EventHandlers {
           to: buyer.email,
           subject: `New Quote Received for RFQ: ${rfq.title}`,
           template: 'rfq_quote_received',
-          data: { 
+          data: {
             rfqTitle: rfq.title,
             quoteAmount,
             currency,
-            rfqId 
+            rfqId
           }
         });
       }
@@ -430,7 +430,7 @@ export class EventHandlers {
   private async handleRFQClosed(event: ServiceBusEvent): Promise<void> {
     try {
       const { rfqId } = event.data;
-      
+
       const rfq = await RFQ.findById(rfqId);
       if (!rfq) return;
 
@@ -456,7 +456,7 @@ export class EventHandlers {
   private async handleRFQAwarded(event: ServiceBusEvent): Promise<void> {
     try {
       const { rfqId, winningSupplierId, awardAmount } = event.data;
-      
+
       const rfq = await RFQ.findById(rfqId);
       if (!rfq) return;
 
@@ -467,11 +467,11 @@ export class EventHandlers {
           to: winningSupplier.email,
           subject: `Congratulations! You won the RFQ: ${rfq.title}`,
           template: 'rfq_won',
-          data: { 
+          data: {
             rfqTitle: rfq.title,
             awardAmount,
             currency: rfq.currency,
-            rfqId 
+            rfqId
           }
         });
       }
@@ -503,12 +503,12 @@ export class EventHandlers {
   private async handleComplianceViolation(event: ServiceBusEvent): Promise<void> {
     try {
       const { violationType, severity, orderId, description } = event.data;
-      
+
       // Send compliance alert
       await this.signalRService.sendComplianceAlert(
         violationType,
         severity,
-        event.userId!,
+        event.userId,
         event.tenantId,
         { orderId, description }
       );
@@ -525,7 +525,7 @@ export class EventHandlers {
             to: officer.email,
             subject: `Compliance Violation: ${violationType}`,
             template: 'compliance_violation',
-            data: { 
+            data: {
               violationType,
               severity,
               orderId,
@@ -544,7 +544,7 @@ export class EventHandlers {
   private async handleComplianceAlert(event: ServiceBusEvent): Promise<void> {
     try {
       const { alertType, severity, message } = event.data;
-      
+
       // Send system notification
       await this.signalRService.sendSystemNotification(
         `Compliance Alert: ${alertType}`,
@@ -565,7 +565,7 @@ export class EventHandlers {
   private async handleMaintenanceStarted(event: ServiceBusEvent): Promise<void> {
     try {
       const { maintenanceType, startTime, estimatedDuration } = event.data;
-      
+
       // Broadcast maintenance notification
       await this.signalRService.sendToGroup(
         `tenant_${event.tenantId}`,
@@ -588,7 +588,7 @@ export class EventHandlers {
   private async handleMaintenanceEnded(event: ServiceBusEvent): Promise<void> {
     try {
       const { maintenanceType, endTime } = event.data;
-      
+
       // Broadcast maintenance completion
       await this.signalRService.sendToGroup(
         `tenant_${event.tenantId}`,

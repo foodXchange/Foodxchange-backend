@@ -1,0 +1,337 @@
+# FoodXchange CI/CD Pipeline
+# Automated testing, building, and deployment
+
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  NODE_VERSION: '18'
+  DOCKER_REGISTRY: ghcr.io
+  IMAGE_NAME: foodxchange-backend
+
+jobs:
+  # Job 1: Code Quality & Testing
+  test:
+    name: Test & Code Quality
+    runs-on: ubuntu-latest
+    
+    services:
+      mongodb:
+        image: mongo:7.0
+        env:
+          MONGO_INITDB_ROOT_USERNAME: admin
+          MONGO_INITDB_ROOT_PASSWORD: password
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.adminCommand(\"ping\")'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7.2-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Lint code
+      run: npm run lint
+
+    - name: Type check
+      run: npm run type-check
+
+    - name: Run unit tests
+      env:
+        MONGODB_URI: mongodb://admin:password@localhost:27017/foodxchange_test?authSource=admin
+        REDIS_URL: redis://localhost:6379
+        JWT_SECRET: test-jwt-secret-for-ci
+        NODE_ENV: test
+      run: npm run test:unit
+
+    - name: Run integration tests
+      env:
+        MONGODB_URI: mongodb://admin:password@localhost:27017/foodxchange_test?authSource=admin
+        REDIS_URL: redis://localhost:6379
+        JWT_SECRET: test-jwt-secret-for-ci
+        NODE_ENV: test
+      run: npm run test:integration
+
+    - name: Generate test coverage
+      run: npm run test:coverage
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage/lcov.info
+        flags: unittests
+        name: codecov-umbrella
+
+    - name: Security audit
+      run: npm audit --audit-level moderate
+
+  # Job 2: Build Docker Image
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push'
+    
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.DOCKER_REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.DOCKER_REGISTRY }}/${{ github.repository }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push Docker image
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile.production
+        target: production
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: linux/amd64,linux/arm64
+
+  # Job 3: Security Scanning
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ needs.build.outputs.image-tag }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  # Job 4: Deploy to Staging
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build, security]
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    environment: staging
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy to staging
+      env:
+        STAGING_HOST: ${{ secrets.STAGING_HOST }}
+        STAGING_USER: ${{ secrets.STAGING_USER }}
+        STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+        IMAGE_TAG: ${{ needs.build.outputs.image-tag }}
+      run: |
+        echo "$STAGING_SSH_KEY" > staging_key
+        chmod 600 staging_key
+        
+        ssh -i staging_key -o StrictHostKeyChecking=no $STAGING_USER@$STAGING_HOST << EOF
+          cd /opt/foodxchange
+          export IMAGE_TAG=$IMAGE_TAG
+          docker-compose -f docker-compose.staging.yml pull
+          docker-compose -f docker-compose.staging.yml up -d
+          docker system prune -f
+        EOF
+        
+        rm staging_key
+
+    - name: Run smoke tests
+      run: |
+        sleep 30
+        curl -f http://${{ secrets.STAGING_HOST }}/api/health
+
+  # Job 5: Deploy to Production
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build, security]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy to production
+      env:
+        PROD_HOST: ${{ secrets.PROD_HOST }}
+        PROD_USER: ${{ secrets.PROD_USER }}
+        PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
+        IMAGE_TAG: ${{ needs.build.outputs.image-tag }}
+      run: |
+        echo "$PROD_SSH_KEY" > prod_key
+        chmod 600 prod_key
+        
+        ssh -i prod_key -o StrictHostKeyChecking=no $PROD_USER@$PROD_HOST << EOF
+          cd /opt/foodxchange
+          
+          # Create backup before deployment
+          ./scripts/backup.sh
+          
+          # Rolling update deployment
+          export IMAGE_TAG=$IMAGE_TAG
+          docker-compose -f docker-compose.production.yml pull api
+          docker-compose -f docker-compose.production.yml up -d --no-deps api
+          
+          # Health check
+          sleep 60
+          curl -f http://localhost:5000/api/health || exit 1
+          
+          # Cleanup old images
+          docker image prune -f
+        EOF
+        
+        rm prod_key
+
+    - name: Run production health checks
+      run: |
+        sleep 60
+        curl -f https://${{ secrets.PROD_DOMAIN }}/api/health
+        curl -f https://${{ secrets.PROD_DOMAIN }}/api/payments/health
+        curl -f https://${{ secrets.PROD_DOMAIN }}/api/search/health
+
+    - name: Notify deployment success
+      if: success()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: success
+        channel: '#deployments'
+        message: '🚀 FoodXchange backend deployed to production successfully!'
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+    - name: Notify deployment failure
+      if: failure()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: failure
+        channel: '#deployments'
+        message: '❌ FoodXchange backend deployment to production failed!'
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Job 6: Performance Testing
+  performance:
+    name: Performance Testing
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: github.ref == 'refs/heads/develop'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+
+    - name: Install k6
+      run: |
+        sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+        echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+        sudo apt-get update
+        sudo apt-get install k6
+
+    - name: Run performance tests
+      env:
+        STAGING_URL: https://${{ secrets.STAGING_HOST }}
+      run: |
+        k6 run --out json=performance-results.json tests/performance/load-test.js
+
+    - name: Upload performance results
+      uses: actions/upload-artifact@v3
+      with:
+        name: performance-results
+        path: performance-results.json
+
+  # Job 7: Database Migrations
+  migrate:
+    name: Database Migrations
+    runs-on: ubuntu-latest
+    needs: deploy-production
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run database migrations
+      env:
+        PROD_HOST: ${{ secrets.PROD_HOST }}
+        PROD_USER: ${{ secrets.PROD_USER }}
+        PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
+      run: |
+        echo "$PROD_SSH_KEY" > prod_key
+        chmod 600 prod_key
+        
+        ssh -i prod_key -o StrictHostKeyChecking=no $PROD_USER@$PROD_HOST << EOF
+          cd /opt/foodxchange
+          docker-compose -f docker-compose.production.yml exec -T api npm run migrate
+        EOF
+        
+        rm prod_key

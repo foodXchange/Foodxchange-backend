@@ -25,7 +25,7 @@ export const ComplianceRulesDatabase: ComplianceRule[] = [
     validationFunction: (spec) => {
       const color = spec.specifications?.visual?.primaryColor;
       if (!color) return false;
-      
+
       // Check for prohibited artificial colors
       const prohibitedColors = ['blue', 'green', 'purple', 'red'];
       return !prohibitedColors.includes(color.colorName?.toLowerCase());
@@ -46,11 +46,11 @@ export const ComplianceRulesDatabase: ComplianceRule[] = [
     validationFunction: (spec) => {
       const ingredients = spec.specifications?.ingredients || [];
       const declaredAllergens = spec.complianceRequirements?.allergenLabeling || [];
-      
+
       const majorAllergens = ['milk', 'eggs', 'fish', 'shellfish', 'tree nuts', 'peanuts', 'wheat', 'soybeans', 'sesame'];
       const foundAllergens = ingredients.flatMap((i: any) => i.allergens || []);
-      
-      return foundAllergens.every((allergen: string) => 
+
+      return foundAllergens.every((allergen: string) =>
         declaredAllergens.includes(allergen)
       );
     },
@@ -85,7 +85,7 @@ export const ComplianceRulesDatabase: ComplianceRule[] = [
     validationFunction: (spec) => {
       const nutrition = spec.specifications?.nutritional;
       if (!nutrition) return false;
-      
+
       const requiredFields = ['servingSize', 'calories', 'nutrients'];
       return requiredFields.every(field => nutrition[field] !== undefined);
     },
@@ -102,7 +102,7 @@ export const ComplianceRulesDatabase: ComplianceRule[] = [
     requirement: 'USDA Organic Certification',
     description: 'Products labeled as organic must have USDA Organic certification',
     validationFunction: (spec) => {
-      if (spec.productName?.toLowerCase().includes('organic') || 
+      if (spec.productName?.toLowerCase().includes('organic') ||
           spec.category?.toLowerCase().includes('organic')) {
         return spec.complianceRequirements?.certifications?.includes('USDA Organic');
       }
@@ -123,7 +123,7 @@ export const ComplianceRulesDatabase: ComplianceRule[] = [
     description: 'Must declare net weight in both metric and imperial units',
     validationFunction: (spec) => {
       const weight = spec.specifications?.dimensions?.weight;
-      return weight && weight.value && weight.unit;
+      return weight?.value && weight.unit;
     },
     severity: 'high',
     autoFixable: false
@@ -153,10 +153,10 @@ export const ComplianceRulesDatabase: ComplianceRule[] = [
     requirement: 'EU GMO Labeling',
     description: 'Products containing >0.9% GMO must be labeled',
     validationFunction: (spec) => {
-      const hasGMO = spec.specifications?.ingredients?.some((i: any) => 
+      const hasGMO = spec.specifications?.ingredients?.some((i: any) =>
         i.gmo === true
       );
-      
+
       if (hasGMO) {
         return spec.complianceRequirements?.gmoLabeling === true;
       }
@@ -192,7 +192,7 @@ export const ComplianceRulesDatabase: ComplianceRule[] = [
     validationFunction: (spec) => {
       const ingredients = spec.specifications?.ingredients || [];
       const additives = ingredients.filter((i: any) => i.isAdditive);
-      
+
       // This would check against approved additive databases
       return true; // Placeholder - would integrate with additive database
     },
@@ -218,13 +218,13 @@ export const ComplianceRulesDatabase: ComplianceRule[] = [
 
 // Helper function to get rules by criteria
 export function getRulesByProduct(productType: string): ComplianceRule[] {
-  return ComplianceRulesDatabase.filter(rule => 
+  return ComplianceRulesDatabase.filter(rule =>
     rule.productTypes.includes('all') || rule.productTypes.includes(productType)
   );
 }
 
 export function getRulesByMarket(market: string): ComplianceRule[] {
-  return ComplianceRulesDatabase.filter(rule => 
+  return ComplianceRulesDatabase.filter(rule =>
     rule.markets.includes('all') || rule.markets.includes(market)
   );
 }
@@ -288,7 +288,7 @@ export const AutomatedFixes = {
     });
     return Array.from(allergens);
   },
-  
+
   nutritionCalculation: (ingredients: any[]) => {
     // Would integrate with nutrition database
     return {

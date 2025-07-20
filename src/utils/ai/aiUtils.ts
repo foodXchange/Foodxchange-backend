@@ -24,7 +24,7 @@ class AIUtils {
   static extractQuantities(text) {
     const quantityRegex = /(\d+(?:\.\d+)?)\s*(kg|g|lb|oz|ml|l|gallon|ton|tonnes|cases|boxes|units|pieces)/gi;
     const matches = text.match(quantityRegex) || [];
-    
+
     return matches.map(match => {
       const parts = match.split(/\s+/);
       return {
@@ -87,8 +87,8 @@ class AIUtils {
       description: product.description || '',
       category: product.category || '',
       subcategory: product.subcategory || '',
-      imageUrls: Array.isArray(product.imageUrls) ? product.imageUrls : 
-                 Array.isArray(product.images) ? product.images : [],
+      imageUrls: Array.isArray(product.imageUrls) ? product.imageUrls :
+        Array.isArray(product.images) ? product.images : [],
       certifications: Array.isArray(product.certifications) ? product.certifications : [],
       origin: product.origin || '',
       specifications: product.specifications || {}
@@ -122,23 +122,23 @@ class AIUtils {
   // Identify which AI services were used in the response
   static getUsedServices(response) {
     const services = [];
-    
+
     if (response.keyPhrases || response.sentiment || response.entities) {
       services.push('textAnalytics');
     }
-    
+
     if (response.imageAnalysis || response.tags || response.objects) {
       services.push('computerVision');
     }
-    
+
     if (response.documents || response.forms) {
       services.push('formRecognizer');
     }
-    
+
     if (response.searchResults) {
       services.push('cognitiveSearch');
     }
-    
+
     return services;
   }
 
@@ -187,7 +187,7 @@ class AIUtils {
       const parsedUrl = new URL(url);
       const validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
       const pathname = parsedUrl.pathname.toLowerCase();
-      
+
       return validExtensions.some(ext => pathname.endsWith(ext)) ||
              pathname.includes('image') ||
              parsedUrl.hostname.includes('images');
@@ -199,12 +199,12 @@ class AIUtils {
   // Sanitize data for logging (remove sensitive information)
   static sanitizeForLogging(data) {
     const sensitiveFields = ['key', 'password', 'secret', 'token', 'credentials'];
-    
+
     const sanitized = JSON.parse(JSON.stringify(data));
-    
+
     const removeSensitiveFields = (obj) => {
       if (typeof obj !== 'object' || obj === null) return;
-      
+
       Object.keys(obj).forEach(key => {
         if (sensitiveFields.some(field => key.toLowerCase().includes(field))) {
           obj[key] = '[REDACTED]';
@@ -213,7 +213,7 @@ class AIUtils {
         }
       });
     };
-    
+
     removeSensitiveFields(sanitized);
     return sanitized;
   }

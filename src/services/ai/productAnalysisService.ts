@@ -13,7 +13,7 @@ class ProductAnalysisService {
         textAnalysis: null,
         imageAnalysis: [],
         qualityAssessment: {},
-        enhancedDescription: "",
+        enhancedDescription: '',
         complianceFlags: []
       };
 
@@ -66,7 +66,7 @@ class ProductAnalysisService {
 
       // Extract key phrases
       const keyPhraseResults = await textClient.extractKeyPhrases(documents);
-      const keyPhrases = keyPhraseResults[0].keyPhrases;
+      const {keyPhrases} = keyPhraseResults[0];
 
       // Analyze sentiment
       const sentimentResults = await textClient.analyzeSentiment(documents);
@@ -74,7 +74,7 @@ class ProductAnalysisService {
 
       // Recognize entities
       const entityResults = await textClient.recognizeEntities(documents);
-      const entities = entityResults[0].entities;
+      const {entities} = entityResults[0];
 
       return {
         keyPhrases,
@@ -184,8 +184,8 @@ class ProductAnalysisService {
         qualityFactors.push('Positive description sentiment');
       }
 
-      if (textAnalysis.keyPhrases.some(phrase => 
-        ['premium', 'high-quality', 'excellent', 'superior'].some(term => 
+      if (textAnalysis.keyPhrases.some(phrase =>
+        ['premium', 'high-quality', 'excellent', 'superior'].some(term =>
           phrase.toLowerCase().includes(term)
         )
       )) {
@@ -198,7 +198,7 @@ class ProductAnalysisService {
     if (imageAnalyses && imageAnalyses.length > 0) {
       const avgTagConfidence = imageAnalyses
         .flatMap(img => img.tags)
-        .reduce((sum, tag) => sum + tag.confidence, 0) / 
+        .reduce((sum, tag) => sum + tag.confidence, 0) /
         imageAnalyses.flatMap(img => img.tags).length;
 
       if (avgTagConfidence > 0.8) {
@@ -220,9 +220,9 @@ class ProductAnalysisService {
     }
 
     return {
-      overallQuality: qualityScore > 0.8 ? 'Excellent' : 
-                     qualityScore > 0.6 ? 'Good' : 
-                     qualityScore > 0.4 ? 'Fair' : 'Poor',
+      overallQuality: qualityScore > 0.8 ? 'Excellent' :
+        qualityScore > 0.6 ? 'Good' :
+          qualityScore > 0.4 ? 'Fair' : 'Poor',
       qualityScore: Math.round(qualityScore * 100) / 100,
       factors: qualityFactors,
       imageCount: imageAnalyses ? imageAnalyses.length : 0
@@ -233,13 +233,13 @@ class ProductAnalysisService {
     const enhancedElements = [product.description];
 
     // Add insights from text analysis
-    if (textAnalysis && textAnalysis.extractedAttributes) {
+    if (textAnalysis?.extractedAttributes) {
       const attributes = textAnalysis.extractedAttributes;
-      
+
       if (attributes.weight) {
         enhancedElements.push(`Package size: ${attributes.weight}`);
       }
-      
+
       if (attributes.dietary && attributes.dietary.length > 0) {
         enhancedElements.push(`Dietary features: ${attributes.dietary.join(', ')}`);
       }

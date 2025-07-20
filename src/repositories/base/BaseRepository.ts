@@ -1,6 +1,7 @@
 import { Model, Document, FilterQuery, UpdateQuery, QueryOptions } from 'mongoose';
-import { Logger } from '../../core/logging/logger';
+
 import { NotFoundError } from '../../core/errors';
+import { Logger } from '../../core/logging/logger';
 
 export interface IBaseRepository<T extends Document> {
   findAll(filter?: FilterQuery<T>, options?: QueryOptions): Promise<T[]>;
@@ -25,12 +26,12 @@ export abstract class BaseRepository<T extends Document> implements IBaseReposit
   async findAll(filter: FilterQuery<T> = {}, options: QueryOptions = {}): Promise<T[]> {
     try {
       const query = this.model.find(filter);
-      
+
       if (options.sort) query.sort(options.sort);
       if (options.limit) query.limit(options.limit);
       if (options.skip) query.skip(options.skip);
       if (options.populate) query.populate(options.populate);
-      
+
       const results = await query.lean().exec();
       this.logger.debug(`Found ${results.length} documents`, { filter });
       return results as T[];
@@ -82,13 +83,13 @@ export abstract class BaseRepository<T extends Document> implements IBaseReposit
         data,
         { new: true, runValidators: true }
       ).exec();
-      
+
       if (!result) {
         this.logger.debug(`Document not found for update with id: ${id}`);
       } else {
         this.logger.info(`Updated document with id: ${id}`);
       }
-      
+
       return result;
     } catch (error) {
       this.logger.error(`Error updating document with id ${id}:`, error);
@@ -144,14 +145,14 @@ export abstract class BaseRepository<T extends Document> implements IBaseReposit
   }> {
     try {
       const skip = (page - 1) * limit;
-      
+
       const [data, total] = await Promise.all([
         this.findAll(filter, { skip, limit, sort }),
         this.count(filter)
       ]);
-      
+
       const pages = Math.ceil(total / limit);
-      
+
       return {
         data,
         total,

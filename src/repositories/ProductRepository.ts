@@ -1,7 +1,9 @@
-import { Product, IProduct } from '../models/Product';
-import { BaseRepository } from './base/BaseRepository';
 import { FilterQuery } from 'mongoose';
+
 import { cacheService, cacheKeys } from '../config/redis';
+import { Product, IProduct } from '../models/Product';
+
+import { BaseRepository } from './base/BaseRepository';
 
 export class ProductRepository extends BaseRepository<IProduct> {
   constructor() {
@@ -11,22 +13,22 @@ export class ProductRepository extends BaseRepository<IProduct> {
   // Override findById to use cache
   async findById(id: string): Promise<IProduct | null> {
     const cacheKey = cacheKeys.product(id);
-    
+
     // Try cache first
     const cached = await cacheService.get<IProduct>(cacheKey);
     if (cached) {
       this.logger.debug(`Cache hit for product ${id}`);
       return cached;
     }
-    
+
     // Fetch from database
     const product = await super.findById(id);
-    
+
     // Cache the result
     if (product) {
       await cacheService.set(cacheKey, product, 3600); // 1 hour
     }
-    
+
     return product;
   }
 
@@ -89,7 +91,7 @@ export class ProductRepository extends BaseRepository<IProduct> {
     operation: 'add' | 'subtract' | 'set'
   ): Promise<IProduct | null> {
     const updateQuery: any = {};
-    
+
     switch (operation) {
       case 'add':
         updateQuery.$inc = {
@@ -171,7 +173,7 @@ export class ProductRepository extends BaseRepository<IProduct> {
       const result = await this.update(productId, {
         $set: { 'pricing.basePrice': newPrice }
       });
-      
+
       if (result) {
         updated++;
         await cacheService.del(cacheKeys.product(productId));
@@ -205,7 +207,7 @@ export class ProductRepository extends BaseRepository<IProduct> {
         'analytics.totalReviews': reviewCount
       }
     });
-    
+
     await cacheService.del(cacheKeys.product(productId));
   }
 }

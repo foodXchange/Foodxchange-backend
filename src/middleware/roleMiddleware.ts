@@ -16,33 +16,33 @@ export enum Permission {
   UPDATE_PRODUCT = 'update_product',
   DELETE_PRODUCT = 'delete_product',
   VIEW_PRODUCT = 'view_product',
-  
+
   // Sample request permissions
   CREATE_SAMPLE_REQUEST = 'create_sample_request',
   UPDATE_SAMPLE_REQUEST = 'update_sample_request',
   VIEW_SAMPLE_REQUEST = 'view_sample_request',
   APPROVE_SAMPLE_REQUEST = 'approve_sample_request',
-  
+
   // Order permissions
   CREATE_ORDER = 'create_order',
   UPDATE_ORDER = 'update_order',
   VIEW_ORDER = 'view_order',
   CANCEL_ORDER = 'cancel_order',
-  
+
   // RFQ permissions
   CREATE_RFQ = 'create_rfq',
   RESPOND_TO_RFQ = 'respond_to_rfq',
   VIEW_RFQ = 'view_rfq',
-  
+
   // Analytics permissions
   VIEW_ANALYTICS = 'view_analytics',
   VIEW_ADVANCED_ANALYTICS = 'view_advanced_analytics',
-  
+
   // Admin permissions
   MANAGE_USERS = 'manage_users',
   MANAGE_COMPANIES = 'manage_companies',
   SYSTEM_SETTINGS = 'system_settings',
-  
+
   // Compliance permissions
   MANAGE_COMPLIANCE = 'manage_compliance',
   VIEW_COMPLIANCE = 'view_compliance'
@@ -80,7 +80,7 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     Permission.VIEW_ANALYTICS,
     Permission.VIEW_COMPLIANCE
   ],
-  
+
   [UserRole.SUPPLIER]: [
     Permission.CREATE_PRODUCT,
     Permission.UPDATE_PRODUCT,
@@ -97,7 +97,7 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     Permission.VIEW_COMPLIANCE,
     Permission.MANAGE_COMPLIANCE
   ],
-  
+
   [UserRole.ADMIN]: Object.values(Permission) // Admin has all permissions
 };
 
@@ -149,7 +149,7 @@ const roleMiddleware = (allowedRoles: (UserRole | string)[]) => {
 
     } catch (error) {
       console.error('Role middleware error:', error);
-      
+
       res.status(500).json({
         success: false,
         message: 'Authorization error',
@@ -166,7 +166,7 @@ const roleMiddleware = (allowedRoles: (UserRole | string)[]) => {
  * @returns Express middleware function
  */
 export const permissionMiddleware = (
-  requiredPermissions: (Permission | string)[], 
+  requiredPermissions: (Permission | string)[],
   requireAll: boolean = false
 ) => {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
@@ -183,14 +183,14 @@ export const permissionMiddleware = (
 
       // Get user permissions (from JWT or role-based defaults)
       const userPermissions = req.user.permissions || ROLE_PERMISSIONS[req.user.role] || [];
-      
+
       // Convert to strings for comparison
       const userPermsStrings = userPermissions.map(p => p.toString());
       const requiredPermsStrings = requiredPermissions.map(p => p.toString());
 
       // Check permissions
       let hasAccess: boolean;
-      
+
       if (requireAll) {
         // User must have ALL required permissions
         hasAccess = requiredPermsStrings.every(perm => userPermsStrings.includes(perm));
@@ -204,7 +204,7 @@ export const permissionMiddleware = (
           success: false,
           message: 'Access denied. Insufficient permissions.',
           errors: [
-            requireAll 
+            requireAll
               ? `This action requires all of the following permissions: ${requiredPermsStrings.join(', ')}`
               : `This action requires one of the following permissions: ${requiredPermsStrings.join(', ')}`
           ]
@@ -216,7 +216,7 @@ export const permissionMiddleware = (
 
     } catch (error) {
       console.error('Permission middleware error:', error);
-      
+
       res.status(500).json({
         success: false,
         message: 'Authorization error',
@@ -252,7 +252,7 @@ export const companyOwnershipMiddleware = (resourceCompanyPath: string = 'body.c
       // Get resource company ID from request
       const pathParts = resourceCompanyPath.split('.');
       let resourceCompanyId: string = req as any;
-      
+
       for (const part of pathParts) {
         resourceCompanyId = resourceCompanyId[part];
         if (!resourceCompanyId) break;
@@ -281,7 +281,7 @@ export const companyOwnershipMiddleware = (resourceCompanyPath: string = 'body.c
 
     } catch (error) {
       console.error('Company ownership middleware error:', error);
-      
+
       res.status(500).json({
         success: false,
         message: 'Authorization error',
@@ -329,7 +329,7 @@ export const complexRoleMiddleware = (roleConfig: {
         const userPermsStrings = userPermissions.map(p => p.toString());
         const requiredPermsStrings = roleConfig.requiredPermissions.map(p => p.toString());
 
-        const hasPermissions = roleConfig.requireAllPermissions 
+        const hasPermissions = roleConfig.requireAllPermissions
           ? requiredPermsStrings.every(perm => userPermsStrings.includes(perm))
           : requiredPermsStrings.some(perm => userPermsStrings.includes(perm));
 
@@ -361,7 +361,7 @@ export const complexRoleMiddleware = (roleConfig: {
 
     } catch (error) {
       console.error('Complex role middleware error:', error);
-      
+
       res.status(500).json({
         success: false,
         message: 'Authorization error'
@@ -378,7 +378,7 @@ export const complexRoleMiddleware = (roleConfig: {
  */
 export const hasPermission = (user: any, permission: Permission | string): boolean => {
   if (!user) return false;
-  
+
   const userPermissions = user.permissions || ROLE_PERMISSIONS[user.role] || [];
   return userPermissions.includes(permission.toString());
 };

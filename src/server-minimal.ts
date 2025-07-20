@@ -1,9 +1,10 @@
-import express from 'express';
 import cors from 'cors';
-import helmet from 'helmet';
-import morgan from 'morgan';
 import dotenv from 'dotenv';
+import express from 'express';
+import helmet from 'helmet';
 import mongoose from 'mongoose';
+import morgan from 'morgan';
+
 import { setupSwagger } from './config/swagger';
 
 // Load environment variables

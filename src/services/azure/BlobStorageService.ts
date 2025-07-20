@@ -1,14 +1,16 @@
-import { BlobServiceClient, ContainerClient, BlockBlobClient } from '@azure/storage-blob';
 import { Logger } from '../../core/logging/logger';
 import { ValidationError } from '../../core/errors';
+
 import crypto from 'crypto';
 import path from 'path';
+
+import { BlobServiceClient, ContainerClient, BlockBlobClient } from '@azure/storage-blob';
 
 const logger = new Logger('BlobStorageService');
 
 export class BlobStorageService {
-  private blobServiceClient: BlobServiceClient;
-  private containerName: string;
+  private readonly blobServiceClient: BlobServiceClient;
+  private readonly containerName: string;
 
   constructor() {
     const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
@@ -37,7 +39,7 @@ export class BlobStorageService {
     try {
       const containerClient = this.blobServiceClient.getContainerClient(this.containerName);
       const exists = await containerClient.exists();
-      
+
       if (!exists) {
         await containerClient.create({
           access: 'blob' // Public read access for blobs
@@ -64,7 +66,7 @@ export class BlobStorageService {
       }
 
       const containerClient = this.blobServiceClient.getContainerClient(this.containerName);
-      
+
       // Generate unique filename if not provided
       if (!fileName) {
         const ext = path.extname(file.originalname);
@@ -90,8 +92,8 @@ export class BlobStorageService {
       // Upload file
       await blockBlobClient.upload(file.buffer, file.buffer.length, options);
 
-      const url = blockBlobClient.url;
-      
+      const {url} = blockBlobClient;
+
       logger.info('File uploaded to blob storage', {
         blobName,
         size: file.size,
@@ -112,10 +114,10 @@ export class BlobStorageService {
     files: Express.Multer.File[],
     containerPath: string
   ): Promise<string[]> {
-    const uploadPromises = files.map(file => 
+    const uploadPromises = files.map(async file =>
       this.uploadFile(file, containerPath)
     );
-    
+
     return Promise.all(uploadPromises);
   }
 
@@ -138,7 +140,7 @@ export class BlobStorageService {
       const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
       await blockBlobClient.delete();
-      
+
       logger.info('File deleted from blob storage', { blobName });
     } catch (error) {
       logger.error('Failed to delete file:', error);

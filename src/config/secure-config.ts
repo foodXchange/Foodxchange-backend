@@ -1,5 +1,6 @@
 import { DefaultAzureCredential } from '@azure/identity';
 import { SecretClient } from '@azure/keyvault-secrets';
+
 import { Logger } from '../core/logging/logger';
 
 const logger = new Logger('SecureConfig');
@@ -8,11 +9,11 @@ export interface SecureSecrets {
   // Database
   mongoConnectionString: string;
   redisConnectionString: string;
-  
+
   // JWT
   jwtSecret: string;
   jwtRefreshSecret: string;
-  
+
   // Azure Services
   openAIKey: string;
   textAnalyticsKey: string;
@@ -20,15 +21,15 @@ export interface SecureSecrets {
   searchKey: string;
   storageConnectionString: string;
   serviceBusConnectionString: string;
-  
+
   // External Services
   twilioAccountSid: string;
   twilioAuthToken: string;
   sendGridApiKey: string;
-  
+
   // Encryption
   encryptionKey: string;
-  
+
   // OAuth
   googleClientId: string;
   googleClientSecret: string;
@@ -38,16 +39,16 @@ export interface SecureSecrets {
 
 export class SecureConfig {
   private secrets: SecureSecrets | null = null;
-  private isProduction: boolean;
-  private useKeyVault: boolean;
-  private keyVaultName: string;
+  private readonly isProduction: boolean;
+  private readonly useKeyVault: boolean;
+  private readonly keyVaultName: string;
   private client: SecretClient | null = null;
 
   constructor() {
     this.isProduction = process.env.NODE_ENV === 'production';
     this.useKeyVault = process.env.USE_KEY_VAULT === 'true';
     this.keyVaultName = process.env.KEY_VAULT_NAME || 'foodxchange-keyvault';
-    
+
     if (this.useKeyVault && this.isProduction) {
       this.initializeKeyVaultClient();
     }
@@ -80,7 +81,7 @@ export class SecureConfig {
 
     // Validate critical secrets
     this.validateSecrets();
-    
+
     return this.secrets;
   }
 
@@ -111,7 +112,7 @@ export class SecureConfig {
     ];
 
     const secrets: Partial<SecureSecrets> = {};
-    
+
     for (const secretName of secretNames) {
       try {
         const secret = await this.client.getSecret(secretName);
@@ -164,7 +165,7 @@ export class SecureConfig {
     }
 
     const criticalSecrets = ['jwtSecret', 'jwtRefreshSecret'];
-    
+
     if (this.isProduction) {
       criticalSecrets.push('mongoConnectionString', 'redisConnectionString');
     }
@@ -196,7 +197,7 @@ export class SecureConfig {
     if (!this.secrets) {
       await this.loadSecrets();
     }
-    return this.secrets![key];
+    return this.secrets[key];
   }
 
   // Check if running in production
@@ -218,7 +219,7 @@ export class SecureConfig {
     try {
       await this.client.setSecret(secretName, newValue);
       logger.info(`Secret ${secretName} rotated successfully`);
-      
+
       // Invalidate cached secrets to force reload
       this.secrets = null;
     } catch (error) {
@@ -237,7 +238,7 @@ export class SecureConfig {
       // Try to list secrets (without values) to test connectivity
       const secretsIterator = this.client.listPropertiesOfSecrets();
       const firstSecret = await secretsIterator.next();
-      
+
       return {
         status: 'healthy',
         details: {

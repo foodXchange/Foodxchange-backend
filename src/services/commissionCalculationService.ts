@@ -1,8 +1,10 @@
+const mongoose = require('mongoose');
+
 const Agent = require('../models/Agent');
 const AgentCommission = require('../models/AgentCommission');
 const AgentLead = require('../models/AgentLead');
 const Order = require('../models/Order');
-const mongoose = require('mongoose');
+
 const agentWebSocketService = require('./websocket/agentWebSocketService');
 
 class CommissionCalculationService {
@@ -12,7 +14,7 @@ class CommissionCalculationService {
   async calculateCommission(dealData) {
     try {
       const { agentId, leadId, orderId, dealValue, currency = 'USD' } = dealData;
-      
+
       const agent = await Agent.findById(agentId);
       if (!agent) {
         throw new Error('Agent not found');
@@ -23,16 +25,16 @@ class CommissionCalculationService {
 
       // Calculate base commission
       const baseCommission = await this.calculateBaseCommission(agent, dealValue);
-      
+
       // Calculate tier bonus
       const tierBonus = await this.calculateTierBonus(agent, baseCommission);
-      
+
       // Calculate special bonuses
       const specialBonuses = await this.calculateSpecialBonuses(agent, lead, order, dealValue);
-      
+
       // Calculate penalties (if any)
       const penalties = await this.calculatePenalties(agent, lead, order);
-      
+
       // Create commission record
       const commission = new AgentCommission({
         agentId: agent._id,
@@ -45,8 +47,8 @@ class CommissionCalculationService {
           description: `Commission for ${order?.orderNumber || lead?.leadInfo.title}`
         },
         relatedEntities: {
-          leadId: leadId,
-          orderId: orderId,
+          leadId,
+          orderId,
           buyerId: lead?.buyer.userId,
           buyerCompanyId: lead?.buyer.company,
           supplierId: order?.supplier
@@ -54,7 +56,7 @@ class CommissionCalculationService {
         financial: {
           dealValue: {
             amount: dealValue,
-            currency: currency
+            currency
           },
           commission: {
             rate: agent.commission.baseRate.percentage,
@@ -62,7 +64,7 @@ class CommissionCalculationService {
             bonusAmount: tierBonus.amount + specialBonuses.totalAmount,
             penaltyAmount: penalties.totalAmount,
             totalAmount: baseCommission.amount + tierBonus.amount + specialBonuses.totalAmount - penalties.totalAmount,
-            currency: currency
+            currency
           },
           netAmount: baseCommission.amount + tierBonus.amount + specialBonuses.totalAmount - penalties.totalAmount
         },
@@ -95,13 +97,13 @@ class CommissionCalculationService {
 
       // Update agent performance stats
       await this.updateAgentStats(agent, dealValue, commission.financial.netAmount);
-      
+
       // Send real-time notification to agent
       await agentWebSocketService.notifyCommissionUpdate(agent._id.toString(), commission);
 
       return {
         primaryCommission: commission,
-        bonusCommissions: bonusCommissions,
+        bonusCommissions,
         totalAmount: commission.financial.netAmount + bonusCommissions.reduce((sum, bonus) => sum + bonus.financial.netAmount, 0)
       };
     } catch (error) {
@@ -125,7 +127,7 @@ class CommissionCalculationService {
         break;
       case 'hybrid':
         const percentageAmount = dealValue * (agent.commission.baseRate.percentage / 100);
-        const fixedAmount = agent.commission.baseRate.fixedAmount;
+        const {fixedAmount} = agent.commission.baseRate;
         amount = Math.max(percentageAmount, fixedAmount);
         break;
       default:
@@ -144,9 +146,9 @@ class CommissionCalculationService {
    * Calculate tier bonus
    */
   async calculateTierBonus(agent, baseCommission) {
-    const tier = agent.performance.tier;
-    const tierBonuses = agent.commission.tierBonuses;
-    
+    const {tier} = agent.performance;
+    const {tierBonuses} = agent.commission;
+
     let bonusPercentage = 0;
     switch (tier) {
       case 'silver':
@@ -163,11 +165,11 @@ class CommissionCalculationService {
     }
 
     const amount = baseCommission.amount * (bonusPercentage / 100);
-    
+
     return {
       amount: Math.round(amount * 100) / 100,
       percentage: bonusPercentage,
-      tier: tier
+      tier
     };
   }
 
@@ -176,7 +178,7 @@ class CommissionCalculationService {
    */
   async calculateSpecialBonuses(agent, lead, order, dealValue) {
     const bonuses = [];
-    const specialBonuses = agent.commission.specialBonuses;
+    const {specialBonuses} = agent.commission;
 
     // New supplier bonus
     if (lead && await this.isNewSupplier(lead)) {
@@ -236,7 +238,7 @@ class CommissionCalculationService {
     const totalAmount = bonuses.reduce((sum, bonus) => sum + bonus.amount, 0);
 
     return {
-      bonuses: bonuses,
+      bonuses,
       totalAmount: Math.round(totalAmount * 100) / 100
     };
   }
@@ -277,7 +279,7 @@ class CommissionCalculationService {
     const totalAmount = penalties.reduce((sum, penalty) => sum + penalty.amount, 0);
 
     return {
-      penalties: penalties,
+      penalties,
       totalAmount: Math.round(totalAmount * 100) / 100
     };
   }
@@ -301,7 +303,7 @@ class CommissionCalculationService {
         relatedEntities: {
           leadId: dealData.leadId,
           orderId: dealData.orderId,
-          parentCommissionId: parentCommissionId
+          parentCommissionId
         },
         financial: {
           dealValue: {
@@ -342,7 +344,7 @@ class CommissionCalculationService {
   async setupRecurringCommission(agent, originalCommission, dealData) {
     const recurringSettings = agent.commission.recurringCommission;
     const recurringRate = recurringSettings.rate;
-    const duration = recurringSettings.duration; // months
+    const {duration} = recurringSettings; // months
 
     for (let month = 1; month <= duration; month++) {
       const recurringCommission = new AgentCommission({
@@ -425,9 +427,9 @@ class CommissionCalculationService {
    * Calculate agent tier based on performance
    */
   async calculateAgentTier(agent) {
-    const stats = agent.performance.stats;
+    const {stats} = agent.performance;
     const rating = agent.performance.rating.average;
-    
+
     // Tier criteria
     const criteria = {
       platinum: {
@@ -459,7 +461,7 @@ class CommissionCalculationService {
     // Check from highest to lowest tier
     for (const [tier, requirements] of Object.entries(criteria)) {
       if (tier === 'bronze') return 'bronze';
-      
+
       if (stats.closedDeals >= requirements.closedDeals &&
           stats.totalRevenue >= requirements.totalRevenue &&
           stats.conversionRate >= requirements.conversionRate &&
@@ -486,20 +488,20 @@ class CommissionCalculationService {
 
   formatBonusCalculation(tierBonus, specialBonuses) {
     let calculation = '';
-    
+
     if (tierBonus.amount > 0) {
       calculation += `Tier bonus (${tierBonus.tier}): +${tierBonus.amount}`;
     }
-    
+
     if (specialBonuses.bonuses.length > 0) {
-      const bonusDescriptions = specialBonuses.bonuses.map(bonus => 
+      const bonusDescriptions = specialBonuses.bonuses.map(bonus =>
         `${bonus.type}: +${bonus.amount}`
       ).join(', ');
-      
+
       if (calculation) calculation += ', ';
       calculation += bonusDescriptions;
     }
-    
+
     return calculation || 'No bonuses';
   }
 
@@ -515,7 +517,7 @@ class CommissionCalculationService {
       status: 'closed_won',
       _id: { $ne: lead._id }
     });
-    
+
     return previousDeals === 0;
   }
 
@@ -526,7 +528,7 @@ class CommissionCalculationService {
       status: 'closed_won',
       _id: { $ne: lead._id }
     });
-    
+
     return previousDeals === 0;
   }
 
@@ -535,7 +537,7 @@ class CommissionCalculationService {
       'assignment.activeAgent': agent._id,
       status: 'closed_won'
     });
-    
+
     return previousDeals === 1; // This is the first deal
   }
 
@@ -543,7 +545,7 @@ class CommissionCalculationService {
     const acceptedAt = new Date(lead.assignment.acceptedAt);
     const closedAt = new Date(lead.closedAt);
     const hoursToClose = (closedAt - acceptedAt) / (1000 * 60 * 60);
-    
+
     return hoursToClose <= 48;
   }
 
@@ -551,7 +553,7 @@ class CommissionCalculationService {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    
+
     const monthlyRevenue = await AgentLead.aggregate([
       {
         $match: {
@@ -570,17 +572,17 @@ class CommissionCalculationService {
         }
       }
     ]);
-    
+
     const currentMonthRevenue = monthlyRevenue.length > 0 ? monthlyRevenue[0].totalRevenue : 0;
     const targetRevenue = 50000; // Monthly target
-    
+
     if (currentMonthRevenue >= targetRevenue) {
       return {
         eligible: true,
         amount: agent.commission.specialBonuses.monthlyTarget
       };
     }
-    
+
     return {
       eligible: false,
       amount: 0
@@ -591,9 +593,9 @@ class CommissionCalculationService {
     const assignment = lead.assignment.assignedAgents.find(
       a => a.agentId.toString() === agent._id.toString()
     );
-    
+
     if (!assignment) return false;
-    
+
     const responseTime = assignment.response?.responseTime || 0;
     return responseTime > 120; // More than 2 hours
   }

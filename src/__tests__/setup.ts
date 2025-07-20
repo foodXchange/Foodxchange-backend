@@ -82,12 +82,12 @@ expect.extend({
         message: () => `expected ${received} not to be a valid ObjectId`,
         pass: true
       };
-    } else {
-      return {
-        message: () => `expected ${received} to be a valid ObjectId`,
-        pass: false
-      };
     }
+    return {
+      message: () => `expected ${received} to be a valid ObjectId`,
+      pass: false
+    };
+
   },
 
   toBeValidEmail(received) {
@@ -98,12 +98,12 @@ expect.extend({
         message: () => `expected ${received} not to be a valid email`,
         pass: true
       };
-    } else {
-      return {
-        message: () => `expected ${received} to be a valid email`,
-        pass: false
-      };
     }
+    return {
+      message: () => `expected ${received} to be a valid email`,
+      pass: false
+    };
+
   },
 
   toBeValidJWT(received) {
@@ -114,12 +114,12 @@ expect.extend({
         message: () => `expected ${received} not to be a valid JWT`,
         pass: true
       };
-    } else {
-      return {
-        message: () => `expected ${received} to be a valid JWT`,
-        pass: false
-      };
     }
+    return {
+      message: () => `expected ${received} to be a valid JWT`,
+      pass: false
+    };
+
   }
 });
 

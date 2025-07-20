@@ -1,7 +1,8 @@
-const mongoose = require('mongoose');
 const fs = require('fs');
 const path = require('path');
+
 const csv = require('csv-parser');
+const mongoose = require('mongoose');
 require('dotenv').config();
 
 // Connect to MongoDB
@@ -91,16 +92,16 @@ const Request = mongoose.model('Request', requestSchema);
 const Proposal = mongoose.model('Proposal', proposalSchema);
 
 // Helper function to parse CSV
-function parseCSV(filePath) {
+async function parseCSV(filePath) {
   return new Promise((resolve, reject) => {
     const results = [];
-    
+
     if (!fs.existsSync(filePath)) {
       console.log(`File not found: ${filePath}`);
       resolve([]);
       return;
     }
-    
+
     fs.createReadStream(filePath)
       .pipe(csv())
       .on('data', (data) => results.push(data))
@@ -114,15 +115,15 @@ async function importBuyers() {
   console.log('\n📥 Importing Buyers...');
   const filePath = path.join(__dirname, '..', '..', 'data', 'Buyers 23_6_2025.csv');
   const buyers = await parseCSV(filePath);
-  
+
   if (buyers.length === 0) {
     console.log('No buyer data found');
     return;
   }
-  
+
   // Clear existing buyers
   await Buyer.deleteMany({});
-  
+
   for (const buyer of buyers) {
     try {
       await Buyer.create({
@@ -140,7 +141,7 @@ async function importBuyers() {
       console.error('Error importing buyer:', error.message);
     }
   }
-  
+
   const count = await Buyer.countDocuments();
   console.log(`✅ Imported ${count} buyers`);
 }
@@ -149,15 +150,15 @@ async function importProducts() {
   console.log('\n📥 Importing Products...');
   const filePath = path.join(__dirname, '..', '..', 'data', 'Products 23_6_2025.csv');
   const products = await parseCSV(filePath);
-  
+
   if (products.length === 0) {
     console.log('No product data found');
     return;
   }
-  
+
   // Clear existing products
   await Product.deleteMany({});
-  
+
   for (const product of products) {
     try {
       await Product.create({
@@ -182,7 +183,7 @@ async function importProducts() {
       console.error('Error importing product:', error.message);
     }
   }
-  
+
   const count = await Product.countDocuments();
   console.log(`✅ Imported ${count} products`);
 }
@@ -191,26 +192,26 @@ async function importRequests() {
   console.log('\n📥 Importing Requests (RFQs)...');
   const requestsPath = path.join(__dirname, '..', '..', 'data', 'Requests 23_6_2025.csv');
   const lineItemsPath = path.join(__dirname, '..', '..', 'data', 'Request line items 23_6_2025.csv');
-  
+
   const requests = await parseCSV(requestsPath);
   const lineItems = await parseCSV(lineItemsPath);
-  
+
   if (requests.length === 0) {
     console.log('No request data found');
     return;
   }
-  
+
   // Clear existing requests
   await Request.deleteMany({});
-  
+
   for (const request of requests) {
     try {
       // Find line items for this request
-      const requestItems = lineItems.filter(item => 
-        item['Request ID'] === request['Request ID'] || 
+      const requestItems = lineItems.filter(item =>
+        item['Request ID'] === request['Request ID'] ||
         item.requestId === request.id
       );
-      
+
       await Request.create({
         requestId: request['Request ID'] || request.id,
         requestNumber: request['Request Number'] || `RFQ-${request.id}`,
@@ -235,7 +236,7 @@ async function importRequests() {
       console.error('Error importing request:', error.message);
     }
   }
-  
+
   const count = await Request.countDocuments();
   console.log(`✅ Imported ${count} requests (RFQs)`);
 }
@@ -244,15 +245,15 @@ async function importProposals() {
   console.log('\n📥 Importing Proposals...');
   const filePath = path.join(__dirname, '..', '..', 'data', 'Proposals Samples 23_6_2025.csv');
   const proposals = await parseCSV(filePath);
-  
+
   if (proposals.length === 0) {
     console.log('No proposal data found');
     return;
   }
-  
+
   // Clear existing proposals
   await Proposal.deleteMany({});
-  
+
   for (const proposal of proposals) {
     try {
       await Proposal.create({
@@ -269,7 +270,7 @@ async function importProposals() {
       console.error('Error importing proposal:', error.message);
     }
   }
-  
+
   const count = await Proposal.countDocuments();
   console.log(`✅ Imported ${count} proposals`);
 }
@@ -277,13 +278,13 @@ async function importProposals() {
 // Create demo user accounts for buyers
 async function createBuyerAccounts() {
   console.log('\n👤 Creating buyer user accounts...');
-  
+
   const bcrypt = require('bcryptjs');
   const User = require('./models/User');
   const Company = require('./models/Company');
-  
+
   const buyers = await Buyer.find().limit(5); // Create accounts for first 5 buyers
-  
+
   for (const buyer of buyers) {
     try {
       // Create company
@@ -299,11 +300,11 @@ async function createBuyerAccounts() {
         },
         { upsert: true, new: true }
       );
-      
+
       // Create user account
       const email = buyer.email || `${buyer.name.toLowerCase().replace(/\s+/g, '.')}@foodxchange.com`;
       const hashedPassword = await bcrypt.hash('password123', 10);
-      
+
       await User.findOneAndUpdate(
         { email },
         {
@@ -315,7 +316,7 @@ async function createBuyerAccounts() {
         },
         { upsert: true }
       );
-      
+
       console.log(`✅ Created account for ${buyer.name} (${email})`);
     } catch (error) {
       console.error(`Error creating account for ${buyer.name}:`, error.message);
@@ -327,15 +328,15 @@ async function createBuyerAccounts() {
 async function runImport() {
   try {
     console.log('🚀 Starting FoodXchange data import...\n');
-    
+
     await importBuyers();
     await importProducts();
     await importRequests();
     await importProposals();
     await createBuyerAccounts();
-    
+
     console.log('\n✅ Data import completed successfully!');
-    
+
     // Show summary
     console.log('\n📊 Database Summary:');
     console.log('===================');
@@ -343,17 +344,17 @@ async function runImport() {
     console.log(`Products: ${await Product.countDocuments()}`);
     console.log(`Requests (RFQs): ${await Request.countDocuments()}`);
     console.log(`Proposals: ${await Proposal.countDocuments()}`);
-    
+
     const User = require('./models/User');
     console.log(`User Accounts: ${await User.countDocuments()}`);
-    
+
     console.log('\n📧 Sample Login Credentials:');
     console.log('===========================');
     const users = await User.find({ role: 'buyer' }).limit(3).populate('company');
     users.forEach(user => {
       console.log(`${user.name}: ${user.email} / password123`);
     });
-    
+
     process.exit(0);
   } catch (error) {
     console.error('❌ Import failed:', error);

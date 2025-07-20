@@ -4,9 +4,10 @@
  */
 
 import mongoose, { Connection, ConnectOptions, ClientSession } from 'mongoose';
+
 import { config } from '../../core/config';
-import { Logger } from '../../core/logging/logger';
 import { SystemError } from '../../core/errors';
+import { Logger } from '../../core/logging/logger';
 import { MetricsService } from '../monitoring/MetricsService';
 
 const logger = new Logger('DatabaseService');
@@ -50,20 +51,20 @@ export class DatabaseService {
       options: {
         ...config.database.options,
         serverSelectionTimeoutMS: 5000,
-        socketTimeoutMS: 45000,
-      } as ConnectOptions,
+        socketTimeoutMS: 45000
+      } as ConnectOptions
     };
 
     try {
       logger.info('Connecting to MongoDB', { uri: this.sanitizeUri(dbConfig.uri) });
-      
+
       // Enable debug mode if configured
       if (dbConfig.debug || config.env === 'development') {
         mongoose.set('debug', (collectionName: string, method: string, ...args: any[]) => {
           logger.debug('MongoDB query', {
             collection: collectionName,
             method,
-            args: args.length > 0 ? args : undefined,
+            args: args.length > 0 ? args : undefined
           });
         });
       }
@@ -73,20 +74,20 @@ export class DatabaseService {
 
       // Connect to MongoDB
       await mongoose.connect(dbConfig.uri, dbConfig.options);
-      
+
       this.connection = mongoose.connection;
       this.isConnected = true;
       this.reconnectAttempts = 0;
-      
+
       logger.info('MongoDB connected successfully', {
         host: this.connection.host,
         port: this.connection.port,
-        name: this.connection.name,
+        name: this.connection.name
       });
 
       // Start health check
       this.startHealthCheck();
-      
+
       // Record successful connection
       metrics.recordBusinessEvent('database.connected');
     } catch (error) {
@@ -120,12 +121,12 @@ export class DatabaseService {
     options?: mongoose.ClientSessionOptions
   ): Promise<T> {
     const session = await mongoose.startSession(options);
-    
+
     try {
       const result = await session.withTransaction(async () => {
         return operation(session);
       });
-      
+
       metrics.increment('database.transactions.success');
       return result;
     } catch (error) {
@@ -147,42 +148,42 @@ export class DatabaseService {
     if (!this.isConnected || !this.connection) {
       return {
         healthy: false,
-        status: 'disconnected',
+        status: 'disconnected'
       };
     }
 
     const startTime = Date.now();
-    
+
     try {
       // Ping the database
       await this.connection.db.admin().ping();
       const latency = Date.now() - startTime;
-      
+
       // Get connection stats
       const stats = {
         readyState: this.connection.readyState,
         host: this.connection.host,
         port: this.connection.port,
-        name: this.connection.name,
+        name: this.connection.name
       };
-      
+
       metrics.recordHealthCheck('database', true, latency);
-      
+
       return {
         healthy: true,
         status: 'connected',
         latency,
-        details: stats,
+        details: stats
       };
     } catch (error) {
       const latency = Date.now() - startTime;
       metrics.recordHealthCheck('database', false, latency);
-      
+
       return {
         healthy: false,
         status: 'error',
         latency,
-        details: { error: error.message },
+        details: { error: error.message }
       };
     }
   }
@@ -197,7 +198,7 @@ export class DatabaseService {
       const adminDb = this.connection.db.admin();
       const [serverStatus, dbStats] = await Promise.all([
         adminDb.serverStatus(),
-        this.connection.db.stats(),
+        this.connection.db.stats()
       ]);
 
       return {
@@ -205,15 +206,15 @@ export class DatabaseService {
           version: serverStatus.version,
           uptime: serverStatus.uptime,
           connections: serverStatus.connections,
-          opcounters: serverStatus.opcounters,
+          opcounters: serverStatus.opcounters
         },
         database: {
           collections: dbStats.collections,
           indexes: dbStats.indexes,
           dataSize: dbStats.dataSize,
           storageSize: dbStats.storageSize,
-          avgObjSize: dbStats.avgObjSize,
-        },
+          avgObjSize: dbStats.avgObjSize
+        }
       };
     } catch (error) {
       logger.error('Failed to get database stats', error);
@@ -269,14 +270,14 @@ export class DatabaseService {
         if (this._startTime) {
           const duration = Date.now() - this._startTime;
           const collection = this.mongooseCollection?.name || 'unknown';
-          
+
           metrics.recordDatabaseQuery('find', collection, duration, true);
-          
+
           if (duration > 1000) { // Log slow queries (> 1 second)
             logger.warn('Slow query detected', {
               collection,
               duration,
-              query: this.getQuery(),
+              query: this.getQuery()
             });
           }
         }
@@ -340,17 +341,17 @@ export class DatabaseService {
     }
 
     logger.info('Ensuring database indexes');
-    
+
     try {
       // Get all models
       const modelNames = mongoose.modelNames();
-      
+
       for (const modelName of modelNames) {
         const model = mongoose.model(modelName);
         await model.ensureIndexes();
         logger.debug(`Indexes ensured for model: ${modelName}`);
       }
-      
+
       logger.info('All database indexes ensured');
       metrics.recordBusinessEvent('database.indexes_ensured');
     } catch (error) {

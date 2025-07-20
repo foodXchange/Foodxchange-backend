@@ -1,7 +1,8 @@
 import { Router, Request, Response } from 'express';
+
+import { asyncHandler } from '../core/errors';
 import { healthCheckService } from '../services/health/HealthCheckService';
 import { prometheusMetrics } from '../services/metrics/PrometheusMetricsService';
-import { asyncHandler } from '../core/errors';
 
 const router = Router();
 
@@ -64,16 +65,16 @@ const router = Router();
  */
 router.get('/health', asyncHandler(async (req: Request, res: Response) => {
   const healthReport = await healthCheckService.runHealthChecks();
-  
+
   const statusCode = healthReport.status === 'healthy' ? 200 : 503;
-  
+
   res.status(statusCode).json({
     success: healthReport.status === 'healthy',
     data: healthReport,
     meta: {
       timestamp: new Date().toISOString(),
-      requestId: req.id,
-    },
+      requestId: req.id
+    }
   });
 }));
 
@@ -101,14 +102,14 @@ router.get('/health', asyncHandler(async (req: Request, res: Response) => {
  */
 router.get('/health/quick', asyncHandler(async (req: Request, res: Response) => {
   const quickHealth = await healthCheckService.getQuickHealth();
-  
+
   res.status(200).json({
     success: true,
     data: quickHealth,
     meta: {
       timestamp: new Date().toISOString(),
-      requestId: req.id,
-    },
+      requestId: req.id
+    }
   });
 }));
 
@@ -135,14 +136,14 @@ router.get('/health/quick', asyncHandler(async (req: Request, res: Response) => 
  */
 router.get('/health/live', asyncHandler(async (req: Request, res: Response) => {
   const livenessCheck = await healthCheckService.getLivenessCheck();
-  
+
   res.status(200).json({
     success: true,
     data: livenessCheck,
     meta: {
       timestamp: new Date().toISOString(),
-      requestId: req.id,
-    },
+      requestId: req.id
+    }
   });
 }));
 
@@ -177,16 +178,16 @@ router.get('/health/live', asyncHandler(async (req: Request, res: Response) => {
  */
 router.get('/health/ready', asyncHandler(async (req: Request, res: Response) => {
   const readinessCheck = await healthCheckService.getReadinessCheck();
-  
+
   const statusCode = readinessCheck.ready ? 200 : 503;
-  
+
   res.status(statusCode).json({
     success: readinessCheck.ready,
     data: readinessCheck,
     meta: {
       timestamp: new Date().toISOString(),
-      requestId: req.id,
-    },
+      requestId: req.id
+    }
   });
 }));
 
@@ -207,7 +208,7 @@ router.get('/health/ready', asyncHandler(async (req: Request, res: Response) => 
  */
 router.get('/metrics', asyncHandler(async (req: Request, res: Response) => {
   const metrics = await prometheusMetrics.getMetrics();
-  
+
   res.setHeader('Content-Type', 'text/plain');
   res.send(metrics);
 }));
@@ -240,16 +241,16 @@ router.get('/metrics', asyncHandler(async (req: Request, res: Response) => {
 router.get('/health/database', asyncHandler(async (req: Request, res: Response) => {
   const healthReport = await healthCheckService.runHealthChecks();
   const dbHealth = healthReport.checks.database;
-  
+
   const statusCode = dbHealth.healthy ? 200 : 503;
-  
+
   res.status(statusCode).json({
     success: dbHealth.healthy,
     data: dbHealth,
     meta: {
       timestamp: new Date().toISOString(),
-      requestId: req.id,
-    },
+      requestId: req.id
+    }
   });
 }));
 
@@ -281,16 +282,16 @@ router.get('/health/database', asyncHandler(async (req: Request, res: Response) 
 router.get('/health/cache', asyncHandler(async (req: Request, res: Response) => {
   const healthReport = await healthCheckService.runHealthChecks();
   const cacheHealth = healthReport.checks.cache;
-  
+
   const statusCode = cacheHealth.healthy ? 200 : 503;
-  
+
   res.status(statusCode).json({
     success: cacheHealth.healthy,
     data: cacheHealth,
     meta: {
       timestamp: new Date().toISOString(),
-      requestId: req.id,
-    },
+      requestId: req.id
+    }
   });
 }));
 
@@ -322,16 +323,16 @@ router.get('/health/cache', asyncHandler(async (req: Request, res: Response) => 
 router.get('/health/memory', asyncHandler(async (req: Request, res: Response) => {
   const healthReport = await healthCheckService.runHealthChecks();
   const memoryHealth = healthReport.checks.memory;
-  
+
   const statusCode = memoryHealth.healthy ? 200 : 503;
-  
+
   res.status(statusCode).json({
     success: memoryHealth.healthy,
     data: memoryHealth,
     meta: {
       timestamp: new Date().toISOString(),
-      requestId: req.id,
-    },
+      requestId: req.id
+    }
   });
 }));
 

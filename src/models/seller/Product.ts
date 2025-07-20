@@ -5,27 +5,27 @@ const productSchema = new mongoose.Schema({
   productId: { type: String, unique: true, required: true },
   productCode: { type: Number },
   productName: { type: String, required: true },
-  
+
   // Supplier Reference
   supplier: { type: mongoose.Schema.Types.ObjectId, ref: 'Seller' },
   supplierName: { type: String }, // Denormalized for performance
   supplierCountry: { type: String },
   supplierCode: { type: String },
-  
+
   // Buyer Information
   buyerCompany: { type: String },
   buyerProductCode: { type: String }, // EAN
-  
+
   // Product Details
   category: { type: String },
   categoryFamily: { type: String },
   description: { type: String },
-  
+
   // Specifications
   unitOfMeasure: { type: String, enum: ['gr', 'kg', 'liter', 'ml', 'unit', 'pack'] },
   netWeight: { type: Number },
   grossWeight: { type: Number },
-  
+
   // Packaging
   unitsPerCarton: { type: Number },
   minOrderQty: { type: Number }, // MOQ
@@ -34,7 +34,7 @@ const productSchema = new mongoose.Schema({
     size: { type: String },
     unitsPerPackage: { type: Number }
   }],
-  
+
   // Pricing
   pricing: {
     unitPrice: { type: Number },
@@ -49,7 +49,7 @@ const productSchema = new mongoose.Schema({
     date: { type: Date },
     notes: { type: String }
   }],
-  
+
   // Logistics
   logistics: {
     hsTariffCode: { type: String },
@@ -61,7 +61,7 @@ const productSchema = new mongoose.Schema({
     totalUnits20ft: { type: Number },
     totalUnits40ft: { type: Number }
   },
-  
+
   // Storage Requirements
   storage: {
     shelfLifeDays: { type: Number },
@@ -69,7 +69,7 @@ const productSchema = new mongoose.Schema({
     maxTemperature: { type: Number },
     storageConditions: { type: String }
   },
-  
+
   // Certifications
   certifications: {
     kosher: { type: Boolean, default: false },
@@ -80,7 +80,7 @@ const productSchema = new mongoose.Schema({
     vegan: { type: Boolean, default: false },
     nonGMO: { type: Boolean, default: false }
   },
-  
+
   // Media
   images: [{
     url: { type: String },
@@ -93,7 +93,7 @@ const productSchema = new mongoose.Schema({
     type: { type: String },
     uploadedAt: { type: Date, default: Date.now }
   }],
-  
+
   // Status
   status: {
     type: String,
@@ -101,15 +101,15 @@ const productSchema = new mongoose.Schema({
     default: 'pending'
   },
   stage: { type: String }, // From your data
-  
+
   // Metadata
   createdBy: { type: String },
   lastUpdatedBy: { type: String },
   importedFrom: { type: String },
-  
+
   // Search optimization
   searchTags: [String],
-  
+
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 }, {

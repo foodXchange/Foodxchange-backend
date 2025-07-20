@@ -7,30 +7,30 @@ export interface IProduct extends Document {
   description?: string;
   shortDescription?: string;
   slug: string;
-  
+
   // Categorization
   category: string;
   subcategory?: string;
   tags: string[];
-  
+
   // Identification
   sku: string;
   gtin?: string; // Global Trade Item Number
   upc?: string;
   ean?: string;
-  
+
   // Supplier Information
   supplier: mongoose.Types.ObjectId;
   tenantId: string;
   manufacturer?: string;
   brand?: string;
   countryOfOrigin?: string;
-  
+
   // Product Status
   status: 'draft' | 'active' | 'inactive' | 'discontinued';
   isPublished: boolean;
   publishedAt?: Date;
-  
+
   // Images
   images: Array<{
     url: string;
@@ -38,7 +38,7 @@ export interface IProduct extends Document {
     isPrimary: boolean;
     order: number;
   }>;
-  
+
   // Pricing
   pricing: {
     currency: string;
@@ -53,7 +53,7 @@ export interface IProduct extends Document {
     taxRate?: number;
     isTaxIncluded: boolean;
   };
-  
+
   // Inventory
   inventory: {
     trackInventory: boolean;
@@ -67,7 +67,7 @@ export interface IProduct extends Document {
       unit: 'days' | 'weeks' | 'months';
     };
   };
-  
+
   // Physical Specifications
   specifications: {
     weight?: {
@@ -85,7 +85,7 @@ export interface IProduct extends Document {
       unit: 'ml' | 'l' | 'gal' | 'fl oz';
     };
   };
-  
+
   // Packaging Information
   packaging: {
     type: string;
@@ -105,7 +105,7 @@ export interface IProduct extends Document {
     isRecyclable?: boolean;
     recycleCodes?: string[];
   };
-  
+
   // Nutritional Information
   nutritionalInfo?: {
     servingSize: string;
@@ -134,7 +134,7 @@ export interface IProduct extends Document {
       dailyValue?: number;
     }>;
   };
-  
+
   // Food Safety & Compliance
   foodSafety: {
     allergens: string[];
@@ -147,7 +147,7 @@ export interface IProduct extends Document {
     isGlutenFree: boolean;
     isDairyFree: boolean;
     isNutFree: boolean;
-    
+
     // Storage Requirements
     storageTemperature: {
       min: number;
@@ -159,7 +159,7 @@ export interface IProduct extends Document {
       max: number;
     };
     storageInstructions?: string;
-    
+
     // Shelf Life
     shelfLife: {
       value: number;
@@ -169,7 +169,7 @@ export interface IProduct extends Document {
     bestByDate?: Date;
     expirationDate?: Date;
   };
-  
+
   // Certifications
   certifications: Array<{
     type: string;
@@ -180,7 +180,7 @@ export interface IProduct extends Document {
     documentUrl?: string;
     verified: boolean;
   }>;
-  
+
   // Traceability
   traceability: {
     lotTracking: boolean;
@@ -198,7 +198,7 @@ export interface IProduct extends Document {
       region?: string;
     };
   };
-  
+
   // Quality Metrics
   quality: {
     grade?: string;
@@ -213,7 +213,7 @@ export interface IProduct extends Document {
       documentUrl?: string;
     }>;
   };
-  
+
   // Logistics
   logistics: {
     harmonizedCode?: string;
@@ -225,7 +225,7 @@ export interface IProduct extends Document {
     temperatureControlled: boolean;
     fragile: boolean;
   };
-  
+
   // Marketing
   marketing: {
     features: string[];
@@ -235,7 +235,7 @@ export interface IProduct extends Document {
     promotionalText?: string;
     keywords: string[];
   };
-  
+
   // Analytics
   analytics: {
     views: number;
@@ -246,17 +246,17 @@ export interface IProduct extends Document {
     averageRating: number;
     totalReviews: number;
   };
-  
+
   // Custom Attributes
   customAttributes?: Map<string, any>;
-  
+
   // Metadata
   createdAt: Date;
   updatedAt: Date;
   createdBy: mongoose.Types.ObjectId;
   updatedBy?: mongoose.Types.ObjectId;
   version: number;
-  
+
   // Methods
   calculatePrice(quantity: number): number;
   checkAvailability(quantity: number): boolean;
@@ -285,7 +285,7 @@ const productSchema = new Schema<IProduct>({
     unique: true,
     lowercase: true
   },
-  
+
   // Categorization
   category: {
     type: String,
@@ -294,7 +294,7 @@ const productSchema = new Schema<IProduct>({
   },
   subcategory: String,
   tags: [String],
-  
+
   // Identification
   sku: {
     type: String,
@@ -310,7 +310,7 @@ const productSchema = new Schema<IProduct>({
   },
   upc: String,
   ean: String,
-  
+
   // Supplier Information
   supplier: {
     type: mongoose.Schema.Types.ObjectId,
@@ -325,7 +325,7 @@ const productSchema = new Schema<IProduct>({
   manufacturer: String,
   brand: String,
   countryOfOrigin: String,
-  
+
   // Product Status
   status: {
     type: String,
@@ -337,7 +337,7 @@ const productSchema = new Schema<IProduct>({
     default: false
   },
   publishedAt: Date,
-  
+
   // Images
   images: [{
     url: {
@@ -354,7 +354,7 @@ const productSchema = new Schema<IProduct>({
       default: 0
     }
   }],
-  
+
   // Pricing
   pricing: {
     currency: {
@@ -400,7 +400,7 @@ const productSchema = new Schema<IProduct>({
       default: false
     }
   },
-  
+
   // Inventory
   inventory: {
     trackInventory: {
@@ -440,7 +440,7 @@ const productSchema = new Schema<IProduct>({
       }
     }
   },
-  
+
   // Physical Specifications
   specifications: {
     weight: {
@@ -467,7 +467,7 @@ const productSchema = new Schema<IProduct>({
       }
     }
   },
-  
+
   // Packaging Information
   packaging: {
     type: {
@@ -500,7 +500,7 @@ const productSchema = new Schema<IProduct>({
     isRecyclable: Boolean,
     recycleCodes: [String]
   },
-  
+
   // Nutritional Information
   nutritionalInfo: {
     servingSize: String,
@@ -567,7 +567,7 @@ const productSchema = new Schema<IProduct>({
       dailyValue: Number
     }]
   },
-  
+
   // Food Safety & Compliance
   foodSafety: {
     allergens: [{
@@ -649,7 +649,7 @@ const productSchema = new Schema<IProduct>({
     bestByDate: Date,
     expirationDate: Date
   },
-  
+
   // Certifications
   certifications: [{
     type: {
@@ -678,7 +678,7 @@ const productSchema = new Schema<IProduct>({
       default: false
     }
   }],
-  
+
   // Traceability
   traceability: {
     lotTracking: {
@@ -702,7 +702,7 @@ const productSchema = new Schema<IProduct>({
       region: String
     }
   },
-  
+
   // Quality Metrics
   quality: {
     grade: String,
@@ -735,7 +735,7 @@ const productSchema = new Schema<IProduct>({
       documentUrl: String
     }]
   },
-  
+
   // Logistics
   logistics: {
     harmonizedCode: String,
@@ -762,7 +762,7 @@ const productSchema = new Schema<IProduct>({
       default: false
     }
   },
-  
+
   // Marketing
   marketing: {
     features: [String],
@@ -772,7 +772,7 @@ const productSchema = new Schema<IProduct>({
     promotionalText: String,
     keywords: [String]
   },
-  
+
   // Analytics
   analytics: {
     views: {
@@ -806,13 +806,13 @@ const productSchema = new Schema<IProduct>({
       default: 0
     }
   },
-  
+
   // Custom Attributes
   customAttributes: {
     type: Map,
     of: Schema.Types.Mixed
   },
-  
+
   // Metadata
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -855,59 +855,59 @@ productSchema.pre('save', async function(next) {
   // Generate slug from name
   if (!this.slug) {
     this.slug = slugify(this.name, { lower: true, strict: true });
-    
+
     // Ensure unique slug
-    let existingProduct = await mongoose.model('Product').findOne({ 
-      slug: this.slug, 
-      _id: { $ne: this._id } 
+    let existingProduct = await mongoose.model('Product').findOne({
+      slug: this.slug,
+      _id: { $ne: this._id }
     });
-    
+
     let counter = 1;
     while (existingProduct) {
       this.slug = `${slugify(this.name, { lower: true, strict: true })}-${counter}`;
-      existingProduct = await mongoose.model('Product').findOne({ 
-        slug: this.slug, 
-        _id: { $ne: this._id } 
+      existingProduct = await mongoose.model('Product').findOne({
+        slug: this.slug,
+        _id: { $ne: this._id }
       });
       counter++;
     }
   }
-  
+
   // Update available quantity
   this.inventory.availableQuantity = this.inventory.quantity - this.inventory.reservedQuantity;
-  
+
   // Set published date
   if (this.isPublished && !this.publishedAt) {
     this.publishedAt = new Date();
   }
-  
+
   next();
 });
 
 // Methods
 productSchema.methods.calculatePrice = function(quantity: number): number {
   let price = this.pricing.basePrice;
-  
+
   // Apply tier pricing
   if (this.pricing.tierPricing && this.pricing.tierPricing.length > 0) {
     const applicableTier = this.pricing.tierPricing
       .filter(tier => quantity >= tier.minQuantity && (!tier.maxQuantity || quantity <= tier.maxQuantity))
       .sort((a, b) => b.minQuantity - a.minQuantity)[0];
-    
+
     if (applicableTier) {
       price = applicableTier.price;
-      
+
       if (applicableTier.discount) {
         price = price * (1 - applicableTier.discount / 100);
       }
     }
   }
-  
+
   // Apply tax if not included
   if (!this.pricing.isTaxIncluded && this.pricing.taxRate) {
     price = price * (1 + this.pricing.taxRate / 100);
   }
-  
+
   return Math.round(price * quantity * 100) / 100;
 };
 
@@ -917,7 +917,7 @@ productSchema.methods.checkAvailability = function(quantity: number): boolean {
 };
 
 productSchema.methods.updateInventory = async function(
-  quantity: number, 
+  quantity: number,
   operation: 'add' | 'subtract' | 'reserve'
 ): Promise<void> {
   switch (operation) {
@@ -931,7 +931,7 @@ productSchema.methods.updateInventory = async function(
       this.inventory.reservedQuantity += quantity;
       break;
   }
-  
+
   this.inventory.availableQuantity = this.inventory.quantity - this.inventory.reservedQuantity;
   await this.save();
 };

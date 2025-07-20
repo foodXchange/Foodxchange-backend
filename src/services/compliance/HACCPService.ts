@@ -1,9 +1,10 @@
 import mongoose, { Document, Schema } from 'mongoose';
-import { getServiceBusService } from '../azure/ServiceBusService';
-import { getSignalRService } from '../azure/SignalRService';
+
 import { Logger } from '../../core/logging/logger';
 import { sendEmail } from '../../utils/email';
 import { sendSMS } from '../../utils/sms';
+import { getServiceBusService } from '../azure/ServiceBusService';
+import { getSignalRService } from '../azure/SignalRService';
 
 const logger = new Logger('HACCPService');
 
@@ -16,7 +17,7 @@ export interface ICriticalControlPoint extends Document {
   orderId?: mongoose.Types.ObjectId;
   productId?: mongoose.Types.ObjectId;
   tenantId: string;
-  
+
   // Control limits
   criticalLimits: {
     min?: number;
@@ -25,16 +26,16 @@ export interface ICriticalControlPoint extends Document {
     unit: string;
     tolerance?: number;
   };
-  
+
   // Monitoring
   monitoringFrequency: 'continuous' | 'hourly' | 'daily' | 'per_batch' | 'custom';
   monitoringInterval?: number; // in minutes
   responsiblePerson: mongoose.Types.ObjectId;
-  
+
   // Status
   status: 'active' | 'inactive' | 'alert' | 'violation';
   isActive: boolean;
-  
+
   // Metadata
   createdAt: Date;
   updatedAt: Date;
@@ -44,39 +45,39 @@ export interface ICriticalControlPoint extends Document {
 export interface ICCPMeasurement extends Document {
   ccpId: mongoose.Types.ObjectId;
   tenantId: string;
-  
+
   // Measurement data
   value: number;
   unit: string;
   timestamp: Date;
-  
+
   // Context
   orderId?: mongoose.Types.ObjectId;
   productId?: mongoose.Types.ObjectId;
   batchNumber?: string;
   location: string;
-  
+
   // Personnel
   recordedBy: mongoose.Types.ObjectId;
   verifiedBy?: mongoose.Types.ObjectId;
-  
+
   // Status
   status: 'normal' | 'warning' | 'critical' | 'violation';
   isWithinLimits: boolean;
   deviation?: number;
-  
+
   // Actions
   correctiveAction?: string;
   preventiveAction?: string;
   actionTaken?: boolean;
   actionTakenBy?: mongoose.Types.ObjectId;
   actionTakenAt?: Date;
-  
+
   // Verification
   isVerified: boolean;
   verifiedAt?: Date;
   verificationNotes?: string;
-  
+
   // Metadata
   createdAt: Date;
   updatedAt: Date;
@@ -87,18 +88,18 @@ export interface IHACCPPlan extends Document {
   description: string;
   version: string;
   tenantId: string;
-  
+
   // Product/Process info
   productTypes: string[];
   processSteps: string[];
-  
+
   // Team
   haccp_team: Array<{
     userId: mongoose.Types.ObjectId;
     role: string;
     responsibilities: string[];
   }>;
-  
+
   // Hazard analysis
   hazardAnalysis: Array<{
     processStep: string;
@@ -110,10 +111,10 @@ export interface IHACCPPlan extends Document {
     isCCP: boolean;
     justification: string;
   }>;
-  
+
   // Critical Control Points
   criticalControlPoints: mongoose.Types.ObjectId[];
-  
+
   // Verification procedures
   verificationProcedures: Array<{
     procedure: string;
@@ -121,23 +122,23 @@ export interface IHACCPPlan extends Document {
     responsiblePerson: mongoose.Types.ObjectId;
     records: string[];
   }>;
-  
+
   // Record keeping
   recordKeeping: {
     retentionPeriod: number; // in months
     storage: string;
     access: string[];
   };
-  
+
   // Status
   status: 'draft' | 'active' | 'under_review' | 'expired';
   effectiveDate: Date;
   expirationDate: Date;
-  
+
   // Approval
   approvedBy?: mongoose.Types.ObjectId;
   approvedAt?: Date;
-  
+
   // Metadata
   createdAt: Date;
   updatedAt: Date;
@@ -150,31 +151,31 @@ export interface IComplianceAlert extends Document {
   title: string;
   description: string;
   tenantId: string;
-  
+
   // Context
   ccpId?: mongoose.Types.ObjectId;
   measurementId?: mongoose.Types.ObjectId;
   orderId?: mongoose.Types.ObjectId;
   productId?: mongoose.Types.ObjectId;
-  
+
   // Status
   status: 'active' | 'acknowledged' | 'resolved' | 'dismissed';
   acknowledgedBy?: mongoose.Types.ObjectId;
   acknowledgedAt?: Date;
   resolvedBy?: mongoose.Types.ObjectId;
   resolvedAt?: Date;
-  
+
   // Actions
   immediateAction?: string;
   correctiveAction?: string;
   preventiveAction?: string;
   rootCause?: string;
-  
+
   // Escalation
   escalationLevel: number;
   escalatedTo?: mongoose.Types.ObjectId[];
   escalatedAt?: Date;
-  
+
   // Metadata
   createdAt: Date;
   updatedAt: Date;
@@ -218,7 +219,7 @@ const criticalControlPointSchema = new Schema<ICriticalControlPoint>({
     required: true,
     index: true
   },
-  
+
   // Control limits
   criticalLimits: {
     min: Number,
@@ -230,7 +231,7 @@ const criticalControlPointSchema = new Schema<ICriticalControlPoint>({
     },
     tolerance: Number
   },
-  
+
   // Monitoring
   monitoringFrequency: {
     type: String,
@@ -243,7 +244,7 @@ const criticalControlPointSchema = new Schema<ICriticalControlPoint>({
     ref: 'User',
     required: true
   },
-  
+
   // Status
   status: {
     type: String,
@@ -254,7 +255,7 @@ const criticalControlPointSchema = new Schema<ICriticalControlPoint>({
     type: Boolean,
     default: true
   },
-  
+
   // Metadata
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -277,7 +278,7 @@ const ccpMeasurementSchema = new Schema<ICCPMeasurement>({
     required: true,
     index: true
   },
-  
+
   // Measurement data
   value: {
     type: Number,
@@ -291,7 +292,7 @@ const ccpMeasurementSchema = new Schema<ICCPMeasurement>({
     type: Date,
     default: Date.now
   },
-  
+
   // Context
   orderId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -306,7 +307,7 @@ const ccpMeasurementSchema = new Schema<ICCPMeasurement>({
     type: String,
     required: true
   },
-  
+
   // Personnel
   recordedBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -317,7 +318,7 @@ const ccpMeasurementSchema = new Schema<ICCPMeasurement>({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
-  
+
   // Status
   status: {
     type: String,
@@ -329,7 +330,7 @@ const ccpMeasurementSchema = new Schema<ICCPMeasurement>({
     default: true
   },
   deviation: Number,
-  
+
   // Actions
   correctiveAction: String,
   preventiveAction: String,
@@ -342,7 +343,7 @@ const ccpMeasurementSchema = new Schema<ICCPMeasurement>({
     ref: 'User'
   },
   actionTakenAt: Date,
-  
+
   // Verification
   isVerified: {
     type: Boolean,
@@ -373,11 +374,11 @@ const haccpPlanSchema = new Schema<IHACCPPlan>({
     required: true,
     index: true
   },
-  
+
   // Product/Process info
   productTypes: [String],
   processSteps: [String],
-  
+
   // Team
   haccp_team: [{
     userId: {
@@ -391,7 +392,7 @@ const haccpPlanSchema = new Schema<IHACCPPlan>({
     },
     responsibilities: [String]
   }],
-  
+
   // Hazard analysis
   hazardAnalysis: [{
     processStep: String,
@@ -415,13 +416,13 @@ const haccpPlanSchema = new Schema<IHACCPPlan>({
     isCCP: Boolean,
     justification: String
   }],
-  
+
   // Critical Control Points
   criticalControlPoints: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'CriticalControlPoint'
   }],
-  
+
   // Verification procedures
   verificationProcedures: [{
     procedure: String,
@@ -432,7 +433,7 @@ const haccpPlanSchema = new Schema<IHACCPPlan>({
     },
     records: [String]
   }],
-  
+
   // Record keeping
   recordKeeping: {
     retentionPeriod: {
@@ -442,7 +443,7 @@ const haccpPlanSchema = new Schema<IHACCPPlan>({
     storage: String,
     access: [String]
   },
-  
+
   // Status
   status: {
     type: String,
@@ -451,14 +452,14 @@ const haccpPlanSchema = new Schema<IHACCPPlan>({
   },
   effectiveDate: Date,
   expirationDate: Date,
-  
+
   // Approval
   approvedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
   approvedAt: Date,
-  
+
   // Metadata
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -494,7 +495,7 @@ const complianceAlertSchema = new Schema<IComplianceAlert>({
     required: true,
     index: true
   },
-  
+
   // Context
   ccpId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -512,7 +513,7 @@ const complianceAlertSchema = new Schema<IComplianceAlert>({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product'
   },
-  
+
   // Status
   status: {
     type: String,
@@ -529,13 +530,13 @@ const complianceAlertSchema = new Schema<IComplianceAlert>({
     ref: 'User'
   },
   resolvedAt: Date,
-  
+
   // Actions
   immediateAction: String,
   correctiveAction: String,
   preventiveAction: String,
   rootCause: String,
-  
+
   // Escalation
   escalationLevel: {
     type: Number,
@@ -546,7 +547,7 @@ const complianceAlertSchema = new Schema<IComplianceAlert>({
     ref: 'User'
   }],
   escalatedAt: Date,
-  
+
   // Metadata
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -581,8 +582,8 @@ export const HACCPPlan = mongoose.model<IHACCPPlan>('HACCPPlan', haccpPlanSchema
 export const ComplianceAlert = mongoose.model<IComplianceAlert>('ComplianceAlert', complianceAlertSchema);
 
 export class HACCPService {
-  private serviceBusService = getServiceBusService();
-  private signalRService = getSignalRService();
+  private readonly serviceBusService = getServiceBusService();
+  private readonly signalRService = getSignalRService();
 
   /**
    * Create a new Critical Control Point
@@ -616,7 +617,7 @@ export class HACCPService {
   async recordMeasurement(measurementData: Partial<ICCPMeasurement>): Promise<ICCPMeasurement> {
     try {
       const measurement = new CCPMeasurement(measurementData);
-      
+
       // Get CCP details
       const ccp = await CriticalControlPoint.findById(measurement.ccpId);
       if (!ccp) {
@@ -625,11 +626,11 @@ export class HACCPService {
 
       // Check if measurement is within critical limits
       const { isWithinLimits, deviation, status } = this.evaluateMeasurement(measurement.value, ccp.criticalLimits);
-      
+
       measurement.isWithinLimits = isWithinLimits;
       measurement.deviation = deviation;
       measurement.status = status;
-      
+
       await measurement.save();
 
       // Handle violations
@@ -658,11 +659,11 @@ export class HACCPService {
         deviation: measurement.deviation
       });
 
-      logger.info('CCP measurement recorded', { 
-        ccpId: ccp._id, 
+      logger.info('CCP measurement recorded', {
+        ccpId: ccp._id,
         measurementId: measurement._id,
         value: measurement.value,
-        status: measurement.status 
+        status: measurement.status
       });
 
       return measurement;
@@ -691,7 +692,7 @@ export class HACCPService {
     } else if (limits.target !== undefined && limits.tolerance !== undefined) {
       const lowerWarning = limits.target - limits.tolerance;
       const upperWarning = limits.target + limits.tolerance;
-      
+
       if (value < lowerWarning || value > upperWarning) {
         status = 'warning';
         deviation = Math.abs(value - limits.target);
@@ -757,11 +758,11 @@ export class HACCPService {
         deviation: measurement.deviation
       });
 
-      logger.warn('CCP violation detected', { 
-        ccpId: ccp._id, 
+      logger.warn('CCP violation detected', {
+        ccpId: ccp._id,
         measurementId: measurement._id,
         alertId: alert._id,
-        severity: alert.severity 
+        severity: alert.severity
       });
     } catch (error) {
       logger.error('Error handling CCP violation:', error);
@@ -774,9 +775,9 @@ export class HACCPService {
    */
   private determineSeverity(deviation: number, limits: any): 'low' | 'medium' | 'high' | 'critical' {
     if (!limits.tolerance) return 'high';
-    
+
     const relativeDev = deviation / limits.tolerance;
-    
+
     if (relativeDev <= 1) return 'low';
     if (relativeDev <= 2) return 'medium';
     if (relativeDev <= 3) return 'high';
@@ -801,10 +802,10 @@ export class HACCPService {
   private async sendViolationNotifications(ccp: ICriticalControlPoint, measurement: ICCPMeasurement, alert: IComplianceAlert): Promise<void> {
     try {
       // Implementation would send urgent notifications
-      logger.warn('Violation notification sent', { 
-        ccpId: ccp._id, 
+      logger.warn('Violation notification sent', {
+        ccpId: ccp._id,
         measurementId: measurement._id,
-        alertId: alert._id 
+        alertId: alert._id
       });
     } catch (error) {
       logger.error('Error sending violation notification:', error);

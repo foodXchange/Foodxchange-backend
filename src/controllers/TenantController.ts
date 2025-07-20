@@ -1,16 +1,18 @@
 import { Request, Response } from 'express';
-import { User } from '../models/User';
-import { Company } from '../models/Company';
-import { Logger } from '../core/logging/logger';
-import { AuthorizationError, ValidationError } from '../core/errors';
-import { AzureB2CService } from '../services/auth/AzureB2CService';
-import { getFeaturesForTier, subscriptionFeatures } from '../middleware/tenantIsolation';
 import asyncHandler from 'express-async-handler';
+
+import { AuthorizationError, ValidationError } from '../core/errors';
+import { Logger } from '../core/logging/logger';
+import { getFeaturesForTier, subscriptionFeatures } from '../middleware/tenantIsolation';
+import { Company } from '../models/Company';
+import { User } from '../models/User';
+import { AzureB2CService } from '../services/auth/AzureB2CService';
+
 
 const logger = new Logger('TenantController');
 
 export class TenantController {
-  private azureB2CService: AzureB2CService;
+  private readonly azureB2CService: AzureB2CService;
 
   constructor() {
     this.azureB2CService = new AzureB2CService();
@@ -55,7 +57,7 @@ export class TenantController {
     }
 
     const [userCount, productCount] = await Promise.all([
-      User.countDocuments({ 
+      User.countDocuments({
         company: req.tenantId,
         accountStatus: 'active'
       }),
@@ -65,6 +67,7 @@ export class TenantController {
           const Product = (await import('../models/Product')).default;
           return Product.countDocuments({ tenantId: req.tenantId });
         } catch (error) {
+          logger.warn('Product model not available yet', { error });
           return 0;
         }
       })()
@@ -75,7 +78,7 @@ export class TenantController {
       const Order = (await import('../models/Order')).default;
       orderCount = await Order.countDocuments({ tenantId: req.tenantId });
     } catch (error) {
-      // Order model might not exist yet
+      logger.warn('Order model not available yet', { error });
     }
 
     const usage = {
@@ -287,7 +290,7 @@ export class TenantController {
 
     logger.info('User role updated', {
       tenantId: req.tenantId,
-      userId: userId,
+      userId,
       oldRole,
       newRole: role,
       updatedBy: req.userId
@@ -326,7 +329,7 @@ export class TenantController {
 
     const oldStatus = user.accountStatus;
     user.accountStatus = status;
-    
+
     if (status === 'locked') {
       user.accountLockedAt = new Date();
     }
@@ -335,7 +338,7 @@ export class TenantController {
 
     logger.info('User status updated', {
       tenantId: req.tenantId,
-      userId: userId,
+      userId,
       oldStatus,
       newStatus: status,
       updatedBy: req.userId
@@ -460,14 +463,14 @@ export class TenantController {
     // Update subscription details
     const oldTier = company.subscriptionTier;
     company.subscriptionTier = tier;
-    
+
     if (billingCycle) {
       company.billingCycle = billingCycle;
     }
 
     // Update features and limits based on new tier
     company.features = getFeaturesForTier(tier);
-    
+
     // Update limits based on tier
     const tierLimits = {
       basic: { maxUsers: 10, maxProducts: 100, maxOrders: 50, apiCallsPerMinute: 100 },

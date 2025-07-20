@@ -1,10 +1,12 @@
 import express from 'express';
-import { requireAuth } from '../middleware/auth';
-import { extractTenantContext, enforceTenantIsolation, requireTenantFeature, tenantFeatures } from '../middleware/tenantIsolation';
+import { body, param, query } from 'express-validator';
+
 import { ApiKeyController } from '../controllers/ApiKeyController';
 import { validateRequest, commonValidations } from '../middleware/advancedValidation';
-import { body, param, query } from 'express-validator';
+import { requireAuth } from '../middleware/auth';
 import { apiRateLimiter } from '../middleware/rateLimiter';
+import { extractTenantContext, enforceTenantIsolation, requireTenantFeature, tenantFeatures } from '../middleware/tenantIsolation';
+
 
 const router = express.Router();
 const apiKeyController = new ApiKeyController();
@@ -164,39 +166,39 @@ router.post('/',
       .withMessage('API key name is required')
       .isLength({ min: 3, max: 50 })
       .withMessage('Name must be between 3 and 50 characters'),
-    
+
     body('permissions')
       .isArray({ min: 1 })
       .withMessage('At least one permission is required'),
-    
+
     body('permissions.*')
       .isIn(['read', 'write', 'delete', 'admin', '*'])
       .withMessage('Invalid permission'),
-    
+
     body('expiresIn')
       .optional()
       .isInt({ min: 1, max: 365 })
       .withMessage('Expiration must be between 1 and 365 days'),
-    
+
     body('rateLimit')
       .optional()
       .isInt({ min: 10, max: 10000 })
       .withMessage('Rate limit must be between 10 and 10000 requests per minute'),
-    
+
     body('allowedIPs')
       .optional()
       .isArray()
       .withMessage('Allowed IPs must be an array'),
-    
+
     body('allowedIPs.*')
       .isIP()
       .withMessage('Invalid IP address'),
-    
+
     body('allowedDomains')
       .optional()
       .isArray()
       .withMessage('Allowed domains must be an array'),
-    
+
     body('allowedDomains.*')
       .isFQDN()
       .withMessage('Invalid domain')
@@ -275,41 +277,41 @@ router.get('/:keyId',
 router.put('/:keyId',
   [
     param('keyId').isAlphanumeric().isLength({ min: 8, max: 16 }),
-    
+
     body('name')
       .optional()
       .trim()
       .isLength({ min: 3, max: 50 })
       .withMessage('Name must be between 3 and 50 characters'),
-    
+
     body('permissions')
       .optional()
       .isArray({ min: 1 })
       .withMessage('At least one permission is required'),
-    
+
     body('permissions.*')
       .isIn(['read', 'write', 'delete', 'admin', '*'])
       .withMessage('Invalid permission'),
-    
+
     body('rateLimit')
       .optional()
       .isInt({ min: 10, max: 10000 })
       .withMessage('Rate limit must be between 10 and 10000 requests per minute'),
-    
+
     body('allowedIPs')
       .optional()
       .isArray()
       .withMessage('Allowed IPs must be an array'),
-    
+
     body('allowedIPs.*')
       .isIP()
       .withMessage('Invalid IP address'),
-    
+
     body('allowedDomains')
       .optional()
       .isArray()
       .withMessage('Allowed domains must be an array'),
-    
+
     body('allowedDomains.*')
       .isFQDN()
       .withMessage('Invalid domain')

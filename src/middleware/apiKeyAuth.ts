@@ -1,8 +1,10 @@
-import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
-import { Logger } from '../core/logging/logger';
-import { AuthenticationError, AuthorizationError } from '../core/errors';
+
+import { Request, Response, NextFunction } from 'express';
+
 import { redisClient } from '../config/redis';
+import { AuthenticationError, AuthorizationError } from '../core/errors';
+import { Logger } from '../core/logging/logger';
 import { Company } from '../models/Company';
 
 const logger = new Logger('APIKeyAuth');
@@ -69,7 +71,7 @@ export const validateAPIKeyFormat = (key: string): boolean => {
 export const cacheAPIKey = async (hashedKey: string, keyData: APIKey): Promise<void> => {
   const cacheKey = `api_key:${hashedKey}`;
   const ttl = 3600; // 1 hour cache
-  
+
   await redisClient.setex(
     cacheKey,
     ttl,
@@ -83,11 +85,11 @@ export const cacheAPIKey = async (hashedKey: string, keyData: APIKey): Promise<v
 export const getCachedAPIKey = async (hashedKey: string): Promise<APIKey | null> => {
   const cacheKey = `api_key:${hashedKey}`;
   const cached = await redisClient.get(cacheKey);
-  
+
   if (cached) {
     return JSON.parse(cached);
   }
-  
+
   return null;
 };
 
@@ -98,7 +100,7 @@ export const apiKeyAuth = (requiredPermissions: string[] = []) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
       // Extract API key from headers
-      const apiKey = req.headers['x-api-key'] as string || 
+      const apiKey = req.headers['x-api-key'] as string ||
                      req.headers['authorization']?.replace('Bearer ', '') ||
                      req.query.api_key as string;
 
@@ -125,7 +127,7 @@ export const apiKeyAuth = (requiredPermissions: string[] = []) => {
         });
 
         // This is a placeholder - in production, use a dedicated API keys collection
-        const company = companies.find(c => 
+        const company = companies.find(c =>
           c.tenantSettings.webhookEndpoints?.includes(hashedKey)
         );
 
@@ -189,7 +191,7 @@ export const apiKeyAuth = (requiredPermissions: string[] = []) => {
 
       // Check required permissions
       if (requiredPermissions.length > 0) {
-        const hasPermissions = requiredPermissions.every(perm => 
+        const hasPermissions = requiredPermissions.every(perm =>
           keyData.permissions.includes(perm) || keyData.permissions.includes('*')
         );
 
@@ -199,7 +201,7 @@ export const apiKeyAuth = (requiredPermissions: string[] = []) => {
       }
 
       // Update last used timestamp (async, don't wait)
-      updateAPIKeyUsage(hashedKey).catch(err => 
+      updateAPIKeyUsage(hashedKey).catch(err =>
         logger.error('Failed to update API key usage:', err)
       );
 
@@ -219,7 +221,7 @@ export const apiKeyAuth = (requiredPermissions: string[] = []) => {
       next();
     } catch (error) {
       logger.error('API key authentication failed:', error);
-      
+
       if (error instanceof AuthenticationError || error instanceof AuthorizationError) {
         return res.status(401).json({
           success: false,
@@ -255,7 +257,7 @@ async function updateAPIKeyUsage(hashedKey: string): Promise<void> {
  */
 export const optionalApiKeyAuth = (requiredPermissions: string[] = []) => {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const apiKey = req.headers['x-api-key'] as string || 
+    const apiKey = req.headers['x-api-key'] as string ||
                    req.query.api_key as string;
 
     if (apiKey) {
@@ -285,7 +287,7 @@ export const createAPIKey = async (
 ): Promise<{ key: string; keyData: APIKey }> => {
   const key = generateAPIKey();
   const hashedKey = hashAPIKey(key);
-  
+
   const keyData: APIKey = {
     id: crypto.randomBytes(8).toString('hex'),
     key: hashedKey,
@@ -325,9 +327,9 @@ export const createAPIKey = async (
  */
 export const revokeAPIKey = async (keyId: string, revokedBy: string): Promise<void> => {
   // Remove from cache
-  const cachePattern = `api_key:*`;
+  const cachePattern = 'api_key:*';
   const keys = await redisClient.keys(cachePattern);
-  
+
   for (const cacheKey of keys) {
     const keyData = await redisClient.get(cacheKey);
     if (keyData) {
@@ -359,18 +361,18 @@ export const listAPIKeys = async (tenantId: string): Promise<APIKey[]> => {
 export const getAPIKeyUsage = async (keyId: string, days: number = 30): Promise<any> => {
   const usage: any = {};
   const today = new Date();
-  
+
   for (let i = 0; i < days; i++) {
     const date = new Date(today);
     date.setDate(date.getDate() - i);
     const dateStr = date.toISOString().slice(0, 10);
-    
+
     const usageKey = `api_key_usage:${keyId}:${dateStr}`;
     const count = await redisClient.get(usageKey);
-    
+
     usage[dateStr] = parseInt(count || '0');
   }
-  
+
   return usage;
 };
 

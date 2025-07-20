@@ -1,8 +1,9 @@
+const bcrypt = require('bcryptjs');
+const asyncHandler = require('express-async-handler');
+const jwt = require('jsonwebtoken');
+
 const Seller = require('../models/sellers/Seller');
 const User = require('../models/User');
-const asyncHandler = require('express-async-handler');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 
 // @desc    Register new seller
 // @route   POST /api/sellers/register
@@ -70,7 +71,7 @@ const registerSeller = asyncHandler(async (req, res) => {
 // @route   GET /api/sellers/dashboard
 // @access  Private (Seller)
 const getDashboard = asyncHandler(async (req, res) => {
-  const sellerId = req.user.sellerId;
+  const {sellerId} = req.user;
 
   // Get seller data
   const seller = await Seller.findById(sellerId);
@@ -129,7 +130,7 @@ const getDashboard = asyncHandler(async (req, res) => {
 // @route   PUT /api/sellers/profile
 // @access  Private (Seller)
 const updateProfile = asyncHandler(async (req, res) => {
-  const sellerId = req.user.sellerId;
+  const {sellerId} = req.user;
 
   const seller = await Seller.findById(sellerId);
   if (!seller) {
@@ -170,14 +171,14 @@ const getSellerProducts = asyncHandler(async (req, res) => {
 
   // Import Product model
   const Product = require('../../models/Product');
-  
+
   // Get query parameters for filtering and pagination
-  const { 
-    page = 1, 
-    limit = 20, 
+  const {
+    page = 1,
+    limit = 20,
     status = 'active',
     category,
-    search 
+    search
   } = req.query;
 
   // Build query
@@ -207,7 +208,7 @@ const getSellerProducts = asyncHandler(async (req, res) => {
 
   // Execute query with pagination
   const skip = (page - 1) * limit;
-  
+
   const [products, total] = await Promise.all([
     Product.find(query)
       .populate('category', 'name slug')
@@ -237,16 +238,16 @@ const getSellerOrders = asyncHandler(async (req, res) => {
 
   // Import Order model
   const Order = require('../../models/Order');
-  
+
   // Get query parameters for filtering and pagination
-  const { 
-    page = 1, 
-    limit = 20, 
+  const {
+    page = 1,
+    limit = 20,
     status,
     paymentStatus,
     startDate,
     endDate,
-    search 
+    search
   } = req.query;
 
   // Build query
@@ -288,7 +289,7 @@ const getSellerOrders = asyncHandler(async (req, res) => {
 
   // Execute query with pagination
   const skip = (page - 1) * limit;
-  
+
   const [orders, total] = await Promise.all([
     Order.find(query)
       .populate('buyer', 'firstName lastName email')
@@ -344,7 +345,7 @@ const getSellerOrders = asyncHandler(async (req, res) => {
 // @route   GET /api/sellers/analytics
 // @access  Private (Seller)
 const getAnalytics = asyncHandler(async (req, res) => {
-  const sellerId = req.user.sellerId;
+  const {sellerId} = req.user;
   const { startDate, endDate } = req.query;
 
   const seller = await Seller.findById(sellerId);

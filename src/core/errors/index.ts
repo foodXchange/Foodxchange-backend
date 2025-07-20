@@ -81,3 +81,19 @@ export const isOperationalError = (error: Error): boolean => {
   }
   return false;
 };
+
+// Express async handler wrapper
+import { Request, Response, NextFunction } from 'express';
+
+export const asyncHandler = (fn: Function) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
+};
+
+// API Error class for backward compatibility
+export class ApiError extends BaseError {
+  constructor(message: string, statusCode: number = 500, code?: string) {
+    super(message, statusCode, true, code);
+  }
+}

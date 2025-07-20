@@ -1,13 +1,14 @@
-import { Agent } from '../models/Agent';
-import { User } from '../models/User';
-import { AgentLead } from '../models/AgentLead';
-import { AgentActivity } from '../models/AgentActivity';
-import { AgentCommission } from '../models/AgentCommission';
-import asyncHandler from 'express-async-handler';
 import bcrypt from 'bcryptjs';
+import { Request, Response } from 'express';
+import { asyncHandler } from '../core/errors';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
-import { Request, Response } from 'express';
+
+import { Agent } from '../models/Agent';
+import AgentActivity from '../models/AgentActivity';
+import AgentCommission from '../models/AgentCommission';
+import AgentLead from '../models/AgentLead';
+import { User } from '../models/User';
 
 const agentOnboarding = asyncHandler(async (req, res) => {
   const { step, data } = req.body;
@@ -114,7 +115,7 @@ const agentOnboarding = asyncHandler(async (req, res) => {
 
 const getAgentProfile = asyncHandler(async (req, res) => {
   const userId = req.user.id;
-  
+
   const agent = await Agent.findOne({ userId })
     .populate('userId', 'email profile preferences')
     .populate('expertise.categories', 'name')
@@ -126,9 +127,9 @@ const getAgentProfile = asyncHandler(async (req, res) => {
 
   // Calculate additional metrics
   const totalLeads = await AgentLead.countDocuments({ 'assignment.activeAgent': agent._id });
-  const closedDeals = await AgentLead.countDocuments({ 
-    'assignment.activeAgent': agent._id, 
-    status: 'closed_won' 
+  const closedDeals = await AgentLead.countDocuments({
+    'assignment.activeAgent': agent._id,
+    status: 'closed_won'
   });
   const totalCommissions = await AgentCommission.aggregate([
     { $match: { agentId: agent._id, status: 'paid' } },
@@ -259,7 +260,7 @@ const verifyAgent = asyncHandler(async (req, res) => {
 
 const getAgentDashboard = asyncHandler(async (req, res) => {
   const userId = req.user.id;
-  const { period = 'month' } = req.query;
+  const period = String(req.query.period || 'month');
 
   const agent = await Agent.findOne({ userId });
   if (!agent) {
@@ -375,7 +376,11 @@ const getAgentDashboard = asyncHandler(async (req, res) => {
 
 const getAvailableLeads = asyncHandler(async (req, res) => {
   const userId = req.user.id;
-  const { page = 1, limit = 20, category, urgency, sort = 'createdAt' } = req.query;
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 20;
+  const category = req.query.category ? String(req.query.category) : undefined;
+  const urgency = req.query.urgency ? String(req.query.urgency) : undefined;
+  const sort = String(req.query.sort || 'createdAt');
 
   const agent = await Agent.findOne({ userId });
   if (!agent) {
@@ -383,7 +388,7 @@ const getAvailableLeads = asyncHandler(async (req, res) => {
   }
 
   // Build query based on agent's territory and expertise
-  let query = {
+  const query = {
     'assignment.assignedAgents.agentId': agent._id,
     'assignment.assignedAgents.status': 'offered',
     status: 'assigned'
@@ -403,7 +408,7 @@ const getAvailableLeads = asyncHandler(async (req, res) => {
     .populate('buyer.company', 'name')
     .sort({ [sort]: -1 })
     .skip((page - 1) * limit)
-    .limit(parseInt(limit));
+    .limit(limit);
 
   const total = await AgentLead.countDocuments(query);
 
@@ -411,8 +416,8 @@ const getAvailableLeads = asyncHandler(async (req, res) => {
     success: true,
     leads,
     pagination: {
-      page: parseInt(page),
-      limit: parseInt(limit),
+      page: page,
+      limit: limit,
       total,
       pages: Math.ceil(total / limit)
     }
@@ -451,7 +456,7 @@ const acceptLead = asyncHandler(async (req, res) => {
   assignment.status = 'accepted';
   assignment.response = {
     respondedAt: new Date(),
-    responseTime: Math.floor((new Date() - assignment.assignedAt) / (1000 * 60))
+    responseTime: Math.floor((new Date().getTime() - new Date(assignment.assignedAt).getTime()) / (1000 * 60))
   };
 
   lead.assignment.activeAgent = agent._id;
@@ -518,7 +523,7 @@ const declineLead = asyncHandler(async (req, res) => {
   assignment.status = 'declined';
   assignment.response = {
     respondedAt: new Date(),
-    responseTime: Math.floor((new Date() - assignment.assignedAt) / (1000 * 60)),
+    responseTime: Math.floor((new Date().getTime() - new Date(assignment.assignedAt).getTime()) / (1000 * 60)),
     declineReason: reason
   };
 
@@ -551,21 +556,19 @@ const declineLead = asyncHandler(async (req, res) => {
 
 const getAgentCommissions = asyncHandler(async (req, res) => {
   const userId = req.user.id;
-  const { 
-    page = 1, 
-    limit = 20, 
-    status, 
-    type, 
-    startDate, 
-    endDate 
-  } = req.query;
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 20;
+  const status = req.query.status ? String(req.query.status) : undefined;
+  const type = req.query.type ? String(req.query.type) : undefined;
+  const startDate = req.query.startDate ? String(req.query.startDate) : undefined;
+  const endDate = req.query.endDate ? String(req.query.endDate) : undefined;
 
   const agent = await Agent.findOne({ userId });
   if (!agent) {
     return res.status(404).json({ error: 'Agent profile not found' });
   }
 
-  let query = { agentId: agent._id };
+  const query: any = { agentId: agent._id };
 
   if (status) {
     query.status = status;
@@ -587,7 +590,7 @@ const getAgentCommissions = asyncHandler(async (req, res) => {
     .populate('relatedEntities.orderId', 'orderNumber')
     .sort({ createdAt: -1 })
     .skip((page - 1) * limit)
-    .limit(parseInt(limit));
+    .limit(limit);
 
   const total = await AgentCommission.countDocuments(query);
 
@@ -608,8 +611,8 @@ const getAgentCommissions = asyncHandler(async (req, res) => {
     commissions,
     summary,
     pagination: {
-      page: parseInt(page),
-      limit: parseInt(limit),
+      page: page,
+      limit: limit,
       total,
       pages: Math.ceil(total / limit)
     }

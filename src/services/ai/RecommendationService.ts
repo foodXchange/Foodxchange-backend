@@ -1,8 +1,8 @@
 import { Logger } from '../../core/logging/logger';
-import { Product } from '../../models/Product';
 import { Order } from '../../models/Order';
-import { User } from '../../models/User';
+import { Product } from '../../models/Product';
 import { RFQ } from '../../models/RFQ';
+import { User } from '../../models/User';
 import { getAnalyticsService } from '../analytics/AnalyticsService';
 import { AnalyticsEvent } from '../analytics/AnalyticsService';
 
@@ -55,7 +55,7 @@ export interface IUserPreferences {
 }
 
 export class RecommendationService {
-  private analyticsService = getAnalyticsService();
+  private readonly analyticsService = getAnalyticsService();
 
   /**
    * Get personalized product recommendations
@@ -105,7 +105,7 @@ export class RecommendationService {
 
       // Remove duplicates and excluded products
       const uniqueRecs = this.removeDuplicateRecommendations(recommendations);
-      const filteredRecs = uniqueRecs.filter(rec => 
+      const filteredRecs = uniqueRecs.filter(rec =>
         !options.excludeProductIds?.includes(rec.productId)
       );
 
@@ -153,31 +153,31 @@ export class RecommendationService {
 
       // Build base query
       const baseQuery: any = { tenantId, isActive: true };
-      
+
       // Apply filters
       if (filters.categories?.length) {
         baseQuery.category = { $in: filters.categories };
       }
-      
+
       if (filters.priceRange) {
         baseQuery.price = {
           $gte: filters.priceRange.min,
           $lte: filters.priceRange.max
         };
       }
-      
+
       if (filters.location) {
         baseQuery.location = { $regex: filters.location, $options: 'i' };
       }
-      
+
       if (filters.organic !== undefined) {
         baseQuery.isOrganic = filters.organic;
       }
-      
+
       if (filters.certified !== undefined) {
         baseQuery.isCertified = filters.certified;
       }
-      
+
       if (filters.suppliers?.length) {
         baseQuery.supplier = { $in: filters.suppliers };
       }
@@ -210,7 +210,7 @@ export class RecommendationService {
             tenantId,
             userId
           );
-          
+
           return {
             id: product._id.toString(),
             name: product.name,
@@ -271,7 +271,7 @@ export class RecommendationService {
     try {
       // Find similar users based on order history
       const similarUsers = await this.findSimilarUsers(tenantId, userId, 10);
-      
+
       if (similarUsers.length === 0) {
         return [];
       }
@@ -309,7 +309,7 @@ export class RecommendationService {
 
       // Filter and score recommendations
       const recommendations: IRecommendation[] = [];
-      
+
       for (const productData of similarUsersProducts) {
         if (!userOrderedProductIds.includes(productData._id.toString())) {
           const score = this.calculateCollaborativeScore(
@@ -441,8 +441,6 @@ export class RecommendationService {
   }
 
 
-
-
   /**
    * Calculate relevance score for search results
    */
@@ -481,7 +479,7 @@ export class RecommendationService {
         { $match: { 'items.productId': product._id } },
         { $group: { _id: null, avgRating: { $avg: '$items.rating' } } }
       ]);
-      
+
       if (avgRating[0]?.avgRating) {
         score += (avgRating[0].avgRating / 5) * 15;
       }
@@ -536,8 +534,8 @@ export class RecommendationService {
       userId,
       eventType: 'product_view'
     })
-    .sort({ timestamp: -1 })
-    .limit(limit);
+      .sort({ timestamp: -1 })
+      .limit(limit);
   }
 
   private async findSimilarUsers(tenantId: string, userId: string, limit: number) {
@@ -567,11 +565,11 @@ export class RecommendationService {
     const popularityScore = Math.min(orderCount * 10, 50);
     const ratingScore = (avgRating || 0) * 10;
     const confidenceScore = Math.min(similarUsersCount * 5, 25);
-    
+
     return popularityScore + ratingScore + confidenceScore;
   }
 
-  private async generateSearchSuggestions(tenantId: string, query: string): Promise<string[]> {
+  public async generateSearchSuggestions(tenantId: string, query: string): Promise<string[]> {
     if (!query || query.length < 2) return [];
 
     const suggestions = await Product.aggregate([
@@ -657,42 +655,6 @@ export class RecommendationService {
   }
 
   /**
-   * Generate search suggestions
-   */
-  async generateSearchSuggestions(tenantId: string, query: string): Promise<string[]> {
-    if (!query || query.length < 2) return [];
-
-    const suggestions = await Product.aggregate([
-      {
-        $match: {
-          tenantId,
-          isActive: true,
-          $or: [
-            { name: { $regex: query, $options: 'i' } },
-            { category: { $regex: query, $options: 'i' } }
-          ]
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          names: { $addToSet: '$name' },
-          categories: { $addToSet: '$category' }
-        }
-      }
-    ]);
-
-    const allSuggestions = [
-      ...(suggestions[0]?.names || []),
-      ...(suggestions[0]?.categories || [])
-    ];
-
-    return allSuggestions
-      .filter(s => s.toLowerCase().includes(query.toLowerCase()))
-      .slice(0, 5);
-  }
-
-  /**
    * Get trending recommendations (public method)
    */
   async getTrendingRecommendations(
@@ -758,7 +720,7 @@ export class RecommendationService {
     try {
       const currentMonth = new Date().getMonth() + 1;
       const season = this.getCurrentSeason(currentMonth);
-      
+
       const seasonalCategories = this.getSeasonalCategories(season);
 
       const seasonalProducts = await Product.aggregate([

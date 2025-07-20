@@ -1,23 +1,24 @@
 import { Request, Response } from 'express';
+
+import { ValidationError, AuthorizationError, NotFoundError } from '../core/errors';
+import { Logger } from '../core/logging/logger';
+import { User } from '../models/User';
 import { getSignalRService } from '../services/azure/SignalRService';
 import { getRealtimeEventService } from '../services/realtime/RealtimeEventService';
-import { Logger } from '../core/logging/logger';
-import { ValidationError, AuthorizationError, NotFoundError } from '../core/errors';
-import { User } from '../models/User';
 
 const logger = new Logger('SignalRController');
 
 export class SignalRController {
-  private signalRService = getSignalRService();
-  private realtimeEventService = getRealtimeEventService();
+  private readonly signalRService = getSignalRService();
+  private readonly realtimeEventService = getRealtimeEventService();
 
   /**
    * Get SignalR connection info for client
    */
   async getConnectionInfo(req: Request, res: Response): Promise<void> {
     try {
-      const userId = req.userId!;
-      const tenantId = req.tenantId!;
+      const {userId} = req;
+      const {tenantId} = req;
 
       // Get user roles
       const user = await User.findById(userId);
@@ -39,7 +40,7 @@ export class SignalRController {
       });
     } catch (error) {
       logger.error('Get connection info error:', error);
-      
+
       if (error instanceof NotFoundError) {
         res.status(404).json({
           success: false,
@@ -60,8 +61,8 @@ export class SignalRController {
   async sendMessageToUser(req: Request, res: Response): Promise<void> {
     try {
       const { targetUserId, message, type = 'message' } = req.body;
-      const fromUserId = req.userId!;
-      const tenantId = req.tenantId!;
+      const fromUserId = req.userId;
+      const {tenantId} = req;
 
       if (!targetUserId || !message) {
         throw new ValidationError('Target user ID and message are required');
@@ -86,7 +87,7 @@ export class SignalRController {
       });
     } catch (error) {
       logger.error('Send message to user error:', error);
-      
+
       if (error instanceof ValidationError || error instanceof NotFoundError) {
         res.status(400).json({
           success: false,
@@ -107,8 +108,8 @@ export class SignalRController {
   async sendMessageToGroup(req: Request, res: Response): Promise<void> {
     try {
       const { message, type = 'broadcast' } = req.body;
-      const fromUserId = req.userId!;
-      const tenantId = req.tenantId!;
+      const fromUserId = req.userId;
+      const {tenantId} = req;
 
       if (!message) {
         throw new ValidationError('Message is required');
@@ -133,7 +134,7 @@ export class SignalRController {
       });
     } catch (error) {
       logger.error('Send message to group error:', error);
-      
+
       if (error instanceof ValidationError || error instanceof AuthorizationError) {
         res.status(400).json({
           success: false,
@@ -154,8 +155,8 @@ export class SignalRController {
   async sendChatMessage(req: Request, res: Response): Promise<void> {
     try {
       const { toUserId, message, orderId, rfqId } = req.body;
-      const fromUserId = req.userId!;
-      const tenantId = req.tenantId!;
+      const fromUserId = req.userId;
+      const {tenantId} = req;
 
       if (!toUserId || !message) {
         throw new ValidationError('Recipient user ID and message are required');
@@ -183,7 +184,7 @@ export class SignalRController {
       });
     } catch (error) {
       logger.error('Send chat message error:', error);
-      
+
       if (error instanceof ValidationError || error instanceof NotFoundError) {
         res.status(400).json({
           success: false,
@@ -204,8 +205,8 @@ export class SignalRController {
   async sendTypingIndicator(req: Request, res: Response): Promise<void> {
     try {
       const { toUserId, isTyping } = req.body;
-      const fromUserId = req.userId!;
-      const tenantId = req.tenantId!;
+      const fromUserId = req.userId;
+      const {tenantId} = req;
 
       if (!toUserId || typeof isTyping !== 'boolean') {
         throw new ValidationError('Recipient user ID and typing status are required');
@@ -224,7 +225,7 @@ export class SignalRController {
       });
     } catch (error) {
       logger.error('Send typing indicator error:', error);
-      
+
       if (error instanceof ValidationError) {
         res.status(400).json({
           success: false,
@@ -245,8 +246,8 @@ export class SignalRController {
   async joinGroup(req: Request, res: Response): Promise<void> {
     try {
       const { groupName } = req.body;
-      const userId = req.userId!;
-      const tenantId = req.tenantId!;
+      const {userId} = req;
+      const {tenantId} = req;
 
       if (!groupName) {
         throw new ValidationError('Group name is required');
@@ -266,7 +267,7 @@ export class SignalRController {
       });
     } catch (error) {
       logger.error('Join group error:', error);
-      
+
       if (error instanceof ValidationError || error instanceof AuthorizationError) {
         res.status(400).json({
           success: false,
@@ -287,7 +288,7 @@ export class SignalRController {
   async leaveGroup(req: Request, res: Response): Promise<void> {
     try {
       const { groupName } = req.body;
-      const userId = req.userId!;
+      const {userId} = req;
 
       if (!groupName) {
         throw new ValidationError('Group name is required');
@@ -302,7 +303,7 @@ export class SignalRController {
       });
     } catch (error) {
       logger.error('Leave group error:', error);
-      
+
       if (error instanceof ValidationError) {
         res.status(400).json({
           success: false,
@@ -345,7 +346,7 @@ export class SignalRController {
   async checkUserOnline(req: Request, res: Response): Promise<void> {
     try {
       const { userId } = req.params;
-      const tenantId = req.tenantId!;
+      const {tenantId} = req;
 
       if (!userId) {
         throw new ValidationError('User ID is required');
@@ -368,7 +369,7 @@ export class SignalRController {
       });
     } catch (error) {
       logger.error('Check user online error:', error);
-      
+
       if (error instanceof ValidationError || error instanceof NotFoundError) {
         res.status(400).json({
           success: false,
@@ -389,8 +390,8 @@ export class SignalRController {
   async sendSystemNotification(req: Request, res: Response): Promise<void> {
     try {
       const { title, message, userId } = req.body;
-      const tenantId = req.tenantId!;
-      const fromUserId = req.userId!;
+      const {tenantId} = req;
+      const fromUserId = req.userId;
 
       if (!title || !message) {
         throw new ValidationError('Title and message are required');
@@ -411,7 +412,7 @@ export class SignalRController {
       });
     } catch (error) {
       logger.error('Send system notification error:', error);
-      
+
       if (error instanceof ValidationError || error instanceof AuthorizationError) {
         res.status(400).json({
           success: false,

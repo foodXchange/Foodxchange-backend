@@ -1,10 +1,11 @@
 import mongoose, { Document, Schema } from 'mongoose';
+
 import { Logger } from '../../core/logging/logger';
-import { Order } from '../../models/Order';
-import { RFQ } from '../../models/RFQ';
-import { Product } from '../../models/Product';
-import { User } from '../../models/User';
 import { Company } from '../../models/Company';
+import { Order } from '../../models/Order';
+import { Product } from '../../models/Product';
+import { RFQ } from '../../models/RFQ';
+import { User } from '../../models/User';
 import { CCPMeasurement, ComplianceAlert } from '../compliance/HACCPService';
 
 const logger = new Logger('AnalyticsService');
@@ -30,13 +31,13 @@ export interface IDashboardMetrics {
   averageOrderValue: number;
   totalOrders: number;
   ordersGrowth: number;
-  
+
   // RFQ metrics
   totalRFQs: number;
   rfqConversionRate: number;
   averageRFQValue: number;
   rfqGrowth: number;
-  
+
   // Product metrics
   totalProducts: number;
   topProducts: Array<{
@@ -45,42 +46,42 @@ export interface IDashboardMetrics {
     orders: number;
     revenue: number;
   }>;
-  
+
   // User metrics
   totalUsers: number;
   activeUsers: number;
   newUsers: number;
   userGrowth: number;
-  
+
   // Compliance metrics
   complianceRate: number;
   totalViolations: number;
   criticalAlerts: number;
-  
+
   // Performance metrics
   averageProcessingTime: number;
   systemUptime: number;
-  
+
   // Trends
   revenueByMonth: Array<{
     month: string;
     revenue: number;
     orders: number;
   }>;
-  
+
   ordersByStatus: Array<{
     status: string;
     count: number;
     percentage: number;
   }>;
-  
+
   topBuyers: Array<{
     companyId: string;
     companyName: string;
     totalOrders: number;
     totalValue: number;
   }>;
-  
+
   topSuppliers: Array<{
     companyId: string;
     companyName: string;
@@ -159,7 +160,7 @@ export class AnalyticsService {
     try {
       const event = new AnalyticsEvent(eventData);
       await event.save();
-      
+
       logger.debug('Analytics event tracked', {
         eventType: event.eventType,
         category: event.category,
@@ -202,28 +203,28 @@ export class AnalyticsService {
         totalOrders,
         previousOrders,
         averageOrderValue,
-        
+
         // RFQ metrics
         totalRFQs,
         previousRFQs,
         rfqConversionData,
         averageRFQValue,
-        
+
         // Product metrics
         totalProducts,
         topProducts,
-        
+
         // User metrics
         totalUsers,
         activeUsers,
         newUsers,
         previousNewUsers,
-        
+
         // Compliance metrics
         complianceData,
         totalViolations,
         criticalAlerts,
-        
+
         // Trends
         revenueByMonth,
         ordersByStatus,
@@ -236,28 +237,28 @@ export class AnalyticsService {
         Order.countDocuments(dateFilter),
         Order.countDocuments(compareDateFilter),
         this.calculateAverageOrderValue(dateFilter),
-        
+
         // RFQ metrics
         RFQ.countDocuments(dateFilter),
         RFQ.countDocuments(compareDateFilter),
         this.calculateRFQConversionRate(tenantId, startDate, endDate),
         this.calculateAverageRFQValue(dateFilter),
-        
+
         // Product metrics
         Product.countDocuments({ tenantId }),
         this.getTopProducts(tenantId, startDate, endDate),
-        
+
         // User metrics
         User.countDocuments({ tenantId }),
         this.getActiveUsers(tenantId, startDate, endDate),
         User.countDocuments(dateFilter),
         User.countDocuments(compareDateFilter),
-        
+
         // Compliance metrics
         this.getComplianceRate(tenantId, startDate, endDate),
         CCPMeasurement.countDocuments({ ...dateFilter, status: 'violation' }),
         ComplianceAlert.countDocuments({ ...dateFilter, severity: 'critical' }),
-        
+
         // Trends
         this.getRevenueByMonth(tenantId, startDate, endDate),
         this.getOrdersByStatus(tenantId, startDate, endDate),
@@ -278,32 +279,32 @@ export class AnalyticsService {
         averageOrderValue,
         totalOrders,
         ordersGrowth,
-        
+
         // RFQ metrics
         totalRFQs,
         rfqConversionRate: rfqConversionData.conversionRate,
         averageRFQValue,
         rfqGrowth,
-        
+
         // Product metrics
         totalProducts,
         topProducts,
-        
+
         // User metrics
         totalUsers,
         activeUsers,
         newUsers,
         userGrowth,
-        
+
         // Compliance metrics
         complianceRate: complianceData.complianceRate,
         totalViolations,
         criticalAlerts,
-        
+
         // Performance metrics
         averageProcessingTime: 0, // Would be calculated from performance data
         systemUptime: 99.9,
-        
+
         // Trends
         revenueByMonth,
         ordersByStatus,
@@ -473,7 +474,7 @@ export class AnalyticsService {
   /**
    * Get top products
    */
-  private async getTopProducts(tenantId: string, startDate: Date, endDate: Date): Promise<Array<{
+  public async getTopProducts(tenantId: string, startDate: Date, endDate: Date): Promise<Array<{
     productId: string;
     name: string;
     orders: number;
@@ -505,7 +506,7 @@ export class AnalyticsService {
   /**
    * Get active users
    */
-  private async getActiveUsers(tenantId: string, startDate: Date, endDate: Date): Promise<number> {
+  public async getActiveUsers(tenantId: string, startDate: Date, endDate: Date): Promise<number> {
     const result = await AnalyticsEvent.aggregate([
       { $match: { tenantId, timestamp: { $gte: startDate, $lte: endDate }, userId: { $exists: true } } },
       { $group: { _id: '$userId' } },
@@ -540,7 +541,7 @@ export class AnalyticsService {
   /**
    * Get revenue by month
    */
-  private async getRevenueByMonth(tenantId: string, startDate: Date, endDate: Date): Promise<Array<{
+  public async getRevenueByMonth(tenantId: string, startDate: Date, endDate: Date): Promise<Array<{
     month: string;
     revenue: number;
     orders: number;
@@ -593,7 +594,7 @@ export class AnalyticsService {
   /**
    * Get top buyers
    */
-  private async getTopBuyers(tenantId: string, startDate: Date, endDate: Date): Promise<Array<{
+  public async getTopBuyers(tenantId: string, startDate: Date, endDate: Date): Promise<Array<{
     companyId: string;
     companyName: string;
     totalOrders: number;
@@ -630,7 +631,7 @@ export class AnalyticsService {
   /**
    * Get top suppliers
    */
-  private async getTopSuppliers(tenantId: string, startDate: Date, endDate: Date): Promise<Array<{
+  public async getTopSuppliers(tenantId: string, startDate: Date, endDate: Date): Promise<Array<{
     companyId: string;
     companyName: string;
     totalOrders: number;
@@ -772,7 +773,7 @@ export class AnalyticsService {
       case 'product_created':
         return `Product "${data.name}" added to catalog`;
       case 'user_login':
-        return `User logged in`;
+        return 'User logged in';
       case 'compliance_violation':
         return `Compliance violation detected: ${data.violationType}`;
       default:
@@ -786,7 +787,7 @@ export class AnalyticsService {
   async getAnalyticsByCategory(filters: any, limit: number = 100): Promise<IAnalyticsEvent[]> {
     try {
       const query: any = { tenantId: filters.tenantId, category: filters.category };
-      
+
       if (filters.startDate && filters.endDate) {
         query.timestamp = { $gte: filters.startDate, $lte: filters.endDate };
       }

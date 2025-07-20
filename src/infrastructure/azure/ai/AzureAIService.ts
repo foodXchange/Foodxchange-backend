@@ -3,14 +3,15 @@
  * Provides unified interface for all Azure Cognitive Services
  */
 
+import { DocumentAnalysisClient } from '@azure/ai-form-recognizer';
 import { TextAnalyticsClient, AzureKeyCredential } from '@azure/ai-text-analytics';
 import { ComputerVisionClient } from '@azure/cognitiveservices-computervision';
 import { ApiKeyCredentials } from '@azure/ms-rest-js';
-import { DocumentAnalysisClient } from '@azure/ai-form-recognizer';
 import { OpenAIClient } from '@azure/openai';
+
 import { config, isAzureAIConfigured } from '../../../core/config';
-import { Logger } from '../../../core/logging/logger';
 import { ExternalServiceError } from '../../../core/errors';
+import { Logger } from '../../../core/logging/logger';
 import { CacheService } from '../../cache/CacheService';
 import { MetricsService } from '../../monitoring/MetricsService';
 
@@ -117,14 +118,14 @@ export interface AIGenerationResult {
 // Main Azure AI Service class
 export class AzureAIService {
   private static instance: AzureAIService;
-  
+
   private textAnalyticsClient?: TextAnalyticsClient;
   private computerVisionClient?: ComputerVisionClient;
   private documentAnalysisClient?: DocumentAnalysisClient;
   private openAIClient?: OpenAIClient;
-  
-  private cache: CacheService;
-  private metrics: MetricsService;
+
+  private readonly cache: CacheService;
+  private readonly metrics: MetricsService;
   private initialized = false;
 
   private constructor() {
@@ -143,7 +144,7 @@ export class AzureAIService {
     if (this.initialized) return;
 
     const aiConfig = config.azure.ai;
-    
+
     try {
       // Initialize Text Analytics
       if (aiConfig.textAnalytics.endpoint && aiConfig.textAnalytics.key) {
@@ -199,7 +200,7 @@ export class AzureAIService {
     }
 
     const cacheKey = `text-analysis:${this.hashText(text)}:${JSON.stringify(options)}`;
-    
+
     // Check cache if enabled
     if (options.cache) {
       const cached = await this.cache.get<TextAnalysisResult>(cacheKey);
@@ -216,23 +217,23 @@ export class AzureAIService {
       const documents = [{
         id: '1',
         text,
-        language: options.language || 'en',
+        language: options.language || 'en'
       }];
 
       // Perform parallel analysis
       const [sentimentResults, keyPhraseResults, entityResults] = await Promise.all([
         this.textAnalyticsClient.analyzeSentiment(documents, {
           includeStatistics: options.includeStatistics,
-          modelVersion: options.modelVersion,
+          modelVersion: options.modelVersion
         }),
         this.textAnalyticsClient.extractKeyPhrases(documents, {
           includeStatistics: options.includeStatistics,
-          modelVersion: options.modelVersion,
+          modelVersion: options.modelVersion
         }),
         this.textAnalyticsClient.recognizeEntities(documents, {
           includeStatistics: options.includeStatistics,
-          modelVersion: options.modelVersion,
-        }),
+          modelVersion: options.modelVersion
+        })
       ]);
 
       const sentiment = sentimentResults[0];
@@ -246,7 +247,7 @@ export class AzureAIService {
       const result: TextAnalysisResult = {
         sentiment: {
           overall: sentiment.sentiment as any,
-          scores: sentiment.confidenceScores,
+          scores: sentiment.confidenceScores
         },
         keyPhrases: keyPhrases.keyPhrases,
         entities: entities.entities.map(e => ({
@@ -254,13 +255,13 @@ export class AzureAIService {
           category: e.category,
           confidence: e.confidenceScore,
           offset: e.offset,
-          length: e.length,
+          length: e.length
         })),
         language: {
           name: documents[0].language,
           iso6391Name: documents[0].language,
-          confidence: 1.0,
-        },
+          confidence: 1.0
+        }
       };
 
       // Cache result if enabled
@@ -291,7 +292,7 @@ export class AzureAIService {
     }
 
     const cacheKey = `image-analysis:${imageUrl}:${JSON.stringify(options)}`;
-    
+
     if (options.cache) {
       const cached = await this.cache.get<ImageAnalysisResult>(cacheKey);
       if (cached) {
@@ -309,7 +310,7 @@ export class AzureAIService {
         'Tags',
         'Description',
         'Objects',
-        'ImageType',
+        'ImageType'
       ];
 
       const analysis = await this.computerVisionClient.analyzeImage(
@@ -325,8 +326,8 @@ export class AzureAIService {
         metadata: {
           width: analysis.metadata?.width || 0,
           height: analysis.metadata?.height || 0,
-          format: analysis.metadata?.format || 'unknown',
-        },
+          format: analysis.metadata?.format || 'unknown'
+        }
       };
 
       if (options.cache) {
@@ -377,14 +378,14 @@ export class AzureAIService {
           cells: table.cells.map(cell => ({
             text: cell.content,
             rowIndex: cell.rowIndex,
-            columnIndex: cell.columnIndex,
-          })),
+            columnIndex: cell.columnIndex
+          }))
         })) || [],
         keyValuePairs: result.keyValuePairs?.map(kv => ({
           key: kv.key.content,
           value: kv.value?.content || '',
-          confidence: kv.confidence,
-        })) || [],
+          confidence: kv.confidence
+        })) || []
       };
 
       const duration = Date.now() - startTime;
@@ -429,7 +430,7 @@ export class AzureAIService {
           topP: options.topP || 1,
           frequencyPenalty: options.frequencyPenalty || 0,
           presencePenalty: options.presencePenalty || 0,
-          stop: options.stop,
+          stop: options.stop
         }
       );
 
@@ -439,9 +440,9 @@ export class AzureAIService {
         usage: {
           promptTokens: response.usage?.promptTokens || 0,
           completionTokens: response.usage?.completionTokens || 0,
-          totalTokens: response.usage?.totalTokens || 0,
+          totalTokens: response.usage?.totalTokens || 0
         },
-        finishReason: choice.finishReason || 'unknown',
+        finishReason: choice.finishReason || 'unknown'
       };
 
       const duration = Date.now() - startTime;
@@ -478,7 +479,7 @@ export class AzureAIService {
       textAnalytics: !!this.textAnalyticsClient,
       computerVision: !!this.computerVisionClient,
       formRecognizer: !!this.documentAnalysisClient,
-      openAI: !!this.openAIClient,
+      openAI: !!this.openAIClient
     };
 
     const healthy = Object.values(services).some(v => v);

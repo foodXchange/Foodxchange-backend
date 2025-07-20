@@ -1,11 +1,13 @@
 import { Router } from 'express';
+import { body, param, query } from 'express-validator';
+
+import { Logger } from '../../../core/logging/logger';
+import { asyncHandler } from '../../../middleware/asyncHandler';
 import { authenticate } from '../../../middleware/auth';
 import { authorize } from '../../../middleware/authorize';
-import { asyncHandler } from '../../../middleware/asyncHandler';
-import { jobProcessor } from '../../../services/queue/JobProcessor';
-import { Logger } from '../../../core/logging/logger';
-import { body, param, query } from 'express-validator';
 import { validateRequest } from '../../../middleware/validateRequest';
+import { jobProcessor } from '../../../services/queue/JobProcessor';
+
 
 const router = Router();
 const logger = new Logger('JobRoutes');
@@ -21,7 +23,7 @@ router.use(authenticate);
 router.get('/queues',
   asyncHandler(async (req, res) => {
     const metrics = await jobProcessor.getQueueMetrics();
-    
+
     res.json({
       success: true,
       data: metrics
@@ -41,7 +43,7 @@ router.get('/queues/:name',
   asyncHandler(async (req, res) => {
     const { name } = req.params;
     const metrics = await jobProcessor.getQueueMetrics(name);
-    
+
     res.json({
       success: true,
       data: metrics
@@ -63,27 +65,27 @@ router.post('/',
   ]),
   asyncHandler(async (req, res) => {
     const { queue, type, payload, options } = req.body;
-    const userId = (req as any).user.id;
-    
+    const userId = (req).user.id;
+
     // Add user context to payload
     const enrichedPayload = {
       ...payload,
       _context: {
         userId,
-        tenantId: (req as any).user.tenantId,
-        requestId: (req as any).correlationId
+        tenantId: (req).user.tenantId,
+        requestId: (req).correlationId
       }
     };
-    
+
     const job = await jobProcessor.addJob(queue, type, enrichedPayload, options);
-    
-    logger.info(`Job created by user`, {
+
+    logger.info('Job created by user', {
       userId,
       queue,
       type,
       jobId: job.id
     });
-    
+
     res.status(201).json({
       success: true,
       data: {
@@ -111,7 +113,7 @@ router.get('/:jobId',
   asyncHandler(async (req, res) => {
     const { jobId } = req.params;
     const { queue: queueName } = req.query;
-    
+
     const queue = jobProcessor['queues'].get(queueName as string);
     if (!queue) {
       return res.status(404).json({
@@ -119,7 +121,7 @@ router.get('/:jobId',
         error: 'Queue not found'
       });
     }
-    
+
     const job = await queue.getJob(jobId);
     if (!job) {
       return res.status(404).json({
@@ -127,14 +129,14 @@ router.get('/:jobId',
         error: 'Job not found'
       });
     }
-    
+
     const [state, progress, failedReason, result] = await Promise.all([
       job.getState(),
       job.progress(),
       job.failedReason,
       job.returnvalue
     ]);
-    
+
     res.json({
       success: true,
       data: {
@@ -168,7 +170,7 @@ router.post('/:jobId/retry',
   asyncHandler(async (req, res) => {
     const { jobId } = req.params;
     const { queue: queueName } = req.body;
-    
+
     const queue = jobProcessor['queues'].get(queueName);
     if (!queue) {
       return res.status(404).json({
@@ -176,7 +178,7 @@ router.post('/:jobId/retry',
         error: 'Queue not found'
       });
     }
-    
+
     const job = await queue.getJob(jobId);
     if (!job) {
       return res.status(404).json({
@@ -184,7 +186,7 @@ router.post('/:jobId/retry',
         error: 'Job not found'
       });
     }
-    
+
     const state = await job.getState();
     if (state !== 'failed') {
       return res.status(400).json({
@@ -192,15 +194,15 @@ router.post('/:jobId/retry',
         error: `Cannot retry job in ${state} state`
       });
     }
-    
+
     await job.retry();
-    
-    logger.info(`Job retried by admin`, {
-      adminId: (req as any).user.id,
+
+    logger.info('Job retried by admin', {
+      adminId: (req).user.id,
       jobId,
       queue: queueName
     });
-    
+
     res.json({
       success: true,
       message: 'Job queued for retry'
@@ -222,7 +224,7 @@ router.delete('/:jobId',
   asyncHandler(async (req, res) => {
     const { jobId } = req.params;
     const { queue: queueName } = req.query;
-    
+
     const queue = jobProcessor['queues'].get(queueName as string);
     if (!queue) {
       return res.status(404).json({
@@ -230,7 +232,7 @@ router.delete('/:jobId',
         error: 'Queue not found'
       });
     }
-    
+
     const job = await queue.getJob(jobId);
     if (!job) {
       return res.status(404).json({
@@ -238,15 +240,15 @@ router.delete('/:jobId',
         error: 'Job not found'
       });
     }
-    
+
     await job.remove();
-    
-    logger.info(`Job removed by admin`, {
-      adminId: (req as any).user.id,
+
+    logger.info('Job removed by admin', {
+      adminId: (req).user.id,
       jobId,
       queue: queueName
     });
-    
+
     res.json({
       success: true,
       message: 'Job removed'
@@ -266,14 +268,14 @@ router.post('/queues/:name/pause',
   ]),
   asyncHandler(async (req, res) => {
     const { name } = req.params;
-    
+
     await jobProcessor.pauseQueue(name);
-    
-    logger.warn(`Queue paused by admin`, {
-      adminId: (req as any).user.id,
+
+    logger.warn('Queue paused by admin', {
+      adminId: (req).user.id,
       queue: name
     });
-    
+
     res.json({
       success: true,
       message: `Queue ${name} paused`
@@ -293,14 +295,14 @@ router.post('/queues/:name/resume',
   ]),
   asyncHandler(async (req, res) => {
     const { name } = req.params;
-    
+
     await jobProcessor.resumeQueue(name);
-    
-    logger.info(`Queue resumed by admin`, {
-      adminId: (req as any).user.id,
+
+    logger.info('Queue resumed by admin', {
+      adminId: (req).user.id,
       queue: name
     });
-    
+
     res.json({
       success: true,
       message: `Queue ${name} resumed`
@@ -320,15 +322,15 @@ router.post('/queues/:name/retry-failed',
   ]),
   asyncHandler(async (req, res) => {
     const { name } = req.params;
-    
+
     const count = await jobProcessor.retryFailedJobs(name);
-    
-    logger.info(`Failed jobs retried by admin`, {
-      adminId: (req as any).user.id,
+
+    logger.info('Failed jobs retried by admin', {
+      adminId: (req).user.id,
       queue: name,
       count
     });
-    
+
     res.json({
       success: true,
       data: {
@@ -353,15 +355,15 @@ router.post('/queues/:name/clean',
   asyncHandler(async (req, res) => {
     const { name } = req.params;
     const { grace } = req.body;
-    
+
     await jobProcessor.cleanJobs(name, grace);
-    
-    logger.info(`Queue cleaned by admin`, {
-      adminId: (req as any).user.id,
+
+    logger.info('Queue cleaned by admin', {
+      adminId: (req).user.id,
       queue: name,
       grace
     });
-    
+
     res.json({
       success: true,
       message: `Old jobs cleaned from ${name}`
@@ -386,17 +388,17 @@ router.post('/schedule',
   ]),
   asyncHandler(async (req, res) => {
     const { queue, jobName, jobType, payload, cron } = req.body;
-    
+
     await jobProcessor.scheduleRecurringJob(queue, jobName, jobType, payload, cron);
-    
-    logger.info(`Recurring job scheduled by admin`, {
-      adminId: (req as any).user.id,
+
+    logger.info('Recurring job scheduled by admin', {
+      adminId: (req).user.id,
       queue,
       jobName,
       jobType,
       cron
     });
-    
+
     res.json({
       success: true,
       data: {
@@ -467,7 +469,7 @@ router.get('/types',
         optionalFields: ['data', 'actions']
       }
     ];
-    
+
     res.json({
       success: true,
       data: jobTypes
@@ -477,15 +479,15 @@ router.get('/types',
 
 // WebSocket support for real-time job updates
 router.ws('/stream', (ws, req) => {
-  const userId = (req as any).user?.id;
-  
+  const userId = (req).user?.id;
+
   if (!userId) {
     ws.close(1008, 'Unauthorized');
     return;
   }
-  
-  logger.info(`WebSocket connection for job updates`, { userId });
-  
+
+  logger.info('WebSocket connection for job updates', { userId });
+
   // Subscribe to job events
   const handlers = {
     'job:completed': (event: any) => {
@@ -498,26 +500,26 @@ router.ws('/stream', (ws, req) => {
       ws.send(JSON.stringify({ type: 'job:progress', ...event }));
     }
   };
-  
+
   // Register event handlers
   Object.entries(handlers).forEach(([event, handler]) => {
     jobProcessor.on(event, handler);
   });
-  
+
   // Ping to keep connection alive
   const pingInterval = setInterval(() => {
     if (ws.readyState === ws.OPEN) {
       ws.ping();
     }
   }, 30000);
-  
+
   // Cleanup on disconnect
   ws.on('close', () => {
     clearInterval(pingInterval);
     Object.entries(handlers).forEach(([event, handler]) => {
       jobProcessor.off(event, handler);
     });
-    logger.info(`WebSocket disconnected for job updates`, { userId });
+    logger.info('WebSocket disconnected for job updates', { userId });
   });
 });
 

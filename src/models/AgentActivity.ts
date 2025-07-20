@@ -6,14 +6,14 @@ const agentActivitySchema = new mongoose.Schema({
     unique: true,
     required: true
   },
-  
+
   // Agent Reference
   agentId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Agent',
     required: true
   },
-  
+
   // Activity Type and Details
   activity: {
     type: {
@@ -35,7 +35,7 @@ const agentActivitySchema = new mongoose.Schema({
       required: true
     }
   },
-  
+
   // Related Entities
   relatedEntities: {
     leadId: { type: mongoose.Schema.Types.ObjectId, ref: 'AgentLead' },
@@ -45,7 +45,7 @@ const agentActivitySchema = new mongoose.Schema({
     proposalId: { type: mongoose.Schema.Types.ObjectId, ref: 'Proposal' },
     rfqId: { type: mongoose.Schema.Types.ObjectId, ref: 'RFQ' }
   },
-  
+
   // Activity Context
   context: {
     source: {
@@ -69,7 +69,7 @@ const agentActivitySchema = new mongoose.Schema({
       isMobile: Boolean
     }
   },
-  
+
   // Location Information
   location: {
     coordinates: {
@@ -91,7 +91,7 @@ const agentActivitySchema = new mongoose.Schema({
       default: 'network'
     }
   },
-  
+
   // Activity Data
   data: {
     // For lead activities
@@ -102,7 +102,7 @@ const agentActivitySchema = new mongoose.Schema({
       leadStatus: String,
       timeSpent: Number // minutes
     },
-    
+
     // For communication activities
     communication: {
       messageType: String,
@@ -112,7 +112,7 @@ const agentActivitySchema = new mongoose.Schema({
       deliveryStatus: String,
       responseTime: Number // minutes
     },
-    
+
     // For business activities
     business: {
       dealValue: Number,
@@ -121,7 +121,7 @@ const agentActivitySchema = new mongoose.Schema({
       paymentTerms: String,
       deliveryDate: Date
     },
-    
+
     // For system activities
     system: {
       previousValue: mongoose.Schema.Types.Mixed,
@@ -129,7 +129,7 @@ const agentActivitySchema = new mongoose.Schema({
       changeType: String,
       systemVersion: String
     },
-    
+
     // Performance metrics
     performance: {
       responseTime: Number, // milliseconds
@@ -138,11 +138,11 @@ const agentActivitySchema = new mongoose.Schema({
       errorCount: Number,
       retryCount: Number
     },
-    
+
     // Custom fields for specific activities
     customFields: mongoose.Schema.Types.Mixed
   },
-  
+
   // Outcome and Results
   outcome: {
     status: {
@@ -157,7 +157,7 @@ const agentActivitySchema = new mongoose.Schema({
     followUpRequired: Boolean,
     followUpDate: Date
   },
-  
+
   // Time Tracking
   timing: {
     startTime: { type: Date, default: Date.now },
@@ -168,7 +168,7 @@ const agentActivitySchema = new mongoose.Schema({
     dayOfWeek: Number, // 0-6 (Sunday-Saturday)
     hourOfDay: Number // 0-23
   },
-  
+
   // Interaction Details
   interaction: {
     participants: [{
@@ -192,7 +192,7 @@ const agentActivitySchema = new mongoose.Schema({
       default: 'medium'
     }
   },
-  
+
   // Analytics and Insights
   analytics: {
     sessionId: String,
@@ -206,7 +206,7 @@ const agentActivitySchema = new mongoose.Schema({
     experimentId: String, // for A/B testing
     variant: String
   },
-  
+
   // Quality and Compliance
   compliance: {
     sensitiveData: Boolean,
@@ -217,7 +217,7 @@ const agentActivitySchema = new mongoose.Schema({
     auditRequired: Boolean,
     complianceNotes: String
   },
-  
+
   // Synchronization (for offline capabilities)
   sync: {
     status: {
@@ -232,7 +232,7 @@ const agentActivitySchema = new mongoose.Schema({
     conflictResolution: String,
     deviceId: String
   },
-  
+
   // Notifications
   notifications: {
     triggered: [{
@@ -245,7 +245,7 @@ const agentActivitySchema = new mongoose.Schema({
     suppressNotifications: Boolean,
     notificationReason: String
   },
-  
+
   // Metadata
   metadata: {
     version: { type: Number, default: 1 },
@@ -261,16 +261,16 @@ const agentActivitySchema = new mongoose.Schema({
       default: 'medium'
     }
   },
-  
+
   // Timestamps
   createdAt: { type: Date, default: Date.now },
   updatedAt: Date,
-  
+
   // System Fields
   archived: { type: Boolean, default: false },
   archivedAt: Date,
   deletedAt: Date,
-  
+
   // Privacy and Security
   privacy: {
     piiData: Boolean,
@@ -292,21 +292,21 @@ agentActivitySchema.pre('save', function(next) {
     const timestamp = Date.now().toString().slice(-8);
     this.activityId = `ACT-${timestamp}`;
   }
-  
+
   // Set end time and calculate duration if not set
   if (!this.timing.endTime) {
     this.timing.endTime = new Date();
   }
-  
+
   if (!this.timing.duration && this.timing.startTime && this.timing.endTime) {
     this.timing.duration = this.timing.endTime - this.timing.startTime;
   }
-  
+
   // Set day of week and hour
   const date = new Date(this.timing.startTime);
   this.timing.dayOfWeek = date.getDay();
   this.timing.hourOfDay = date.getHours();
-  
+
   next();
 });
 
@@ -329,7 +329,7 @@ agentActivitySchema.virtual('durationMinutes').get(function() {
 agentActivitySchema.virtual('isBusinessHours').get(function() {
   const hour = this.timing.hourOfDay;
   const day = this.timing.dayOfWeek;
-  
+
   // Monday-Friday, 9 AM - 6 PM
   return day >= 1 && day <= 5 && hour >= 9 && hour <= 18;
 });
@@ -389,3 +389,4 @@ agentActivitySchema.index({ agentId: 1, 'activity.category': 1, 'timing.startTim
 agentActivitySchema.index({ 'relatedEntities.leadId': 1, 'activity.type': 1 });
 
 module.exports = mongoose.model('AgentActivity', agentActivitySchema);
+export default mongoose.model('AgentActivity', agentActivitySchema);

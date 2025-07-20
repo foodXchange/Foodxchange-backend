@@ -1,8 +1,9 @@
 import crypto from 'crypto';
-import { User } from '../../models/User';
-import { Logger } from '../../core/logging/logger';
+
 import { secureConfig } from '../../config/secure-config';
+import { Logger } from '../../core/logging/logger';
 import { CacheService } from '../../infrastructure/cache/CacheService';
+import { User } from '../../models/User';
 
 const logger = new Logger('TwoFactorAuthService');
 
@@ -44,10 +45,10 @@ export class TwoFactorAuthService {
 
       // Generate secret
       const secret = this.generateSecret();
-      
+
       // Generate QR code data
       const qrCodeData = this.generateQRCodeData(user.email, secret);
-      
+
       // Generate backup codes
       const backupCodes = this.generateBackupCodes();
 
@@ -70,7 +71,7 @@ export class TwoFactorAuthService {
       });
 
       logger.info('TOTP secret generated for user', { userId });
-      
+
       return twoFactorSecret;
     } catch (error) {
       logger.error('Failed to generate TOTP secret:', error);
@@ -120,7 +121,7 @@ export class TwoFactorAuthService {
   async verifyTOTPToken(secret: string, token: string): Promise<boolean> {
     try {
       const timeStep = Math.floor(Date.now() / 1000 / 30);
-      
+
       // Check current time window and adjacent windows
       for (let i = -this.tokenWindow; i <= this.tokenWindow; i++) {
         const expectedToken = this.generateTOTPToken(secret, timeStep + i);
@@ -148,7 +149,7 @@ export class TwoFactorAuthService {
 
       const hashedCode = this.hashBackupCode(code);
       const codeIndex = user.twoFactor.backupCodes.indexOf(hashedCode);
-      
+
       if (codeIndex === -1) {
         return false;
       }
@@ -242,7 +243,7 @@ export class TwoFactorAuthService {
   async verifyChallengeCode(challengeId: string, code: string): Promise<boolean> {
     try {
       const challenge = await this.getTwoFactorChallenge(challengeId);
-      
+
       if (!challenge || challenge.isUsed || challenge.expiresAt < new Date()) {
         return false;
       }
@@ -271,21 +272,21 @@ export class TwoFactorAuthService {
       // Check cache first
       const cacheKey = `2fa:enabled:${userId}`;
       const cached = await this.cacheService.get<boolean>(cacheKey, { namespace: 'auth' });
-      
+
       if (cached !== null) {
         return cached;
       }
-      
+
       // Fallback to database
       const user = await User.findById(userId);
       const isEnabled = user?.twoFactor?.isEnabled || false;
-      
+
       // Cache the result for 1 hour
       await this.cacheService.set(cacheKey, isEnabled, 3600, {
         namespace: 'auth',
         compress: false
       });
-      
+
       return isEnabled;
     } catch (error) {
       logger.error('Failed to check 2FA status:', error);
@@ -306,7 +307,7 @@ export class TwoFactorAuthService {
           'twoFactor.enabledAt': 1
         }
       });
-      
+
       // Clear cache
       await this.cacheService.delete(`2fa:enabled:${userId}`, { namespace: 'auth' });
 
@@ -323,7 +324,7 @@ export class TwoFactorAuthService {
   async regenerateBackupCodes(userId: string): Promise<string[]> {
     try {
       const backupCodes = this.generateBackupCodes();
-      
+
       await User.findByIdAndUpdate(userId, {
         $set: {
           'twoFactor.backupCodes': backupCodes.map(code => this.hashBackupCode(code))
@@ -348,7 +349,7 @@ export class TwoFactorAuthService {
     const issuer = 'FoodXchange';
     const account = encodeURIComponent(email);
     const issuerEncoded = encodeURIComponent(issuer);
-    
+
     return `otpauth://totp/${issuerEncoded}:${account}?secret=${secret}&issuer=${issuerEncoded}`;
   }
 
@@ -363,17 +364,17 @@ export class TwoFactorAuthService {
   private generateTOTPToken(secret: string, timeStep: number): string {
     const timeBuffer = Buffer.alloc(8);
     timeBuffer.writeUInt32BE(timeStep, 4);
-    
+
     const hmac = crypto.createHmac('sha1', Buffer.from(secret, 'hex'));
     hmac.update(timeBuffer);
     const hash = hmac.digest();
-    
+
     const offset = hash[hash.length - 1] & 0x0f;
     const code = ((hash[offset] & 0x7f) << 24) |
                  ((hash[offset + 1] & 0xff) << 16) |
                  ((hash[offset + 2] & 0xff) << 8) |
                  (hash[offset + 3] & 0xff);
-    
+
     return (code % 1000000).toString().padStart(6, '0');
   }
 
@@ -389,12 +390,12 @@ export class TwoFactorAuthService {
     const algorithm = 'aes-256-gcm';
     const key = crypto.scryptSync(process.env.ENCRYPTION_KEY || 'default-key', 'salt', 32);
     const iv = crypto.randomBytes(16);
-    
+
     const cipher = crypto.createCipher(algorithm, key);
     let encrypted = cipher.update(secret, 'utf8', 'hex');
     encrypted += cipher.final('hex');
-    
-    return iv.toString('hex') + ':' + encrypted;
+
+    return `${iv.toString('hex')  }:${  encrypted}`;
   }
 
   private decryptSecret(encryptedSecret: string): string {
@@ -403,11 +404,11 @@ export class TwoFactorAuthService {
     const parts = encryptedSecret.split(':');
     const iv = Buffer.from(parts[0], 'hex');
     const encrypted = parts[1];
-    
+
     const decipher = crypto.createDecipher(algorithm, key);
     let decrypted = decipher.update(encrypted, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
-    
+
     return decrypted;
   }
 
@@ -423,14 +424,14 @@ export class TwoFactorAuthService {
         namespace: 'auth',
         compress: false
       });
-      
+
       // Store code separately for verification
       const codeKey = `2fa:code:${challenge.challengeId}`;
       await this.cacheService.set(codeKey, { code, attempts: 0 }, this.challengeTTL, {
         namespace: 'auth',
         compress: false
       });
-      
+
       logger.debug('Stored 2FA challenge', { challengeId: challenge.challengeId, userId: challenge.userId });
     } catch (error) {
       logger.error('Failed to store 2FA challenge', error);
@@ -444,12 +445,12 @@ export class TwoFactorAuthService {
       const challenge = await this.cacheService.get<TwoFactorChallenge>(challengeKey, {
         namespace: 'auth'
       });
-      
+
       if (!challenge) {
         logger.debug('2FA challenge not found', { challengeId });
         return null;
       }
-      
+
       // Check if challenge is expired
       if (new Date() > new Date(challenge.expiresAt)) {
         logger.debug('2FA challenge expired', { challengeId });
@@ -457,7 +458,7 @@ export class TwoFactorAuthService {
         await this.cacheService.delete(`2fa:code:${challengeId}`, { namespace: 'auth' });
         return null;
       }
-      
+
       return challenge;
     } catch (error) {
       logger.error('Failed to retrieve 2FA challenge', error);
@@ -471,12 +472,12 @@ export class TwoFactorAuthService {
       const codeData = await this.cacheService.get<{ code: string; attempts: number }>(codeKey, {
         namespace: 'auth'
       });
-      
+
       if (!codeData) {
         logger.debug('2FA code not found', { challengeId });
         return null;
       }
-      
+
       // Check if too many attempts
       if (codeData.attempts >= 3) {
         logger.warn('Too many 2FA attempts', { challengeId, attempts: codeData.attempts });
@@ -484,14 +485,14 @@ export class TwoFactorAuthService {
         await this.cacheService.delete(`2fa:challenge:${challengeId}`, { namespace: 'auth' });
         return null;
       }
-      
+
       // Increment attempts
       codeData.attempts++;
       await this.cacheService.set(codeKey, codeData, this.challengeTTL, {
         namespace: 'auth',
         compress: false
       });
-      
+
       return codeData.code;
     } catch (error) {
       logger.error('Failed to retrieve 2FA code', error);
@@ -506,7 +507,7 @@ export class TwoFactorAuthService {
         this.cacheService.delete(`2fa:challenge:${challengeId}`, { namespace: 'auth' }),
         this.cacheService.delete(`2fa:code:${challengeId}`, { namespace: 'auth' })
       ]);
-      
+
       logger.debug('Marked 2FA challenge as used', { challengeId });
     } catch (error) {
       logger.error('Failed to mark 2FA challenge as used', error);
@@ -520,7 +521,7 @@ export class TwoFactorAuthService {
       const twilioSid = await secureConfig.getSecret('twilioAccountSid') || process.env.TWILIO_ACCOUNT_SID;
       const twilioToken = await secureConfig.getSecret('twilioAuthToken') || process.env.TWILIO_AUTH_TOKEN;
       const twilioPhone = await secureConfig.getSecret('twilioPhoneNumber') || process.env.TWILIO_PHONE_NUMBER;
-      
+
       if (!twilioSid || !twilioToken || !twilioPhone) {
         logger.warn('Twilio credentials not configured, skipping SMS send');
         // In development, log the message instead
@@ -540,9 +541,9 @@ export class TwoFactorAuthService {
         from: twilioPhone
       });
 
-      logger.info('SMS sent successfully', { 
+      logger.info('SMS sent successfully', {
         messageId: result.sid,
-        phoneNumber: phoneNumber.substring(0, 3) + '***' 
+        phoneNumber: `${phoneNumber.substring(0, 3)  }***`
       });
     } catch (error) {
       logger.error('Failed to send SMS:', error);
@@ -555,12 +556,12 @@ export class TwoFactorAuthService {
     try {
       const sendGridKey = await secureConfig.getSecret('sendGridApiKey') || process.env.SENDGRID_API_KEY;
       const fromEmail = process.env.SENDGRID_FROM_EMAIL || 'noreply@foodxchange.com';
-      
+
       if (!sendGridKey) {
         logger.warn('SendGrid API key not configured, skipping email send');
         // In development, log the email instead
         if (process.env.NODE_ENV === 'development') {
-          logger.info('Development Email:', { to, subject, html: html.substring(0, 100) + '...' });
+          logger.info('Development Email:', { to, subject, html: `${html.substring(0, 100)  }...` });
         }
         return;
       }
@@ -573,14 +574,14 @@ export class TwoFactorAuthService {
         to,
         from: fromEmail,
         subject,
-        html,
+        html
       };
 
       const [response] = await sgMail.default.send(msg);
-      
-      logger.info('Email sent successfully', { 
+
+      logger.info('Email sent successfully', {
         statusCode: response.statusCode,
-        to: to.substring(0, 3) + '***' 
+        to: `${to.substring(0, 3)  }***`
       });
     } catch (error) {
       logger.error('Failed to send email:', error);

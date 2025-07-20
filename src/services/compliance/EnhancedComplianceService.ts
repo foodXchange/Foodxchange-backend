@@ -1,11 +1,14 @@
-import { Logger } from '../../core/logging/logger';
-import { NotFoundError, ValidationError, ForbiddenError } from '../../core/errors';
-import { CacheService } from '../../infrastructure/cache/CacheService';
-import { AzureAIService } from '../../infrastructure/azure/ai/AzureAIService';
-import { MetricsService } from '../../core/monitoring/metrics';
 import { EventEmitter } from 'events';
-import { AuditService } from '../audit/AuditService';
+
 import mongoose from 'mongoose';
+
+import { NotFoundError, ValidationError, ForbiddenError } from '../../core/errors';
+import { Logger } from '../../core/logging/logger';
+import { MetricsService } from '../../core/monitoring/metrics';
+import { AzureAIService } from '../../infrastructure/azure/ai/AzureAIService';
+import { CacheService } from '../../infrastructure/cache/CacheService';
+import { AuditService } from '../audit/AuditService';
+
 
 const logger = new Logger('EnhancedComplianceService');
 const metrics = new MetricsService();
@@ -167,10 +170,10 @@ export interface ReportSignature {
 }
 
 export class EnhancedComplianceService extends EventEmitter {
-  private cache: CacheService;
-  private ai: AzureAIService;
-  private audit: AuditService;
-  private complianceRules: Map<string, ComplianceRule>;
+  private readonly cache: CacheService;
+  private readonly ai: AzureAIService;
+  private readonly audit: AuditService;
+  private readonly complianceRules: Map<string, ComplianceRule>;
 
   constructor() {
     super();
@@ -185,9 +188,9 @@ export class EnhancedComplianceService extends EventEmitter {
     // Load compliance rules from database and cache
     const rules = await this.loadComplianceRules();
     rules.forEach(rule => this.complianceRules.set(rule.id, rule));
-    
+
     // Set up rule auto-refresh
-    setInterval(() => this.refreshComplianceRules(), 30 * 60 * 1000); // 30 minutes
+    setInterval(async () => this.refreshComplianceRules(), 30 * 60 * 1000); // 30 minutes
   }
 
   async performComplianceCheck(
@@ -201,7 +204,7 @@ export class EnhancedComplianceService extends EventEmitter {
     } = {}
   ): Promise<ComplianceCheck> {
     const timer = metrics.startTimer('compliance_check_duration');
-    
+
     try {
       logger.info('Starting compliance check', { productId, region, userId });
 
@@ -223,10 +226,10 @@ export class EnhancedComplianceService extends EventEmitter {
 
       // Perform comprehensive compliance checks
       const checks = await this.runComplianceChecks(product, region);
-      
+
       // Calculate risk score
       const riskScore = this.calculateRiskScore(checks);
-      
+
       // AI-powered analysis
       let aiAnalysis: AIComplianceAnalysis = {
         overallRiskScore: riskScore,
@@ -260,7 +263,7 @@ export class EnhancedComplianceService extends EventEmitter {
         aiAnalysis,
         createdAt: new Date(),
         updatedAt: new Date(),
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
       };
 
       // Save to database
@@ -287,7 +290,7 @@ export class EnhancedComplianceService extends EventEmitter {
         entityType: 'product',
         entityId: productId,
         details: { region, status, riskScore },
-        timestamp: new Date(),
+        timestamp: new Date()
       });
 
       metrics.increment('compliance_checks_total');
@@ -312,7 +315,7 @@ export class EnhancedComplianceService extends EventEmitter {
       this.checkRegulatoryCompliance(product, region),
       this.checkDocumentIntegrity(product),
       this.checkIngredientAnalysis(product, region),
-      this.checkLabelingCompliance(product, region),
+      this.checkLabelingCompliance(product, region)
     ]);
 
     return {
@@ -321,27 +324,27 @@ export class EnhancedComplianceService extends EventEmitter {
       regulatoryCompliance: checks[2],
       documentIntegrity: checks[3],
       ingredientAnalysis: checks[4],
-      labelingCompliance: checks[5],
+      labelingCompliance: checks[5]
     };
   }
 
   private async checkAllergenLabeling(product: any, region: string): Promise<any> {
     const timer = metrics.startTimer('allergen_check_duration');
-    
+
     try {
       const allergens = product.allergens || [];
       const ingredients = product.ingredients || [];
       const requiredAllergens = this.getRequiredAllergens(region);
-      
+
       // AI-powered allergen detection
       let detectedAllergens: string[] = [];
       if (this.ai.isAvailable()) {
         const ingredientText = ingredients.join(', ');
         const aiResult = await this.ai.analyzeText(ingredientText, {
           features: ['entities', 'keyPhrases'],
-          customModel: 'allergen-detection',
+          customModel: 'allergen-detection'
         });
-        
+
         detectedAllergens = this.extractAllergensFromAI(aiResult);
       }
 
@@ -359,10 +362,10 @@ export class EnhancedComplianceService extends EventEmitter {
         details: [
           `Declared allergens: ${allergens.join(', ')}`,
           `Detected allergens: ${detectedAllergens.join(', ')}`,
-          `Missing allergens: ${missingAllergens.join(', ')}`,
+          `Missing allergens: ${missingAllergens.join(', ')}`
         ],
         missingAllergens,
-        falsePositives,
+        falsePositives
       };
     } catch (error) {
       timer();
@@ -374,14 +377,14 @@ export class EnhancedComplianceService extends EventEmitter {
   private async checkNutritionalInfo(product: any, region: string): Promise<any> {
     const nutrition = product.nutritionalInfo || {};
     const requiredFields = this.getRequiredNutritionalFields(region);
-    
+
     const completeness = this.calculateNutritionalCompleteness(nutrition, requiredFields);
     const accuracy = await this.validateNutritionalAccuracy(nutrition, product);
-    
+
     const issues: string[] = [];
     if (completeness < 0.9) issues.push('Incomplete nutritional information');
     if (accuracy < 0.8) issues.push('Nutritional values may be inaccurate');
-    
+
     const score = (completeness + accuracy) / 2;
     const passed = score >= 0.8;
 
@@ -390,7 +393,7 @@ export class EnhancedComplianceService extends EventEmitter {
       score,
       completeness,
       accuracy,
-      issues,
+      issues
     };
   }
 
@@ -400,7 +403,7 @@ export class EnhancedComplianceService extends EventEmitter {
 
     // Apply region-specific rules
     const applicableRules = this.getApplicableRules(product, region);
-    
+
     for (const rule of applicableRules) {
       const ruleResult = await this.evaluateRule(rule, product);
       if (!ruleResult.passed) {
@@ -410,7 +413,7 @@ export class EnhancedComplianceService extends EventEmitter {
           description: ruleResult.message,
           regulation: rule.name,
           severity: this.getSeverityScore(rule.severity),
-          remediation: ruleResult.remediation,
+          remediation: ruleResult.remediation
         });
       }
     }
@@ -423,7 +426,7 @@ export class EnhancedComplianceService extends EventEmitter {
          Ingredients: ${product.ingredients?.join(', ')}`,
         { maxTokens: 500 }
       );
-      
+
       recommendations.push(...this.extractRecommendations(aiInsights.text));
     }
 
@@ -435,7 +438,7 @@ export class EnhancedComplianceService extends EventEmitter {
       score,
       region,
       violations,
-      recommendations,
+      recommendations
     };
   }
 
@@ -450,7 +453,7 @@ export class EnhancedComplianceService extends EventEmitter {
         try {
           const analysis = await this.ai.analyzeDocument(doc.url, 'certificate');
           authenticityScore = Math.min(authenticityScore, analysis.confidence || 0.5);
-          
+
           if (analysis.tampering) {
             tamperingDetected = true;
             issues.push(`Document tampering detected: ${doc.name}`);
@@ -470,7 +473,7 @@ export class EnhancedComplianceService extends EventEmitter {
       score,
       authenticityScore,
       tamperingDetected,
-      issues,
+      issues
     };
   }
 
@@ -481,8 +484,8 @@ export class EnhancedComplianceService extends EventEmitter {
     const recommendations: string[] = [];
 
     // Check for prohibited ingredients
-    const foundProhibited = ingredients.filter(ingredient => 
-      prohibitedIngredients.some(prohibited => 
+    const foundProhibited = ingredients.filter(ingredient =>
+      prohibitedIngredients.some(prohibited =>
         ingredient.toLowerCase().includes(prohibited.toLowerCase())
       )
     );
@@ -492,7 +495,7 @@ export class EnhancedComplianceService extends EventEmitter {
       const ingredientText = ingredients.join(', ');
       const aiResult = await this.ai.analyzeText(ingredientText, {
         features: ['entities', 'sentiment', 'keyPhrases'],
-        customModel: 'ingredient-analysis',
+        customModel: 'ingredient-analysis'
       });
 
       const aiIssues = this.extractIngredientIssues(aiResult);
@@ -510,7 +513,7 @@ export class EnhancedComplianceService extends EventEmitter {
       score,
       prohibitedIngredients: foundProhibited,
       potentialIssues,
-      recommendations,
+      recommendations
     };
   }
 
@@ -518,14 +521,14 @@ export class EnhancedComplianceService extends EventEmitter {
     const requiredFields = this.getRequiredLabelFields(region);
     const productFields = Object.keys(product);
     const missingFields = requiredFields.filter(field => !productFields.includes(field));
-    
+
     const formatIssues: string[] = [];
-    
+
     // Check format compliance
     if (product.weight && !this.isValidWeightFormat(product.weight, region)) {
       formatIssues.push('Invalid weight format');
     }
-    
+
     if (product.origin && !this.isValidOriginFormat(product.origin, region)) {
       formatIssues.push('Invalid origin format');
     }
@@ -538,7 +541,7 @@ export class EnhancedComplianceService extends EventEmitter {
       score,
       requiredFields,
       missingFields,
-      formatIssues,
+      formatIssues
     };
   }
 
@@ -577,15 +580,15 @@ export class EnhancedComplianceService extends EventEmitter {
     `;
 
     const analysis = await this.ai.generateText(prompt, { maxTokens: 1000 });
-    
+
     // Parse AI response and extract structured data
     const keyFindings = this.extractKeyFindings(analysis.text);
     const recommendations = this.extractRecommendations(analysis.text);
     const potentialIssues = this.extractPotentialIssues(analysis.text);
-    
+
     // Get trend analysis
     const trendAnalysis = await this.getTrendAnalysis(product, region);
-    
+
     // Generate predictive insights
     const predictiveInsights = await this.generatePredictiveInsights(product, checks, region);
 
@@ -597,7 +600,7 @@ export class EnhancedComplianceService extends EventEmitter {
       potentialIssues,
       marketSpecificInsights: this.getMarketSpecificInsights(region),
       trendAnalysis,
-      predictiveInsights,
+      predictiveInsights
     };
   }
 
@@ -608,7 +611,7 @@ export class EnhancedComplianceService extends EventEmitter {
       regulatoryCompliance: 0.30,
       documentIntegrity: 0.10,
       ingredientAnalysis: 0.15,
-      labelingCompliance: 0.05,
+      labelingCompliance: 0.05
     };
 
     let totalScore = 0;
@@ -661,7 +664,7 @@ export class EnhancedComplianceService extends EventEmitter {
     }
 
     const reportContent = await this.generateReportContent(check, reportType);
-    
+
     const report: ComplianceReport = {
       id: new mongoose.Types.ObjectId().toString(),
       checkId,
@@ -669,7 +672,7 @@ export class EnhancedComplianceService extends EventEmitter {
       content: reportContent,
       format: 'json',
       generatedAt: new Date(),
-      validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+      validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
     };
 
     await this.saveComplianceReport(report);
@@ -724,7 +727,7 @@ export class EnhancedComplianceService extends EventEmitter {
     const allergenMap: Record<string, string[]> = {
       'US': ['milk', 'eggs', 'fish', 'shellfish', 'tree nuts', 'peanuts', 'wheat', 'soybeans'],
       'EU': ['cereals containing gluten', 'crustaceans', 'eggs', 'fish', 'peanuts', 'soybeans', 'milk', 'nuts', 'celery', 'mustard', 'sesame', 'sulphites', 'lupin', 'molluscs'],
-      'UK': ['cereals containing gluten', 'crustaceans', 'eggs', 'fish', 'peanuts', 'soybeans', 'milk', 'nuts', 'celery', 'mustard', 'sesame', 'sulphites', 'lupin', 'molluscs'],
+      'UK': ['cereals containing gluten', 'crustaceans', 'eggs', 'fish', 'peanuts', 'soybeans', 'milk', 'nuts', 'celery', 'mustard', 'sesame', 'sulphites', 'lupin', 'molluscs']
     };
     return allergenMap[region] || allergenMap['US'];
   }
@@ -737,10 +740,10 @@ export class EnhancedComplianceService extends EventEmitter {
   private calculateAllergenScore(declared: string[], detected: string[], missing: string[]): number {
     if (missing.length > 0) return 0;
     if (declared.length === 0 && detected.length === 0) return 1;
-    
+
     const accuracy = declared.filter(a => detected.includes(a)).length / Math.max(declared.length, 1);
     const completeness = detected.filter(a => declared.includes(a)).length / Math.max(detected.length, 1);
-    
+
     return (accuracy + completeness) / 2;
   }
 
@@ -748,7 +751,7 @@ export class EnhancedComplianceService extends EventEmitter {
     const fieldMap: Record<string, string[]> = {
       'US': ['calories', 'totalFat', 'saturatedFat', 'cholesterol', 'sodium', 'totalCarbohydrates', 'dietaryFiber', 'sugars', 'protein'],
       'EU': ['energy', 'fat', 'saturates', 'carbohydrates', 'sugars', 'protein', 'salt'],
-      'UK': ['energy', 'fat', 'saturates', 'carbohydrates', 'sugars', 'protein', 'salt'],
+      'UK': ['energy', 'fat', 'saturates', 'carbohydrates', 'sugars', 'protein', 'salt']
     };
     return fieldMap[region] || fieldMap['US'];
   }
@@ -764,8 +767,8 @@ export class EnhancedComplianceService extends EventEmitter {
   }
 
   private getApplicableRules(product: any, region: string): ComplianceRule[] {
-    return Array.from(this.complianceRules.values()).filter(rule => 
-      rule.isActive && 
+    return Array.from(this.complianceRules.values()).filter(rule =>
+      rule.isActive &&
       rule.regions.includes(region) &&
       rule.productTypes.includes(product.category)
     );
@@ -781,7 +784,7 @@ export class EnhancedComplianceService extends EventEmitter {
       'critical': 1.0,
       'high': 0.8,
       'medium': 0.6,
-      'low': 0.4,
+      'low': 0.4
     };
     return scoreMap[severity] || 0.5;
   }
@@ -869,7 +872,7 @@ export class EnhancedComplianceService extends EventEmitter {
     certifications?: any[];
   }): Promise<ComplianceCheck> {
     const { productId, productData, region, certifications } = params;
-    
+
     try {
       // Create compliance check entry
       const complianceCheck: ComplianceCheck = {
@@ -895,25 +898,25 @@ export class EnhancedComplianceService extends EventEmitter {
         createdAt: new Date(),
         updatedAt: new Date()
       };
-      
+
       // Calculate risk score
       complianceCheck.riskScore = this.calculateOverallRiskScore(complianceCheck.checks);
-      
+
       // Determine status
       complianceCheck.status = this.determineComplianceStatus(complianceCheck.checks, complianceCheck.riskScore);
-      
+
       // Cache result
       await cacheService.set(
         `compliance:${productId}:${region}`,
         complianceCheck,
         3600 // 1 hour cache
       );
-      
+
       // Track metrics
       metrics.incrementCounter('compliance_checks_total', { region, status: complianceCheck.status });
-      
+
       return complianceCheck;
-      
+
     } catch (error) {
       logger.error('Product compliance check failed:', error);
       metrics.incrementCounter('compliance_checks_failed', { region });
@@ -932,7 +935,7 @@ export class EnhancedComplianceService extends EventEmitter {
       if (cachedHistory) {
         return cachedHistory.slice(offset, offset + limit);
       }
-      
+
       // Return empty array if no history
       return [];
     } catch (error) {
@@ -955,7 +958,7 @@ export class EnhancedComplianceService extends EventEmitter {
     verificationMethod: string;
   }> {
     const { type, certificateNumber, issuer } = params;
-    
+
     try {
       // Check cache first
       const cacheKey = `cert:${type}:${certificateNumber}:${issuer}`;
@@ -963,7 +966,7 @@ export class EnhancedComplianceService extends EventEmitter {
       if (cached) {
         return cached;
       }
-      
+
       // Perform verification (in real implementation, this would call external APIs)
       const result = {
         valid: true, // Mock result
@@ -976,10 +979,10 @@ export class EnhancedComplianceService extends EventEmitter {
         expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
         verificationMethod: 'manual'
       };
-      
+
       // Cache result
       await cacheService.set(cacheKey, result, 86400); // 24 hours
-      
+
       return result;
     } catch (error) {
       logger.error('Certificate verification failed:', error);
@@ -1012,7 +1015,7 @@ export class EnhancedComplianceService extends EventEmitter {
       if (cached) {
         return cached;
       }
-      
+
       // Build requirements (in real implementation, this would query from database)
       const requirements = {
         region,
@@ -1029,10 +1032,10 @@ export class EnhancedComplianceService extends EventEmitter {
         labelingRules: this.getLabelingRules(region, category),
         prohibitedIngredients: this.getProhibitedIngredients(region)
       };
-      
+
       // Cache result
       await cacheService.set(cacheKey, requirements, 3600);
-      
+
       return requirements;
     } catch (error) {
       logger.error('Failed to get regional requirements:', error);
@@ -1089,22 +1092,22 @@ export class EnhancedComplianceService extends EventEmitter {
 
   private determineComplianceStatus(checks: ComplianceCheckResult, riskScore: number): ComplianceCheck['status'] {
     // Determine overall status based on checks and risk score
-    const criticalFailures = Object.values(checks).filter((check: any) => 
+    const criticalFailures = Object.values(checks).filter((check: any) =>
       !check.passed && check.severity === 'critical'
     ).length;
-    
+
     if (criticalFailures > 0) {
       return 'rejected';
     }
-    
+
     if (riskScore > 0.7) {
       return 'requires_review';
     }
-    
+
     if (riskScore > 0.3) {
       return 'requires_review';
     }
-    
+
     return 'approved';
   }
 
@@ -1133,19 +1136,19 @@ export class EnhancedComplianceService extends EventEmitter {
   private getRequiredCertifications(region: string, category?: string): string[] {
     // Return required certifications based on region and category
     const certs = [];
-    
+
     if (region === 'US' || region === 'USA') {
       certs.push('FDA');
     }
-    
+
     if (region === 'EU') {
       certs.push('CE');
     }
-    
+
     if (category === 'organic') {
       certs.push('USDA Organic', 'EU Organic');
     }
-    
+
     return certs;
   }
 

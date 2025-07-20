@@ -1,10 +1,11 @@
 import express from 'express';
+
 import { SignalRController } from '../controllers/SignalRController';
-import { requireAuth } from '../middleware/auth';
-import { enforceTenantIsolation } from '../middleware/tenantIsolation';
-import { createCustomRateLimiter } from '../middleware/rateLimiter';
-import { authorize } from '../middleware/authorize';
 import { asyncHandler } from '../core/errors';
+import { requireAuth } from '../middleware/auth';
+import { authorize } from '../middleware/authorize';
+import { createCustomRateLimiter } from '../middleware/rateLimiter';
+import { enforceTenantIsolation } from '../middleware/tenantIsolation';
 
 const router = express.Router();
 const signalRController = new SignalRController();
@@ -22,7 +23,7 @@ router.use(signalRRateLimiter);
  * @desc Get SignalR connection info
  * @access Private
  */
-router.get('/connection', 
+router.get('/connection',
   asyncHandler(signalRController.getConnectionInfo.bind(signalRController))
 );
 
@@ -31,7 +32,7 @@ router.get('/connection',
  * @desc Send message to specific user
  * @access Private
  */
-router.post('/message/user', 
+router.post('/message/user',
   authorize(['buyer', 'supplier', 'admin', 'manager']),
   asyncHandler(signalRController.sendMessageToUser.bind(signalRController))
 );
@@ -41,7 +42,7 @@ router.post('/message/user',
  * @desc Send message to group (tenant)
  * @access Private
  */
-router.post('/message/group', 
+router.post('/message/group',
   authorize(['admin', 'manager']),
   asyncHandler(signalRController.sendMessageToGroup.bind(signalRController))
 );
@@ -51,7 +52,7 @@ router.post('/message/group',
  * @desc Send chat message
  * @access Private
  */
-router.post('/chat/message', 
+router.post('/chat/message',
   authorize(['buyer', 'supplier', 'admin', 'manager']),
   asyncHandler(signalRController.sendChatMessage.bind(signalRController))
 );
@@ -61,7 +62,7 @@ router.post('/chat/message',
  * @desc Send typing indicator
  * @access Private
  */
-router.post('/chat/typing', 
+router.post('/chat/typing',
   authorize(['buyer', 'supplier', 'admin', 'manager']),
   asyncHandler(signalRController.sendTypingIndicator.bind(signalRController))
 );
@@ -71,7 +72,7 @@ router.post('/chat/typing',
  * @desc Join user to group
  * @access Private
  */
-router.post('/group/join', 
+router.post('/group/join',
   authorize(['buyer', 'supplier', 'admin', 'manager']),
   asyncHandler(signalRController.joinGroup.bind(signalRController))
 );
@@ -81,7 +82,7 @@ router.post('/group/join',
  * @desc Leave group
  * @access Private
  */
-router.post('/group/leave', 
+router.post('/group/leave',
   authorize(['buyer', 'supplier', 'admin', 'manager']),
   asyncHandler(signalRController.leaveGroup.bind(signalRController))
 );
@@ -91,7 +92,7 @@ router.post('/group/leave',
  * @desc Get online users count
  * @access Private
  */
-router.get('/users/online/count', 
+router.get('/users/online/count',
   authorize(['admin', 'manager']),
   asyncHandler(signalRController.getOnlineUsersCount.bind(signalRController))
 );
@@ -101,7 +102,7 @@ router.get('/users/online/count',
  * @desc Check if user is online
  * @access Private
  */
-router.get('/users/:userId/online', 
+router.get('/users/:userId/online',
   authorize(['buyer', 'supplier', 'admin', 'manager']),
   asyncHandler(signalRController.checkUserOnline.bind(signalRController))
 );
@@ -111,7 +112,7 @@ router.get('/users/:userId/online',
  * @desc Send system notification
  * @access Private
  */
-router.post('/notification/system', 
+router.post('/notification/system',
   authorize(['admin', 'manager']),
   asyncHandler(signalRController.sendSystemNotification.bind(signalRController))
 );
@@ -121,7 +122,7 @@ router.post('/notification/system',
  * @desc Get SignalR service health
  * @access Private
  */
-router.get('/health', 
+router.get('/health',
   authorize(['admin', 'manager']),
   asyncHandler(signalRController.getHealth.bind(signalRController))
 );

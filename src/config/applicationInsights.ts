@@ -1,4 +1,5 @@
-import * as appInsights from "applicationinsights";
+import * as appInsights from 'applicationinsights';
+
 import { Logger } from '../core/logging/logger';
 
 const logger = new Logger('ApplicationInsights');
@@ -44,7 +45,7 @@ class ApplicationInsightsService {
             .setAutoCollectConsole(true, true)
             .setUseDiskRetryCaching(true)
             .setSendLiveMetrics(true);
-          
+
           // Set distributed tracing mode if available
           if (appInsights.DistributedTracingModes) {
             appInsights.Configuration.setDistributedTracingMode(appInsights.DistributedTracingModes.AI_AND_W3C);
@@ -87,7 +88,7 @@ class ApplicationInsightsService {
       throw new Error('Application Insights client not initialized');
     }
 
-    const client = this.client;
+    const {client} = this;
 
     return {
       trackEvent: (event) => {
@@ -97,7 +98,7 @@ class ApplicationInsightsService {
           logger.error('Failed to track event', error);
         }
       },
-      
+
       trackDependency: (dependency) => {
         try {
           client.trackDependency(dependency);
@@ -105,7 +106,7 @@ class ApplicationInsightsService {
           logger.error('Failed to track dependency', error);
         }
       },
-      
+
       trackException: (exception) => {
         try {
           client.trackException(exception);
@@ -113,7 +114,7 @@ class ApplicationInsightsService {
           logger.error('Failed to track exception', error);
         }
       },
-      
+
       trackMetric: (metric) => {
         try {
           client.trackMetric(metric);
@@ -121,7 +122,7 @@ class ApplicationInsightsService {
           logger.error('Failed to track metric', error);
         }
       },
-      
+
       trackTrace: (trace) => {
         try {
           client.trackTrace(trace);
@@ -129,7 +130,7 @@ class ApplicationInsightsService {
           logger.error('Failed to track trace', error);
         }
       },
-      
+
       flush: () => {
         try {
           client.flush();
@@ -156,8 +157,8 @@ class ApplicationInsightsService {
 export const applicationInsights = new ApplicationInsightsService();
 
 // Initialize on import if configured
-export const telemetryClient = applicationInsights.isConfigured() 
-  ? applicationInsights.initialize() 
+export const telemetryClient = applicationInsights.isConfigured()
+  ? applicationInsights.initialize()
   : null;
 
 // Helper functions for common tracking scenarios

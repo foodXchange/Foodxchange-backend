@@ -1,6 +1,8 @@
 import mongoose from 'mongoose';
+
 import { Logger } from '../../core/logging/logger';
 import { MetricsService } from '../../core/metrics/MetricsService';
+
 import { QueryOptimizer } from './QueryOptimizer';
 
 const logger = new Logger('PerformanceMonitor');
@@ -45,13 +47,13 @@ export interface DatabaseAlert {
 
 export class PerformanceMonitor {
   private static instance: PerformanceMonitor;
-  private metricsService: MetricsService;
-  private queryOptimizer: QueryOptimizer;
+  private readonly metricsService: MetricsService;
+  private readonly queryOptimizer: QueryOptimizer;
   private monitoringInterval: NodeJS.Timeout | null = null;
   private alerts: DatabaseAlert[] = [];
   private isMonitoring = false;
   private performanceHistory: PerformanceMetrics[] = [];
-  private maxHistorySize = 100;
+  private readonly maxHistorySize = 100;
 
   // Thresholds for alerting
   private readonly thresholds = {
@@ -104,7 +106,7 @@ export class PerformanceMonitor {
 
   public async collectMetrics(): Promise<PerformanceMetrics> {
     const timestamp = new Date();
-    
+
     try {
       const [connectionPool, queries, collections, indexes] = await Promise.all([
         this.getConnectionPoolMetrics(),
@@ -138,13 +140,13 @@ export class PerformanceMonitor {
   }
 
   private async getConnectionPoolMetrics(): Promise<PerformanceMetrics['connectionPool']> {
-    const connection = mongoose.connection;
-    const db = connection.db;
-    
+    const {connection} = mongoose;
+    const {db} = connection;
+
     // Get connection pool stats
     const admin = db.admin();
     let serverStatus;
-    
+
     try {
       serverStatus = await admin.command({ serverStatus: 1 });
     } catch (error) {
@@ -167,9 +169,9 @@ export class PerformanceMonitor {
 
   private async getQueryMetrics(): Promise<PerformanceMetrics['queries']> {
     const slowQueries = await this.queryOptimizer.getSlowQueries(10);
-    
+
     // Get query statistics from profiler if available
-    let queryStats = {
+    const queryStats = {
       totalQueries: 0,
       slowQueries: slowQueries.length,
       averageResponseTime: 0,
@@ -177,7 +179,7 @@ export class PerformanceMonitor {
     };
 
     try {
-      const db = mongoose.connection.db;
+      const {db} = mongoose.connection;
       const profileData = await db.collection('system.profile')
         .find({})
         .sort({ ts: -1 })
@@ -187,7 +189,7 @@ export class PerformanceMonitor {
       if (profileData.length > 0) {
         queryStats.totalQueries = profileData.length;
         queryStats.averageResponseTime = profileData.reduce((sum, op) => sum + op.durationMillis, 0) / profileData.length;
-        
+
         // Count query types
         profileData.forEach(op => {
           const command = Object.keys(op.command)[0];
@@ -229,7 +231,7 @@ export class PerformanceMonitor {
 
     for (const collectionName of collections) {
       try {
-        const db = mongoose.connection.db;
+        const {db} = mongoose.connection;
         const coll = db.collection(collectionName);
         const indexStats = await coll.aggregate([{ $indexStats: {} }]).toArray();
 
@@ -269,9 +271,9 @@ export class PerformanceMonitor {
 
     // Index usage metrics
     for (const index of metrics.indexes) {
-      this.metricsService.setGauge('db_index_usage_ops', index.usage, { 
-        collection: index.collection, 
-        index: index.indexName 
+      this.metricsService.setGauge('db_index_usage_ops', index.usage, {
+        collection: index.collection,
+        index: index.indexName
       });
     }
   }
@@ -309,7 +311,7 @@ export class PerformanceMonitor {
     }
 
     // Check unused indexes
-    const unusedIndexes = latestMetrics.indexes.filter(idx => 
+    const unusedIndexes = latestMetrics.indexes.filter(idx =>
       idx.usage === 0 && idx.indexName !== '_id_'
     );
     if (unusedIndexes.length > 0) {
@@ -344,7 +346,7 @@ export class PerformanceMonitor {
     }
   }
 
-  private async createAlert(alert: Omit<DatabaseAlert, 'id' | 'timestamp' | 'resolved'>): Promise<void> {
+  public async createAlert(alert: Omit<DatabaseAlert, 'id' | 'timestamp' | 'resolved'>): Promise<void> {
     const newAlert: DatabaseAlert = {
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       timestamp: new Date(),
@@ -353,14 +355,14 @@ export class PerformanceMonitor {
     };
 
     this.alerts.push(newAlert);
-    
+
     // Keep only last 100 alerts
     if (this.alerts.length > 100) {
       this.alerts.shift();
     }
 
     logger.warn('Database alert created', newAlert);
-    
+
     // Update metrics
     this.metricsService.incrementCounter('db_alerts_total', { type: alert.type });
   }
@@ -370,7 +372,7 @@ export class PerformanceMonitor {
   }
 
   public getAlerts(resolved?: boolean): DatabaseAlert[] {
-    return resolved !== undefined 
+    return resolved !== undefined
       ? this.alerts.filter(alert => alert.resolved === resolved)
       : this.alerts;
   }

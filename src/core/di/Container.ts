@@ -21,8 +21,8 @@ interface ServiceDescriptor<T> {
 
 export class Container {
   private static instance: Container;
-  private services = new Map<Token<any>, ServiceDescriptor<any>>();
-  private resolving = new Set<Token<any>>();
+  private readonly services = new Map<Token<any>, ServiceDescriptor<any>>();
+  private readonly resolving = new Set<Token<any>>();
 
   private constructor() {}
 
@@ -67,7 +67,7 @@ export class Container {
       token,
       factory: () => value,
       singleton: true,
-      instance: value,
+      instance: value
     });
   }
 
@@ -83,7 +83,7 @@ export class Container {
   // Resolve a service
   public async resolve<T>(token: Token<T>): Promise<T> {
     const descriptor = this.services.get(token);
-    
+
     if (!descriptor) {
       throw new Error(`Service not registered: ${this.tokenToString(token)}`);
     }
@@ -103,18 +103,18 @@ export class Container {
     try {
       // Resolve dependencies
       const dependencies = await this.resolveDependencies(descriptor.dependencies || []);
-      
+
       // Create instance
       const instance = await descriptor.factory(...dependencies);
-      
+
       // Store singleton instance
       if (descriptor.singleton) {
         descriptor.instance = instance;
       }
 
-      logger.debug('Service resolved', { 
+      logger.debug('Service resolved', {
         token: this.tokenToString(token),
-        singleton: descriptor.singleton 
+        singleton: descriptor.singleton
       });
 
       return instance;
@@ -125,7 +125,7 @@ export class Container {
 
   // Resolve multiple services
   public async resolveAll<T>(...tokens: Token<T>[]): Promise<T[]> {
-    return Promise.all(tokens.map(token => this.resolve(token)));
+    return Promise.all(tokens.map(async token => this.resolve(token)));
   }
 
   // Check if service is registered
@@ -155,18 +155,18 @@ export class Container {
       token,
       factory,
       singleton,
-      dependencies,
+      dependencies
     });
 
     logger.debug('Service registered', {
       token: this.tokenToString(token),
       singleton,
-      dependencies: dependencies?.map(d => this.tokenToString(d)),
+      dependencies: dependencies?.map(d => this.tokenToString(d))
     });
   }
 
   private async resolveDependencies(dependencies: Token<any>[]): Promise<any[]> {
-    return Promise.all(dependencies.map(dep => this.resolve(dep)));
+    return Promise.all(dependencies.map(async dep => this.resolve(dep)));
   }
 
   private tokenToString(token: Token<any>): string {
@@ -182,28 +182,28 @@ export const ServiceTokens = {
   // Core services
   Logger: Symbol('Logger'),
   Config: Symbol('Config'),
-  
+
   // Infrastructure services
   Database: Symbol('Database'),
   Cache: Symbol('Cache'),
   Metrics: Symbol('Metrics'),
-  
+
   // Azure services
   AzureAI: Symbol('AzureAI'),
   AzureStorage: Symbol('AzureStorage'),
-  
+
   // Business services
   AuthService: Symbol('AuthService'),
   ProductService: Symbol('ProductService'),
   RFQService: Symbol('RFQService'),
   ComplianceService: Symbol('ComplianceService'),
   OrderService: Symbol('OrderService'),
-  
+
   // Repositories
   UserRepository: Symbol('UserRepository'),
   ProductRepository: Symbol('ProductRepository'),
   RFQRepository: Symbol('RFQRepository'),
-  OrderRepository: Symbol('OrderRepository'),
+  OrderRepository: Symbol('OrderRepository')
 } as const;
 
 // Decorator for dependency injection
@@ -211,13 +211,13 @@ export function Injectable(token?: Token<any>) {
   return function (target: Constructor) {
     const container = Container.getInstance();
     const serviceToken = token || target;
-    
+
     // Get constructor parameters
     const paramTypes = Reflect.getMetadata('design:paramtypes', target) || [];
-    
+
     // Register the class with its dependencies
     container.registerClass(serviceToken, true, paramTypes);
-    
+
     // Add metadata for easy retrieval
     Reflect.defineMetadata('di:token', serviceToken, target);
   };
@@ -244,7 +244,7 @@ export interface Provider<T> {
 
 export function createProvider<T>(provider: Provider<T>): void {
   const container = Container.getInstance();
-  
+
   if (provider.useClass) {
     container.registerClass(provider.provide as Constructor<T>, provider.singleton ?? true, provider.deps);
   } else if (provider.useFactory) {
@@ -259,23 +259,23 @@ export function createProvider<T>(provider: Provider<T>): void {
 // Bootstrap function for initializing services
 export async function bootstrap(providers: Provider<any>[]): Promise<void> {
   const container = Container.getInstance();
-  
+
   logger.info('Bootstrapping dependency injection container');
-  
+
   // Register all providers
   for (const provider of providers) {
     createProvider(provider);
   }
-  
+
   // Resolve and initialize singleton services
   const singletonTokens = providers
     .filter(p => p.singleton !== false)
     .map(p => p.provide);
-  
+
   await container.resolveAll(...singletonTokens);
-  
+
   logger.info('Dependency injection container bootstrapped', {
-    registeredServices: container.getRegisteredServices().length,
+    registeredServices: container.getRegisteredServices().length
   });
 }
 

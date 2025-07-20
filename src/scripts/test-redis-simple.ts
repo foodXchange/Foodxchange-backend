@@ -2,7 +2,7 @@ import Redis from 'ioredis';
 
 async function testRedisConnection() {
   console.log('Testing Redis connection...');
-  
+
   const redis = new Redis({
     host: 'localhost',
     port: 6379,
@@ -10,7 +10,7 @@ async function testRedisConnection() {
       const delay = Math.min(times * 50, 2000);
       return delay;
     },
-    maxRetriesPerRequest: 3,
+    maxRetriesPerRequest: 3
   });
 
   redis.on('connect', () => {
@@ -27,15 +27,15 @@ async function testRedisConnection() {
     console.log('✅ Redis PING:', pingResult);
 
     // Test set
-    await redis.set('foodxchange:test', JSON.stringify({ 
-      status: 'FoodXchange Redis Working!', 
-      timestamp: new Date().toISOString() 
+    await redis.set('foodxchange:test', JSON.stringify({
+      status: 'FoodXchange Redis Working!',
+      timestamp: new Date().toISOString()
     }));
     console.log('✅ Redis SET successful');
 
     // Test get
     const value = await redis.get('foodxchange:test');
-    console.log('✅ Redis GET:', JSON.parse(value!));
+    console.log('✅ Redis GET:', JSON.parse(value));
 
     // Cleanup
     await redis.del('foodxchange:test');
@@ -44,7 +44,7 @@ async function testRedisConnection() {
     // Close connection
     redis.disconnect();
     console.log('\n🎉 Redis is working correctly with FoodXchange!');
-    
+
     process.exit(0);
   } catch (error: any) {
     console.error('❌ Redis test failed:', error.message);

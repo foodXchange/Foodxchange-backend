@@ -4,16 +4,17 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { AuthRequest } from '../../middleware/auth.middleware';
 import { body, param, query, validationResult } from 'express-validator';
-import { RecommendationEngine, RFQRequirements, UserBehaviorData } from '../../services/ai/RecommendationEngine';
-import { MatchingAlgorithms, BuyerRequirements, SupplierProfile, ProductProfile } from '../../services/ai/MatchingAlgorithms';
-import { protect } from '../../middleware/auth';
-import { authorize } from '../../middleware/authorize';
-import { asyncHandler } from '../../utils/asyncHandler';
+
 import { ApiError } from '../../core/errors';
 import { Logger } from '../../core/logging/logger';
 import { MetricsService } from '../../core/metrics/MetricsService';
+import { protect } from '../../middleware/auth';
+import { AuthRequest } from '../../middleware/auth.middleware';
+import { authorize } from '../../middleware/authorize';
+import { MatchingAlgorithms, BuyerRequirements, SupplierProfile, ProductProfile } from '../../services/ai/MatchingAlgorithms';
+import { RecommendationEngine, RFQRequirements, UserBehaviorData } from '../../services/ai/RecommendationEngine';
+import { asyncHandler } from '../../utils/asyncHandler';
 
 const router = Router();
 const logger = new Logger('RecommendationsAPI');
@@ -56,7 +57,7 @@ router.post(
   validateRequest,
   asyncHandler(async (req: AuthRequest, res: Response) => {
     const startTime = Date.now();
-    
+
     try {
       const {
         productCategory,
@@ -142,7 +143,7 @@ router.post(
   validateRequest,
   asyncHandler(async (req: AuthRequest, res: Response) => {
     const startTime = Date.now();
-    
+
     try {
       const { productCategory, requirements = {}, limit = 10 } = req.body;
       const userId = req.user._id;
@@ -205,7 +206,7 @@ router.get(
 
     try {
       const userBehavior = await getUserBehaviorData(userId);
-      
+
       const similarProducts = await recommendationEngine.getSimilarProducts(
         productId,
         userBehavior,
@@ -251,7 +252,7 @@ router.get(
 
     try {
       const userBehavior = await getUserBehaviorData(userId);
-      
+
       if (!userBehavior) {
         return res.json({
           success: true,

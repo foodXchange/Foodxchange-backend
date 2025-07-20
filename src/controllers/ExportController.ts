@@ -1,21 +1,23 @@
-import { Request, Response } from 'express';
-import { getExportService } from '../services/export/ExportService';
-import { Logger } from '../core/logging/logger';
-import { ValidationError } from '../core/errors';
-import * as path from 'path';
 import * as fs from 'fs';
+import * as path from 'path';
+
+import { Request, Response } from 'express';
+
+import { ValidationError } from '../core/errors';
+import { Logger } from '../core/logging/logger';
+import { getExportService } from '../services/export/ExportService';
 
 const logger = new Logger('ExportController');
 
 export class ExportController {
-  private exportService = getExportService();
+  private readonly exportService = getExportService();
 
   /**
    * Export products
    */
   async exportProducts(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
+      const {tenantId} = req;
       const {
         format = 'csv',
         fields,
@@ -45,7 +47,7 @@ export class ExportController {
       });
     } catch (error) {
       logger.error('Export products error:', error);
-      
+
       if (error instanceof ValidationError) {
         res.status(400).json({
           success: false,
@@ -65,7 +67,7 @@ export class ExportController {
    */
   async exportOrders(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
+      const {tenantId} = req;
       const {
         format = 'csv',
         fields,
@@ -95,7 +97,7 @@ export class ExportController {
       });
     } catch (error) {
       logger.error('Export orders error:', error);
-      
+
       if (error instanceof ValidationError) {
         res.status(400).json({
           success: false,
@@ -115,7 +117,7 @@ export class ExportController {
    */
   async exportRFQs(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
+      const {tenantId} = req;
       const {
         format = 'csv',
         fields,
@@ -145,7 +147,7 @@ export class ExportController {
       });
     } catch (error) {
       logger.error('Export RFQs error:', error);
-      
+
       if (error instanceof ValidationError) {
         res.status(400).json({
           success: false,
@@ -165,7 +167,7 @@ export class ExportController {
    */
   async exportAnalytics(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
+      const {tenantId} = req;
       const {
         format = 'csv',
         reportType = 'dashboard',
@@ -201,7 +203,7 @@ export class ExportController {
       });
     } catch (error) {
       logger.error('Export analytics error:', error);
-      
+
       if (error instanceof ValidationError) {
         res.status(400).json({
           success: false,
@@ -221,7 +223,7 @@ export class ExportController {
    */
   async importProducts(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
+      const {tenantId} = req;
       const {
         format = 'csv',
         validateOnly = false,
@@ -262,12 +264,12 @@ export class ExportController {
       });
     } catch (error) {
       logger.error('Import products error:', error);
-      
+
       // Clean up uploaded file on error
       if (req.file && fs.existsSync(req.file.path)) {
         fs.unlinkSync(req.file.path);
       }
-      
+
       if (error instanceof ValidationError) {
         res.status(400).json({
           success: false,
@@ -287,7 +289,7 @@ export class ExportController {
    */
   async importOrders(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
+      const {tenantId} = req;
       const {
         format = 'csv',
         validateOnly = false,
@@ -328,12 +330,12 @@ export class ExportController {
       });
     } catch (error) {
       logger.error('Import orders error:', error);
-      
+
       // Clean up uploaded file on error
       if (req.file && fs.existsSync(req.file.path)) {
         fs.unlinkSync(req.file.path);
       }
-      
+
       if (error instanceof ValidationError) {
         res.status(400).json({
           success: false,
@@ -375,7 +377,7 @@ export class ExportController {
       });
     } catch (error) {
       logger.error('Get export template error:', error);
-      
+
       if (error instanceof ValidationError) {
         res.status(400).json({
           success: false,
@@ -402,23 +404,24 @@ export class ExportController {
       // Security check - ensure file is within export directory
       const resolvedPath = path.resolve(filePath);
       const resolvedExportDir = path.resolve(exportDir);
-      
+
       if (!resolvedPath.startsWith(resolvedExportDir)) {
         throw new ValidationError('Invalid file path');
       }
 
       // Check if file exists
       if (!fs.existsSync(filePath)) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           error: { message: 'File not found' }
         });
+        return;
       }
 
       // Set appropriate headers
       const ext = path.extname(fileName).toLowerCase();
       let contentType = 'application/octet-stream';
-      
+
       switch (ext) {
         case '.csv':
           contentType = 'text/csv';
@@ -433,7 +436,7 @@ export class ExportController {
 
       res.setHeader('Content-Type', contentType);
       res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-      
+
       // Stream the file
       const fileStream = fs.createReadStream(filePath);
       fileStream.pipe(res);
@@ -445,7 +448,7 @@ export class ExportController {
       });
     } catch (error) {
       logger.error('Download file error:', error);
-      
+
       if (error instanceof ValidationError) {
         res.status(400).json({
           success: false,
@@ -465,7 +468,7 @@ export class ExportController {
    */
   async getExportHistory(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
+      const {tenantId} = req;
       const { page = 1, limit = 20, type } = req.query;
 
       // This would typically come from a database table tracking export/import history

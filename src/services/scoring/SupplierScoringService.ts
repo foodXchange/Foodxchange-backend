@@ -1,9 +1,9 @@
-const User = require('../models/User');
+const Analytics = require('../models/analytics/Analytics');
+const Compliance = require('../models/compliance/Compliance');
+const Meeting = require('../models/meeting/Meeting');
 const Order = require('../models/Order');
 const Review = require('../models/Review');
-const Analytics = require('../models/analytics/Analytics');
-const Meeting = require('../models/meeting/Meeting');
-const Compliance = require('../models/compliance/Compliance');
+const User = require('../models/User');
 
 class SupplierScoringService {
   constructor() {
@@ -65,7 +65,7 @@ class SupplierScoringService {
   }
 
   async calculateQualityScore(supplierId) {
-    const reviews = await Review.find({ 
+    const reviews = await Review.find({
       supplier: supplierId,
       'ratings.quality': { $exists: true }
     });
@@ -77,7 +77,7 @@ class SupplierScoringService {
   }
 
   async calculateDeliveryScore(supplierId) {
-    const orders = await Order.find({ 
+    const orders = await Order.find({
       supplier: supplierId,
       status: 'delivered'
     });
@@ -101,7 +101,7 @@ class SupplierScoringService {
   }
 
   async calculateCommunicationScore(supplierId) {
-    const analytics = await Analytics.findOne({ 
+    const analytics = await Analytics.findOne({
       user: supplierId,
       'period.type': 'monthly'
     }).sort({ createdAt: -1 });
@@ -110,15 +110,15 @@ class SupplierScoringService {
 
     const responseRate = analytics.metrics.responseRate || 75;
     const avgResponseTime = analytics.metrics.avgResponseTime || 24;
-    
+
     // Faster response = higher score
     const responseTimeScore = Math.max(0, 100 - (avgResponseTime * 2));
-    
+
     return (responseRate + responseTimeScore) / 2;
   }
 
   async calculateComplianceScore(supplierId) {
-    const compliances = await Compliance.find({ 
+    const compliances = await Compliance.find({
       user: supplierId,
       status: 'active'
     });
@@ -173,7 +173,7 @@ class SupplierScoringService {
   identifyImprovementAreas(scores) {
     const areas = [];
     const sortedScores = Object.entries(scores).sort((a, b) => a[1] - b[1]);
-    
+
     // Identify bottom 2 areas
     sortedScores.slice(0, 2).forEach(([area, score]) => {
       if (score < 80) {

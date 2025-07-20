@@ -1,15 +1,15 @@
 const mongoose = require('mongoose');
 
 const categorySchema = new mongoose.Schema({
-  name: { 
-    type: String, 
-    required: true, 
+  name: {
+    type: String,
+    required: true,
     trim: true,
     maxlength: 100
   },
-  slug: { 
-    type: String, 
-    required: true, 
+  slug: {
+    type: String,
+    required: true,
     unique: true,
     lowercase: true
   },
@@ -17,9 +17,9 @@ const categorySchema = new mongoose.Schema({
     type: String,
     maxlength: 500
   },
-  parent: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Category' 
+  parent: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Category'
   },
   image: {
     url: String,
@@ -30,8 +30,8 @@ const categorySchema = new mongoose.Schema({
       type: String,
       required: true
     },
-    type: { 
-      type: String, 
+    type: {
+      type: String,
       enum: ['text', 'number', 'boolean', 'select', 'multiselect'],
       required: true
     },
@@ -47,20 +47,20 @@ const categorySchema = new mongoose.Schema({
       pattern: String
     }
   }],
-  isActive: { 
-    type: Boolean, 
-    default: true 
+  isActive: {
+    type: Boolean,
+    default: true
   },
-  sortOrder: { 
-    type: Number, 
-    default: 0 
+  sortOrder: {
+    type: Number,
+    default: 0
   },
   seo: {
     metaTitle: String,
     metaDescription: String,
     keywords: [String]
   }
-}, { 
+}, {
   timestamps: true,
   toJSON: { virtuals: true },
   toObject: { virtuals: true }

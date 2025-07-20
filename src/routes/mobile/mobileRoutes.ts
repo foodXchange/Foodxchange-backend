@@ -1,10 +1,11 @@
 import express from 'express';
+
 import { MobileController } from '../../controllers/MobileController';
-import { requireAuth } from '../../middleware/auth';
-import { enforceTenantIsolation } from '../../middleware/tenantIsolation';
-import { createCustomRateLimiter } from '../../middleware/rateLimiter';
-import { authorize } from '../../middleware/authorize';
 import { asyncHandler } from '../../core/errors';
+import { requireAuth } from '../../middleware/auth';
+import { authorize } from '../../middleware/authorize';
+import { createCustomRateLimiter } from '../../middleware/rateLimiter';
+import { enforceTenantIsolation } from '../../middleware/tenantIsolation';
 
 const router = express.Router();
 const mobileController = new MobileController();
@@ -22,7 +23,7 @@ router.use(mobileRateLimiter);
  * @desc Get mobile dashboard
  * @access Private
  */
-router.get('/dashboard', 
+router.get('/dashboard',
   authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
   asyncHandler(mobileController.getDashboard.bind(mobileController))
 );
@@ -32,7 +33,7 @@ router.get('/dashboard',
  * @desc Get mobile-optimized products with pagination
  * @access Private
  */
-router.get('/products', 
+router.get('/products',
   authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
   asyncHandler(mobileController.getProducts.bind(mobileController))
 );
@@ -42,7 +43,7 @@ router.get('/products',
  * @desc Get mobile product details
  * @access Private
  */
-router.get('/products/:productId', 
+router.get('/products/:productId',
   authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
   asyncHandler(mobileController.getProductDetails.bind(mobileController))
 );
@@ -52,7 +53,7 @@ router.get('/products/:productId',
  * @desc Get mobile-optimized orders
  * @access Private
  */
-router.get('/orders', 
+router.get('/orders',
   authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
   asyncHandler(mobileController.getOrders.bind(mobileController))
 );
@@ -62,7 +63,7 @@ router.get('/orders',
  * @desc Get mobile-optimized RFQs
  * @access Private
  */
-router.get('/rfqs', 
+router.get('/rfqs',
   authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
   asyncHandler(mobileController.getRFQs.bind(mobileController))
 );
@@ -72,7 +73,7 @@ router.get('/rfqs',
  * @desc Get mobile search suggestions
  * @access Private
  */
-router.get('/search/suggestions', 
+router.get('/search/suggestions',
   authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
   asyncHandler(mobileController.getSearchSuggestions.bind(mobileController))
 );
@@ -82,7 +83,7 @@ router.get('/search/suggestions',
  * @desc Get mobile categories
  * @access Private
  */
-router.get('/categories', 
+router.get('/categories',
   authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
   asyncHandler(mobileController.getCategories.bind(mobileController))
 );
@@ -92,7 +93,7 @@ router.get('/categories',
  * @desc Get mobile app configuration
  * @access Private
  */
-router.get('/config', 
+router.get('/config',
   authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
   asyncHandler(mobileController.getAppConfig.bind(mobileController))
 );
@@ -102,7 +103,7 @@ router.get('/config',
  * @desc Track mobile event
  * @access Private
  */
-router.post('/track', 
+router.post('/track',
   authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
   asyncHandler(mobileController.trackEvent.bind(mobileController))
 );

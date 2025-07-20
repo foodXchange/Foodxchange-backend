@@ -87,7 +87,6 @@ export class ProductionDatabaseConnection {
       heartbeatFrequencyMS: 10000,
       
       // Buffering
-      bufferMaxEntries: 0,
       bufferCommands: false,
       
       // Write concern

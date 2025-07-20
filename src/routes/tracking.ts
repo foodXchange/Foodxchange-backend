@@ -1,14 +1,15 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { body, param, query, validationResult } from 'express-validator';
-import { Sample, SampleWorkflowStage } from '../models/sample.model';
-import { Order, LineItemStatus, ShipmentStatus } from '../models/order.model';
-import { protect } from '../middleware/auth';
-import { authorize } from '../middleware/authorize';
-import { asyncHandler } from '../utils/asyncHandler';
+
 import { ApiError } from '../core/errors';
 import { Logger } from '../core/logging/logger';
 import { CacheService } from '../infrastructure/cache/CacheService';
 import { MetricsService } from '../infrastructure/monitoring/MetricsService';
+import { protect } from '../middleware/auth';
+import { authorize } from '../middleware/authorize';
+import { Order, LineItemStatus, ShipmentStatus } from '../models/order.model';
+import { Sample, SampleWorkflowStage } from '../models/sample.model';
+import { asyncHandler } from '../utils/asyncHandler';
 
 const router = Router();
 const logger = new Logger('TrackingRoutes');
@@ -55,11 +56,11 @@ router.post(
     }
 
     // Check permissions
-    const canUpdate = 
-      sample.supplier.equals(userId) || 
+    const canUpdate =
+      sample.supplier.equals(userId) ||
       sample.buyer.equals(userId) ||
       req.user.role === 'admin';
-      
+
     if (!canUpdate) {
       throw new ApiError(403, 'Not authorized to update this sample');
     }
@@ -78,7 +79,7 @@ router.post(
 
     // Clear cache
     await cache.delete(`sample:${id}`);
-    
+
     // Track metrics
     metrics.trackBusinessEvent('sample.stage_updated', {
       sampleId: sample.sampleId,
@@ -87,10 +88,10 @@ router.post(
       userId
     });
 
-    logger.info('Sample workflow updated', { 
-      sampleId: sample.sampleId, 
-      stage, 
-      userId 
+    logger.info('Sample workflow updated', {
+      sampleId: sample.sampleId,
+      stage,
+      userId
     });
 
     res.status(200).json({
@@ -136,17 +137,17 @@ router.get(
     // Find sample
     const sample = await Sample.findById(id)
       .select('sampleId currentStage priority timeline estimatedDeliveryDate actualDeliveryDate supplier buyer productName');
-    
+
     if (!sample) {
       throw new ApiError(404, 'Sample not found');
     }
 
     // Check permissions
-    const canView = 
-      sample.supplier.equals(userId) || 
+    const canView =
+      sample.supplier.equals(userId) ||
       sample.buyer.equals(userId) ||
       req.user.role === 'admin';
-      
+
     if (!canView) {
       throw new ApiError(403, 'Not authorized to view this sample');
     }
@@ -217,10 +218,10 @@ router.post(
       if (!lineItem) {
         throw new ApiError(400, `Line item ${item.lineItemId} not found`);
       }
-      
+
       const remainingQuantity = lineItem.quantity - lineItem.shippedQuantity;
       if (item.quantity > remainingQuantity) {
-        throw new ApiError(400, 
+        throw new ApiError(400,
           `Cannot ship ${item.quantity} units of ${lineItem.productName}. ` +
           `Only ${remainingQuantity} units remaining.`
         );
@@ -236,7 +237,7 @@ router.post(
 
     // Clear cache
     await cache.deletePattern(`order:${id}:*`);
-    
+
     // Track metrics
     metrics.trackBusinessEvent('order.shipment_created', {
       orderId: order.orderId,
@@ -244,9 +245,9 @@ router.post(
       userId
     });
 
-    logger.info('Order shipment created', { 
-      orderId: order.orderId, 
-      trackingNumber: shipmentData.trackingNumber 
+    logger.info('Order shipment created', {
+      orderId: order.orderId,
+      trackingNumber: shipmentData.trackingNumber
     });
 
     res.status(201).json({
@@ -286,23 +287,23 @@ router.get(
     const order = await Order.findById(id)
       .select('orderId buyer supplier lineItems shipments')
       .populate('lineItems.product', 'name images');
-    
+
     if (!order) {
       throw new ApiError(404, 'Order not found');
     }
 
     // Check permissions
-    const canView = 
-      order.supplier.equals(userId) || 
+    const canView =
+      order.supplier.equals(userId) ||
       order.buyer.equals(userId) ||
       req.user.role === 'admin';
-      
+
     if (!canView) {
       throw new ApiError(403, 'Not authorized to view this order');
     }
 
     // Filter line items if specific one requested
-    let lineItems = order.lineItems;
+    let {lineItems} = order;
     if (lineItemId) {
       const item = order.lineItems.id(lineItemId as string);
       if (!item) {
@@ -338,7 +339,7 @@ router.get(
           trackingNumber: shipment.trackingNumber,
           carrier: shipment.carrier,
           status: shipment.status,
-          quantity: shipment.lineItems.find(li => 
+          quantity: shipment.lineItems.find(li =>
             li.lineItemId.equals(item._id)
           )?.quantity || 0,
           estimatedDeliveryDate: shipment.estimatedDeliveryDate,
@@ -400,7 +401,7 @@ router.post(
 
     // Clear cache
     await cache.deletePattern(`order:${orderId}:*`);
-    
+
     // Track metrics
     metrics.trackBusinessEvent('order.temperature_recorded', {
       orderId: order.orderId,
@@ -464,7 +465,7 @@ router.post(
 
     // Clear cache
     await cache.deletePattern(`order:${orderId}:*`);
-    
+
     // Track metrics
     metrics.trackBusinessEvent('order.line_item_status_updated', {
       orderId: order.orderId,
@@ -473,10 +474,10 @@ router.post(
       userId
     });
 
-    logger.info('Line item status updated', { 
-      orderId: order.orderId, 
-      lineItemId, 
-      status 
+    logger.info('Line item status updated', {
+      orderId: order.orderId,
+      lineItemId,
+      status
     });
 
     res.json({
@@ -521,7 +522,7 @@ router.get(
       throw new ApiError(404, 'Tracking number not found');
     }
 
-    const shipment = order.shipments.find(s => 
+    const shipment = order.shipments.find(s =>
       s.trackingNumber === trackingNumber
     );
 

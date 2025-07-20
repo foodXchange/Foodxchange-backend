@@ -3,8 +3,8 @@
  * Optimized for production deployment
  */
 
-import { server } from './server-optimized';
 import { Logger } from './core/logging/logger';
+import { server } from './server-optimized';
 
 const logger = new Logger('App');
 
@@ -14,10 +14,10 @@ const logger = new Logger('App');
 async function bootstrap(): Promise<void> {
   try {
     logger.info('Bootstrapping FoodXchange application...');
-    
+
     // Start the optimized server
     await server.start();
-    
+
     logger.info('Application started successfully');
   } catch (error) {
     logger.error('Failed to bootstrap application:', error);

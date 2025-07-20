@@ -1,13 +1,14 @@
-import { Logger } from '../../core/logging/logger';
-import { Product } from '../../models/Product';
-import { Order } from '../../models/Order';
-import { RFQ } from '../../models/RFQ';
-import { User } from '../../models/User';
-import { Company } from '../../models/Company';
-import { getAnalyticsService } from '../analytics/AnalyticsService';
-import * as XLSX from 'xlsx';
 import * as csv from 'csv-writer';
 import { createObjectCsvWriter } from 'csv-writer';
+import * as XLSX from 'xlsx';
+
+import { Logger } from '../../core/logging/logger';
+import { Company } from '../../models/Company';
+import { Order } from '../../models/Order';
+import { Product } from '../../models/Product';
+import { RFQ } from '../../models/RFQ';
+import { User } from '../../models/User';
+import { getAnalyticsService } from '../analytics/AnalyticsService';
 
 const logger = new Logger('ExportService');
 
@@ -55,7 +56,7 @@ export interface IImportResult {
 }
 
 export class ExportService {
-  private analyticsService = getAnalyticsService();
+  private readonly analyticsService = getAnalyticsService();
 
   /**
    * Export products to various formats
@@ -69,7 +70,7 @@ export class ExportService {
 
       // Build query with filters
       const query = this.buildProductQuery(tenantId, options.filters);
-      
+
       // Get products with optional population
       const products = await Product.find(query)
         .populate(options.includeRelated ? 'supplier' : '')
@@ -98,8 +99,8 @@ export class ExportService {
         }
       });
 
-      logger.info('Product export completed', { 
-        tenantId, 
+      logger.info('Product export completed', {
+        tenantId,
         recordCount: products.length,
         format: options.format
       });
@@ -122,7 +123,7 @@ export class ExportService {
       logger.info('Starting order export', { tenantId, format: options.format });
 
       const query = this.buildOrderQuery(tenantId, options.filters);
-      
+
       const orders = await Order.find(query)
         .populate(options.includeRelated ? ['buyer', 'supplier', 'items.productId'] : '')
         .lean();
@@ -147,8 +148,8 @@ export class ExportService {
         }
       });
 
-      logger.info('Order export completed', { 
-        tenantId, 
+      logger.info('Order export completed', {
+        tenantId,
         recordCount: orders.length,
         format: options.format
       });
@@ -171,7 +172,7 @@ export class ExportService {
       logger.info('Starting RFQ export', { tenantId, format: options.format });
 
       const query = this.buildRFQQuery(tenantId, options.filters);
-      
+
       const rfqs = await RFQ.find(query)
         .populate(options.includeRelated ? ['buyer', 'quotes.supplier'] : '')
         .lean();
@@ -196,8 +197,8 @@ export class ExportService {
         }
       });
 
-      logger.info('RFQ export completed', { 
-        tenantId, 
+      logger.info('RFQ export completed', {
+        tenantId,
         recordCount: rfqs.length,
         format: options.format
       });
@@ -266,8 +267,8 @@ export class ExportService {
         }
       });
 
-      logger.info('Analytics export completed', { 
-        tenantId, 
+      logger.info('Analytics export completed', {
+        tenantId,
         format: options.format,
         reportType: options.reportType
       });
@@ -292,7 +293,7 @@ export class ExportService {
 
       // Parse file based on format
       const rawData = await this.parseImportFile(filePath, options.format);
-      
+
       // Transform and validate data
       const validatedData = await this.validateProductData(rawData, options.mapping);
 
@@ -326,8 +327,8 @@ export class ExportService {
         }
       });
 
-      logger.info('Product import completed', { 
-        tenantId, 
+      logger.info('Product import completed', {
+        tenantId,
         totalRecords: rawData.length,
         successful: result.successfulRecords,
         failed: result.failedRecords
@@ -389,8 +390,8 @@ export class ExportService {
         }
       });
 
-      logger.info('Order import completed', { 
-        tenantId, 
+      logger.info('Order import completed', {
+        tenantId,
         totalRecords: rawData.length,
         successful: result.successfulRecords,
         failed: result.failedRecords
@@ -418,7 +419,7 @@ export class ExportService {
   ): Promise<IExportResult> {
     try {
       const templateData = this.getTemplateData(dataType);
-      
+
       const result = await this.generateExportFile(
         `${dataType}_template`,
         templateData,
@@ -439,7 +440,7 @@ export class ExportService {
    */
   private buildProductQuery(tenantId: string, filters?: any): any {
     const query: any = { tenantId };
-    
+
     if (filters) {
       if (filters.category) query.category = filters.category;
       if (filters.supplier) query.supplier = filters.supplier;
@@ -455,13 +456,13 @@ export class ExportService {
       }
       if (filters.isActive !== undefined) query.isActive = filters.isActive;
     }
-    
+
     return query;
   }
 
   private buildOrderQuery(tenantId: string, filters?: any): any {
     const query: any = { tenantId };
-    
+
     if (filters) {
       if (filters.status) query.status = filters.status;
       if (filters.buyer) query.buyer = filters.buyer;
@@ -477,13 +478,13 @@ export class ExportService {
         if (filters.maxAmount) query.totalAmount.$lte = filters.maxAmount;
       }
     }
-    
+
     return query;
   }
 
   private buildRFQQuery(tenantId: string, filters?: any): any {
     const query: any = { tenantId };
-    
+
     if (filters) {
       if (filters.status) query.status = filters.status;
       if (filters.buyer) query.buyer = filters.buyer;
@@ -499,7 +500,7 @@ export class ExportService {
         if (filters.maxBudget) query.budget.$lte = filters.maxBudget;
       }
     }
-    
+
     return query;
   }
 
@@ -514,17 +515,15 @@ export class ExportService {
 
     return products.map(product => {
       const transformed: any = {};
-      
+
       selectedFields.forEach(field => {
         if (field.includes('.')) {
           const [parent, child] = field.split('.');
           if (product[parent] && product[parent][child] !== undefined) {
             transformed[field] = product[parent][child];
           }
-        } else {
-          if (product[field] !== undefined) {
-            transformed[field] = product[field];
-          }
+        } else if (product[field] !== undefined) {
+          transformed[field] = product[field];
         }
       });
 
@@ -547,17 +546,15 @@ export class ExportService {
 
     return orders.map(order => {
       const transformed: any = {};
-      
+
       selectedFields.forEach(field => {
         if (field.includes('.')) {
           const [parent, child] = field.split('.');
           if (order[parent] && order[parent][child] !== undefined) {
             transformed[field] = order[parent][child];
           }
-        } else {
-          if (order[field] !== undefined) {
-            transformed[field] = order[field];
-          }
+        } else if (order[field] !== undefined) {
+          transformed[field] = order[field];
         }
       });
 
@@ -583,17 +580,15 @@ export class ExportService {
 
     return rfqs.map(rfq => {
       const transformed: any = {};
-      
+
       selectedFields.forEach(field => {
         if (field.includes('.')) {
           const [parent, child] = field.split('.');
           if (rfq[parent] && rfq[parent][child] !== undefined) {
             transformed[field] = rfq[parent][child];
           }
-        } else {
-          if (rfq[field] !== undefined) {
-            transformed[field] = rfq[field];
-          }
+        } else if (rfq[field] !== undefined) {
+          transformed[field] = rfq[field];
         }
       });
 
@@ -612,7 +607,7 @@ export class ExportService {
   private transformAnalyticsData(analytics: any, fields?: string[]): any[] {
     // Convert analytics object to array format suitable for export
     const flattenedData = this.flattenObject(analytics);
-    
+
     if (fields && fields.length > 0) {
       const filteredData: any = {};
       fields.forEach(field => {
@@ -622,17 +617,17 @@ export class ExportService {
       });
       return [filteredData];
     }
-    
+
     return [flattenedData];
   }
 
   private flattenObject(obj: any, prefix = ''): any {
     const flattened: any = {};
-    
+
     for (const key in obj) {
       if (obj.hasOwnProperty(key)) {
         const newKey = prefix ? `${prefix}.${key}` : key;
-        
+
         if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
           Object.assign(flattened, this.flattenObject(obj[key], newKey));
         } else {
@@ -640,7 +635,7 @@ export class ExportService {
         }
       }
     }
-    
+
     return flattened;
   }
 
@@ -652,7 +647,7 @@ export class ExportService {
     const fileName = options.fileName || `${type}_export_${Date.now()}`;
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const fullFileName = `${fileName}_${timestamp}`;
-    
+
     const exportDir = process.env.EXPORT_DIR || './exports';
     const filePath = `${exportDir}/${fullFileName}`;
 
@@ -713,7 +708,7 @@ export class ExportService {
   private async generateExcel(data: any[], filePath: string): Promise<void> {
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.json_to_sheet(data);
-    
+
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Data');
     XLSX.writeFile(workbook, filePath);
   }
@@ -726,7 +721,7 @@ export class ExportService {
 
   private async parseImportFile(filePath: string, format: string): Promise<any[]> {
     const fs = require('fs');
-    
+
     switch (format) {
       case 'csv':
         return await this.parseCSV(filePath);
@@ -742,11 +737,11 @@ export class ExportService {
   private async parseCSV(filePath: string): Promise<any[]> {
     const fs = require('fs');
     const csvParse = require('csv-parse/sync');
-    
+
     const fileContent = fs.readFileSync(filePath, 'utf8');
-    return csvParse.parse(fileContent, { 
-      columns: true, 
-      skip_empty_lines: true 
+    return csvParse.parse(fileContent, {
+      columns: true,
+      skip_empty_lines: true
     });
   }
 
@@ -914,7 +909,7 @@ export class ExportService {
 
     for (let i = 0; i < products.length; i += batchSize) {
       const batch = products.slice(i, i + batchSize);
-      
+
       for (const productData of batch) {
         try {
           const product = new Product({
@@ -961,7 +956,7 @@ export class ExportService {
 
     for (let i = 0; i < orders.length; i += batchSize) {
       const batch = orders.slice(i, i + batchSize);
-      
+
       for (const orderData of batch) {
         try {
           const order = new Order({

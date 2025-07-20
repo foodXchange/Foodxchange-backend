@@ -21,7 +21,7 @@ const requireAIServices = async (req, res, next) => {
 const requireAIFeature = (featureName) => {
   return (req, res, next) => {
     const featureFlag = process.env[`AI_${featureName.toUpperCase()}`];
-    
+
     if (featureFlag !== 'true') {
       return res.status(403).json({
         success: false,
@@ -29,7 +29,7 @@ const requireAIFeature = (featureName) => {
         code: 'AI_FEATURE_DISABLED'
       });
     }
-    
+
     next();
   };
 };

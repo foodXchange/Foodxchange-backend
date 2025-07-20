@@ -1,9 +1,12 @@
-import mongoose from 'mongoose';
+import { performance } from 'perf_hooks';
+
 import Redis from 'ioredis';
+import mongoose from 'mongoose';
+
 import { Logger } from '../../core/logging/logger';
 import { multiLevelCache } from '../cache/MultiLevelCacheService';
 import { prometheusMetrics } from '../metrics/PrometheusMetricsService';
-import { performance } from 'perf_hooks';
+
 
 export interface HealthCheck {
   name: string;
@@ -34,9 +37,9 @@ export interface SystemHealthReport {
 
 export class HealthCheckService {
   private static instance: HealthCheckService;
-  private logger: Logger;
-  private checks: Map<string, HealthCheck> = new Map();
-  private startTime: number = Date.now();
+  private readonly logger: Logger;
+  private readonly checks: Map<string, HealthCheck> = new Map();
+  private readonly startTime: number = Date.now();
 
   constructor() {
     this.logger = new Logger('HealthCheckService');
@@ -53,22 +56,22 @@ export class HealthCheckService {
   private registerDefaultChecks(): void {
     // Database health check
     this.registerCheck('database', new DatabaseHealthCheck());
-    
+
     // Redis health check
     this.registerCheck('redis', new RedisHealthCheck());
-    
+
     // Memory health check
     this.registerCheck('memory', new MemoryHealthCheck());
-    
+
     // Disk space health check
     this.registerCheck('disk', new DiskHealthCheck());
-    
+
     // External services health check
     this.registerCheck('external_services', new ExternalServicesHealthCheck());
-    
+
     // Cache health check
     this.registerCheck('cache', new CacheHealthCheck());
-    
+
     // Application health check
     this.registerCheck('application', new ApplicationHealthCheck());
   }
@@ -82,13 +85,13 @@ export class HealthCheckService {
     const results: Record<string, HealthCheckResult> = {};
     let healthyCount = 0;
     let unhealthyCount = 0;
-    let degradedCount = 0;
+    const degradedCount = 0;
 
     for (const [name, check] of this.checks) {
       try {
         const result = await check.execute();
         results[name] = result;
-        
+
         if (result.healthy) {
           healthyCount++;
         } else {
@@ -99,13 +102,13 @@ export class HealthCheckService {
         results[name] = {
           healthy: false,
           message: `Health check failed: ${error.message}`,
-          timestamp: new Date().toISOString(),
+          timestamp: new Date().toISOString()
         };
       }
     }
 
     const overallStatus = this.determineOverallStatus(healthyCount, unhealthyCount, degradedCount);
-    
+
     const report: SystemHealthReport = {
       status: overallStatus,
       timestamp: new Date().toISOString(),
@@ -116,14 +119,14 @@ export class HealthCheckService {
         total: this.checks.size,
         healthy: healthyCount,
         unhealthy: unhealthyCount,
-        degraded: degradedCount,
-      },
+        degraded: degradedCount
+      }
     };
 
     // Log unhealthy services
     if (unhealthyCount > 0) {
       this.logger.warn(`Health check failed for ${unhealthyCount} services`, {
-        unhealthyServices: Object.keys(results).filter(key => !results[key].healthy),
+        unhealthyServices: Object.keys(results).filter(key => !results[key].healthy)
       });
     }
 
@@ -134,11 +137,11 @@ export class HealthCheckService {
     if (unhealthy === 0 && degraded === 0) {
       return 'healthy';
     }
-    
+
     if (unhealthy > 0 && (unhealthy >= healthy / 2)) {
       return 'unhealthy';
     }
-    
+
     return 'degraded';
   }
 
@@ -146,14 +149,14 @@ export class HealthCheckService {
     return {
       status: 'healthy',
       timestamp: new Date().toISOString(),
-      uptime: Date.now() - this.startTime,
+      uptime: Date.now() - this.startTime
     };
   }
 
   async getLivenessCheck(): Promise<{ alive: boolean; timestamp: string }> {
     return {
       alive: true,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     };
   }
 
@@ -182,7 +185,7 @@ export class HealthCheckService {
     return {
       ready,
       timestamp: new Date().toISOString(),
-      details: results,
+      details: results
     };
   }
 }
@@ -193,17 +196,17 @@ class DatabaseHealthCheck implements HealthCheck {
 
   async execute(): Promise<HealthCheckResult> {
     const startTime = performance.now();
-    
+
     try {
       const state = mongoose.connection.readyState;
       const isConnected = state === 1; // 1 = connected
-      
+
       if (isConnected) {
         // Test database operation
         await mongoose.connection.db.admin().ping();
-        
+
         const responseTime = performance.now() - startTime;
-        
+
         return {
           healthy: true,
           message: 'Database connection is healthy',
@@ -212,23 +215,23 @@ class DatabaseHealthCheck implements HealthCheck {
           details: {
             state: this.getConnectionState(state),
             host: mongoose.connection.host,
-            name: mongoose.connection.name,
-          },
-        };
-      } else {
-        return {
-          healthy: false,
-          message: `Database connection is not ready. State: ${this.getConnectionState(state)}`,
-          timestamp: new Date().toISOString(),
-          responseTime: performance.now() - startTime,
+            name: mongoose.connection.name
+          }
         };
       }
+      return {
+        healthy: false,
+        message: `Database connection is not ready. State: ${this.getConnectionState(state)}`,
+        timestamp: new Date().toISOString(),
+        responseTime: performance.now() - startTime
+      };
+
     } catch (error) {
       return {
         healthy: false,
         message: `Database health check failed: ${error.message}`,
         timestamp: new Date().toISOString(),
-        responseTime: performance.now() - startTime,
+        responseTime: performance.now() - startTime
       };
     }
   }
@@ -238,7 +241,7 @@ class DatabaseHealthCheck implements HealthCheck {
       0: 'disconnected',
       1: 'connected',
       2: 'connecting',
-      3: 'disconnecting',
+      3: 'disconnecting'
     };
     return states[state] || 'unknown';
   }
@@ -249,7 +252,7 @@ class RedisHealthCheck implements HealthCheck {
 
   async execute(): Promise<HealthCheckResult> {
     const startTime = performance.now();
-    
+
     try {
       const redis = new Redis({
         host: process.env.REDIS_HOST || 'localhost',
@@ -257,7 +260,7 @@ class RedisHealthCheck implements HealthCheck {
         retryDelayOnFailover: 100,
         maxRetriesPerRequest: 1,
         lazyConnect: true,
-        commandTimeout: 2000,
+        commandTimeout: 2000
       });
 
       await redis.ping();
@@ -273,15 +276,15 @@ class RedisHealthCheck implements HealthCheck {
         responseTime,
         details: {
           version: info.split('\r\n').find(line => line.startsWith('redis_version:'))?.split(':')[1],
-          uptime: info.split('\r\n').find(line => line.startsWith('uptime_in_seconds:'))?.split(':')[1],
-        },
+          uptime: info.split('\r\n').find(line => line.startsWith('uptime_in_seconds:'))?.split(':')[1]
+        }
       };
     } catch (error) {
       return {
         healthy: false,
         message: `Redis health check failed: ${error.message}`,
         timestamp: new Date().toISOString(),
-        responseTime: performance.now() - startTime,
+        responseTime: performance.now() - startTime
       };
     }
   }
@@ -292,7 +295,7 @@ class MemoryHealthCheck implements HealthCheck {
 
   async execute(): Promise<HealthCheckResult> {
     const startTime = performance.now();
-    
+
     try {
       const memUsage = process.memoryUsage();
       const totalMemory = memUsage.heapTotal;
@@ -314,15 +317,15 @@ class MemoryHealthCheck implements HealthCheck {
           freeMemory: Math.round(freeMemory / 1024 / 1024), // MB
           usagePercent: Math.round(memoryUsagePercent),
           rss: Math.round(memUsage.rss / 1024 / 1024), // MB
-          external: Math.round(memUsage.external / 1024 / 1024), // MB
-        },
+          external: Math.round(memUsage.external / 1024 / 1024) // MB
+        }
       };
     } catch (error) {
       return {
         healthy: false,
         message: `Memory health check failed: ${error.message}`,
         timestamp: new Date().toISOString(),
-        responseTime: performance.now() - startTime,
+        responseTime: performance.now() - startTime
       };
     }
   }
@@ -333,28 +336,28 @@ class DiskHealthCheck implements HealthCheck {
 
   async execute(): Promise<HealthCheckResult> {
     const startTime = performance.now();
-    
+
     try {
       // This is a simplified disk check - in a real implementation,
       // you'd use a library like 'check-disk-space' or similar
       const stats = process.cwd(); // Just check if we can access the current directory
-      
+
       return {
         healthy: true,
         message: 'Disk access is healthy',
         timestamp: new Date().toISOString(),
         responseTime: performance.now() - startTime,
         details: {
-          currentDirectory: stats,
+          currentDirectory: stats
           // In a real implementation, you'd include actual disk space metrics
-        },
+        }
       };
     } catch (error) {
       return {
         healthy: false,
         message: `Disk health check failed: ${error.message}`,
         timestamp: new Date().toISOString(),
-        responseTime: performance.now() - startTime,
+        responseTime: performance.now() - startTime
       };
     }
   }
@@ -365,7 +368,7 @@ class ExternalServicesHealthCheck implements HealthCheck {
 
   async execute(): Promise<HealthCheckResult> {
     const startTime = performance.now();
-    
+
     try {
       // Check if Azure services are configured
       const azureConfigured = !!(
@@ -381,7 +384,7 @@ class ExternalServicesHealthCheck implements HealthCheck {
 
       const details = {
         azure: azureConfigured ? 'configured' : 'not configured',
-        email: emailConfigured ? 'configured' : 'not configured',
+        email: emailConfigured ? 'configured' : 'not configured'
       };
 
       return {
@@ -389,14 +392,14 @@ class ExternalServicesHealthCheck implements HealthCheck {
         message: 'External services status checked',
         timestamp: new Date().toISOString(),
         responseTime: performance.now() - startTime,
-        details,
+        details
       };
     } catch (error) {
       return {
         healthy: false,
         message: `External services health check failed: ${error.message}`,
         timestamp: new Date().toISOString(),
-        responseTime: performance.now() - startTime,
+        responseTime: performance.now() - startTime
       };
     }
   }
@@ -407,11 +410,11 @@ class CacheHealthCheck implements HealthCheck {
 
   async execute(): Promise<HealthCheckResult> {
     const startTime = performance.now();
-    
+
     try {
       const testKey = 'health_check_test';
       const testValue = 'test_value';
-      
+
       // Test cache set and get
       await multiLevelCache.set(testKey, testValue, { ttl: 60 });
       const retrievedValue = await multiLevelCache.get(testKey);
@@ -429,15 +432,15 @@ class CacheHealthCheck implements HealthCheck {
           localCacheSize: stats.localCacheSize,
           totalOperations: stats.totalOperations,
           localHitRate: stats.totalOperations > 0 ? (stats.localCacheHits / stats.totalOperations) * 100 : 0,
-          redisHitRate: stats.totalOperations > 0 ? (stats.redisCacheHits / stats.totalOperations) * 100 : 0,
-        },
+          redisHitRate: stats.totalOperations > 0 ? (stats.redisCacheHits / stats.totalOperations) * 100 : 0
+        }
       };
     } catch (error) {
       return {
         healthy: false,
         message: `Cache health check failed: ${error.message}`,
         timestamp: new Date().toISOString(),
-        responseTime: performance.now() - startTime,
+        responseTime: performance.now() - startTime
       };
     }
   }
@@ -448,12 +451,12 @@ class ApplicationHealthCheck implements HealthCheck {
 
   async execute(): Promise<HealthCheckResult> {
     const startTime = performance.now();
-    
+
     try {
       const uptime = process.uptime();
       const nodeVersion = process.version;
-      const platform = process.platform;
-      const arch = process.arch;
+      const {platform} = process;
+      const {arch} = process;
 
       return {
         healthy: true,
@@ -466,15 +469,15 @@ class ApplicationHealthCheck implements HealthCheck {
           platform,
           arch,
           pid: process.pid,
-          environment: process.env.NODE_ENV || 'development',
-        },
+          environment: process.env.NODE_ENV || 'development'
+        }
       };
     } catch (error) {
       return {
         healthy: false,
         message: `Application health check failed: ${error.message}`,
         timestamp: new Date().toISOString(),
-        responseTime: performance.now() - startTime,
+        responseTime: performance.now() - startTime
       };
     }
   }

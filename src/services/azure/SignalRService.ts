@@ -1,7 +1,9 @@
 import { ServiceBusClient, ServiceBusMessage } from '@azure/service-bus';
-import { Logger } from '../../core/logging/logger';
-import jwt from 'jsonwebtoken';
 import axios from 'axios';
+import jwt from 'jsonwebtoken';
+
+import { Logger } from '../../core/logging/logger';
+
 
 const logger = new Logger('SignalRService');
 
@@ -27,16 +29,16 @@ export interface SignalRNotification {
 }
 
 export class SignalRService {
-  private connectionString: string;
+  private readonly connectionString: string;
   private endpoint: string;
   private accessKey: string;
-  private hubName: string;
-  private apiVersion: string = '2021-10-01';
+  private readonly hubName: string;
+  private readonly apiVersion: string = '2021-10-01';
 
   constructor() {
     this.connectionString = process.env.AZURE_SIGNALR_CONNECTION_STRING || '';
     this.hubName = process.env.AZURE_SIGNALR_HUB_NAME || 'foodxchange';
-    
+
     if (this.connectionString) {
       this.parseConnectionString();
     } else {
@@ -159,7 +161,7 @@ export class SignalRService {
   async addUserToGroup(userId: string, groupName: string): Promise<void> {
     try {
       const url = `${this.endpoint}/api/v1/hubs/${this.hubName}/groups/${groupName}/users/${userId}`;
-      
+
       await this.makeSignalRRequest(url, {}, 'PUT');
       logger.debug('User added to group', { userId, groupName });
     } catch (error) {
@@ -174,7 +176,7 @@ export class SignalRService {
   async removeUserFromGroup(userId: string, groupName: string): Promise<void> {
     try {
       const url = `${this.endpoint}/api/v1/hubs/${this.hubName}/groups/${groupName}/users/${userId}`;
-      
+
       await this.makeSignalRRequest(url, {}, 'DELETE');
       logger.debug('User removed from group', { userId, groupName });
     } catch (error) {
@@ -216,7 +218,7 @@ export class SignalRService {
   async sendNotification(notification: SignalRNotification): Promise<void> {
     try {
       const { type, userId, tenantId, data, timestamp } = notification;
-      
+
       const message = {
         type,
         data,
@@ -347,7 +349,7 @@ export class SignalRService {
     }
 
     const token = this.generateServiceToken();
-    
+
     const config = {
       method,
       url,
@@ -385,14 +387,14 @@ export class SignalRService {
       }
 
       const count = await this.getConnectedUsersCount();
-      return { 
-        healthy: true, 
-        message: `SignalR healthy, ${count} connected users` 
+      return {
+        healthy: true,
+        message: `SignalR healthy, ${count} connected users`
       };
     } catch (error) {
-      return { 
-        healthy: false, 
-        message: `SignalR health check failed: ${error.message}` 
+      return {
+        healthy: false,
+        message: `SignalR health check failed: ${error.message}`
       };
     }
   }

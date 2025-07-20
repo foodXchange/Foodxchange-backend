@@ -1,18 +1,19 @@
+import bcrypt from 'bcryptjs';
 import { Request, Response } from 'express';
-import { User } from '../../models/User';
-import { Company } from '../../models/Company';
-import { 
-  ValidationError, 
-  NotFoundError, 
-  AuthenticationError 
+
+import {
+  ValidationError,
+  NotFoundError,
+  AuthenticationError
 } from '../../core/errors';
 import { Logger } from '../../core/logging/logger';
+import { Company } from '../../models/Company';
+import { User } from '../../models/User';
 import { AnalyticsService } from '../../services/analytics/AnalyticsService';
-import bcrypt from 'bcryptjs';
 
 export class UserController {
-  private logger: Logger;
-  private analyticsService: AnalyticsService;
+  private readonly logger: Logger;
+  private readonly analyticsService: AnalyticsService;
 
   constructor() {
     this.logger = new Logger('UserController');
@@ -22,7 +23,7 @@ export class UserController {
   async getProfile(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.user?.id;
-      
+
       const user = await User.findById(userId).populate('company');
       if (!user) {
         throw new NotFoundError('User not found');
@@ -89,7 +90,7 @@ export class UserController {
 
       // Track profile update
       await this.analyticsService.track('profile_updated', {
-        userId: userId,
+        userId,
         updatedFields: Object.keys(updateData),
         ip: req.ip
       });
@@ -97,15 +98,15 @@ export class UserController {
       res.success({
         message: 'Profile updated successfully',
         user: {
-          id: updatedUser!._id.toString(),
-          email: updatedUser!.email,
-          firstName: updatedUser!.firstName,
-          lastName: updatedUser!.lastName,
-          phone: updatedUser!.phone,
-          bio: updatedUser!.bio,
-          avatar: updatedUser!.avatar,
-          profileCompletionPercentage: updatedUser!.profileCompletionPercentage,
-          onboardingStep: updatedUser!.onboardingStep
+          id: updatedUser._id.toString(),
+          email: updatedUser.email,
+          firstName: updatedUser.firstName,
+          lastName: updatedUser.lastName,
+          phone: updatedUser.phone,
+          bio: updatedUser.bio,
+          avatar: updatedUser.avatar,
+          profileCompletionPercentage: updatedUser.profileCompletionPercentage,
+          onboardingStep: updatedUser.onboardingStep
         }
       });
 
@@ -118,7 +119,7 @@ export class UserController {
   async getProfileCompletion(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.user?.id;
-      
+
       const user = await User.findById(userId).populate('company');
       if (!user) {
         throw new NotFoundError('User not found');
@@ -161,7 +162,7 @@ export class UserController {
 
       // Get next onboarding step
       const nextStep = user.getNextOnboardingStep();
-      
+
       res.success({
         completionPercentage: user.profileCompletionPercentage,
         missingFields,
@@ -179,14 +180,14 @@ export class UserController {
   async updateCompany(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.user?.id;
-      const { 
-        companyName, 
-        companySize, 
-        industry, 
-        businessType, 
-        website, 
-        description, 
-        address 
+      const {
+        companyName,
+        companySize,
+        industry,
+        businessType,
+        website,
+        description,
+        address
       } = req.validatedData;
 
       const user = await User.findById(userId);
@@ -195,7 +196,7 @@ export class UserController {
       }
 
       let company;
-      
+
       if (user.company) {
         // Update existing company
         company = await Company.findByIdAndUpdate(
@@ -235,7 +236,7 @@ export class UserController {
 
       // Track company update
       await this.analyticsService.track('company_updated', {
-        userId: userId,
+        userId,
         companyId: company._id.toString(),
         companyName,
         companySize,
@@ -268,7 +269,7 @@ export class UserController {
   async getCompany(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.user?.id;
-      
+
       const user = await User.findById(userId).populate('company');
       if (!user) {
         throw new NotFoundError('User not found');
@@ -279,7 +280,7 @@ export class UserController {
       }
 
       const company = user.company as any;
-      
+
       res.success({
         company: {
           id: company._id.toString(),
@@ -329,7 +330,7 @@ export class UserController {
 
       // Track password change
       await this.analyticsService.track('password_changed', {
-        userId: userId,
+        userId,
         ip: req.ip
       });
 
@@ -345,7 +346,7 @@ export class UserController {
     try {
       const userId = req.user?.id;
       const { type } = req.body;
-      
+
       // Note: File upload logic would be implemented here
       // For now, we'll simulate with a placeholder URL
       const documentUrl = `https://storage.foodxchange.com/documents/${userId}/${type}-${Date.now()}.pdf`;
@@ -367,7 +368,7 @@ export class UserController {
 
       // Track document upload
       await this.analyticsService.track('document_uploaded', {
-        userId: userId,
+        userId,
         documentType: type,
         ip: req.ip
       });
@@ -391,7 +392,7 @@ export class UserController {
   async getDocuments(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.user?.id;
-      
+
       const user = await User.findById(userId);
       if (!user) {
         throw new NotFoundError('User not found');
@@ -431,14 +432,14 @@ export class UserController {
 
       // Track preferences update
       await this.analyticsService.track('preferences_updated', {
-        userId: userId,
+        userId,
         updatedPreferences: Object.keys(req.body),
         ip: req.ip
       });
 
       res.success({
         message: 'Preferences updated successfully',
-        preferences: updatedUser!.preferences
+        preferences: updatedUser.preferences
       });
 
     } catch (error) {

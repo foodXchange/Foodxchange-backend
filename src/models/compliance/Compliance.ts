@@ -121,20 +121,20 @@ const complianceSchema = new mongoose.Schema({
 // Calculate compliance score
 complianceSchema.methods.calculateComplianceScore = function() {
   let score = 100;
-  
+
   // Deduct for expired certification
   if (this.status === 'expired') score -= 50;
   if (this.status === 'suspended') score -= 30;
-  
+
   // Deduct for upcoming expiry
   const daysToExpiry = Math.floor((this.expiryDate - new Date()) / (1000 * 60 * 60 * 24));
   if (daysToExpiry < 30) score -= 20;
   else if (daysToExpiry < 60) score -= 10;
-  
+
   // Deduct for unresolved alerts
   const unresolvedAlerts = this.alerts.filter(a => !a.resolved);
   score -= unresolvedAlerts.length * 5;
-  
+
   this.complianceScore = Math.max(0, score);
   return this.complianceScore;
 };

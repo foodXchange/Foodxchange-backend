@@ -2,7 +2,9 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const ExcelJS = require('exceljs');
+
 const fs = require('fs');
+
 const Product = require('../../models/Product');
 
 // Configure file upload
@@ -12,7 +14,7 @@ const upload = multer({ dest: 'uploads/' });
 router.post('/simple', upload.single('file'), async (req, res) => {
   try {
     console.log('Import request received');
-    
+
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
@@ -21,14 +23,14 @@ router.post('/simple', upload.single('file'), async (req, res) => {
 
     // Read the file based on type
     const ext = req.file.originalname.split('.').pop().toLowerCase();
-    let data = [];
+    const data = [];
 
     if (ext === 'csv') {
       // For CSV files
       const fileContent = fs.readFileSync(req.file.path, 'utf-8');
       const lines = fileContent.split('\n');
       const headers = lines[0].split(',').map(h => h.trim());
-      
+
       for (let i = 1; i < lines.length; i++) {
         if (lines[i].trim()) {
           const values = lines[i].split(',');
@@ -45,12 +47,12 @@ router.post('/simple', upload.single('file'), async (req, res) => {
       await workbook.xlsx.readFile(req.file.path);
       const worksheet = workbook.getWorksheet(1);
       const sheetName = worksheet.name;
-      
+
       const headers = [];
       worksheet.getRow(1).eachCell((cell) => {
         headers.push(cell.value);
       });
-      
+
       worksheet.eachRow((row, rowNumber) => {
         if (rowNumber > 1) { // Skip header row
           const rowData = {};
@@ -79,7 +81,7 @@ router.post('/simple', upload.single('file'), async (req, res) => {
         console.log('Error importing row:', err.message);
       }
     }
-    
+
     // Clean up uploaded file
     fs.unlinkSync(req.file.path);
 
@@ -92,9 +94,9 @@ router.post('/simple', upload.single('file'), async (req, res) => {
 
   } catch (error) {
     console.error('Import error:', error);
-    res.status(500).json({ 
-      error: 'Import failed', 
-      message: error.message 
+    res.status(500).json({
+      error: 'Import failed',
+      message: error.message
     });
   }
 });

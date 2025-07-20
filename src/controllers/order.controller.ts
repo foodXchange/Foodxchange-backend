@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
+
+import { AuthRequest } from '../middleware/auth.middleware';
 import { Order } from '../models/Order';
 import { RFQ } from '../models/RFQ';
-import { AuthRequest } from '../middleware/auth.middleware';
 
 // @desc    Create order from accepted RFQ proposal
 // @route   POST /api/orders/from-rfq
@@ -93,7 +94,7 @@ export const getOrders = async (req: AuthRequest, res: Response) => {
 
     // Build filter based on user role
     const filter: any = {};
-    
+
     // If buyer, show their orders; if supplier, show orders to them
     if (role === 'buyer') {
       filter.buyer = req.userId;
@@ -106,7 +107,7 @@ export const getOrders = async (req: AuthRequest, res: Response) => {
         { supplier: req.userId }
       ];
     }
-    
+
     if (status) filter.status = status;
 
     // Pagination
@@ -192,9 +193,9 @@ export const getOrder = async (req: AuthRequest, res: Response) => {
 export const updateOrderStatus = async (req: AuthRequest, res: Response) => {
   try {
     const { status, notes } = req.body;
-    
+
     const order = await Order.findById(req.params.id);
-    
+
     if (!order) {
       return res.status(404).json({
         success: false,
@@ -230,7 +231,7 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response) => {
 
     // Update status
     order.status = status;
-    
+
     // Update timeline
     const timelineUpdate: any = {};
     switch (status) {
@@ -250,7 +251,7 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response) => {
         timelineUpdate.cancelled = new Date();
         break;
     }
-    
+
     Object.assign(order.timeline, timelineUpdate);
 
     // Add status history
@@ -282,7 +283,7 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response) => {
 export const addShipmentTracking = async (req: AuthRequest, res: Response) => {
   try {
     const order = await Order.findById(req.params.id);
-    
+
     if (!order) {
       return res.status(404).json({
         success: false,
@@ -330,7 +331,7 @@ export const addShipmentTracking = async (req: AuthRequest, res: Response) => {
 export const getOrderAnalytics = async (req: AuthRequest, res: Response) => {
   try {
     const { period = '30d', role } = req.query;
-    
+
     // Calculate date range
     const days = parseInt(period.toString().replace('d', ''));
     const startDate = new Date();

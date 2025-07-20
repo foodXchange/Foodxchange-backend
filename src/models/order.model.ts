@@ -53,14 +53,14 @@ export interface ILineItem {
   unit: string;
   unitPrice: number;
   totalPrice: number;
-  
+
   // Line-level tracking
   status: LineItemStatus;
   allocatedQuantity: number;
   shippedQuantity: number;
   deliveredQuantity: number;
   returnedQuantity: number;
-  
+
   // Temperature monitoring
   requiresTemperatureControl?: boolean;
   temperatureRange?: {
@@ -68,16 +68,16 @@ export interface ILineItem {
     max: number;
     unit: 'C' | 'F';
   };
-  
+
   // Batch tracking
   batchNumber?: string;
   expiryDate?: Date;
   productionDate?: Date;
-  
+
   // Warehouse info
   warehouseLocation?: string;
   pickingInstructions?: string;
-  
+
   // Timeline
   timeline?: {
     status: LineItemStatus;
@@ -93,13 +93,13 @@ export interface IShipment {
   status: ShipmentStatus;
   carrier: string;
   trackingNumber: string;
-  
+
   // Items in this shipment
   lineItems: {
     lineItemId: Types.ObjectId;
     quantity: number;
   }[];
-  
+
   // Addresses
   pickupAddress: {
     addressLine1: string;
@@ -121,13 +121,13 @@ export interface IShipment {
     contactName: string;
     contactPhone: string;
   };
-  
+
   // Dates
   estimatedPickupDate?: Date;
   actualPickupDate?: Date;
   estimatedDeliveryDate?: Date;
   actualDeliveryDate?: Date;
-  
+
   // Temperature monitoring
   temperatureReadings?: ITemperatureReading[];
   temperatureAlerts?: {
@@ -135,7 +135,7 @@ export interface IShipment {
     message: string;
     severity: 'low' | 'medium' | 'high';
   }[];
-  
+
   // Documents
   documents?: {
     type: string;
@@ -143,7 +143,7 @@ export interface IShipment {
     url: string;
     uploadedAt: Date;
   }[];
-  
+
   // Tracking events
   trackingEvents?: {
     timestamp: Date;
@@ -151,7 +151,7 @@ export interface IShipment {
     status: string;
     description: string;
   }[];
-  
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -162,16 +162,16 @@ export interface IOrder extends Document {
   buyerName: string;
   supplier: Types.ObjectId;
   supplierName: string;
-  
+
   // Order details
   status: OrderStatus;
   priority: 'low' | 'medium' | 'high' | 'urgent';
   orderDate: Date;
   requiredDate?: Date;
-  
+
   // Line items with tracking
   lineItems: ILineItem[];
-  
+
   // Pricing
   subtotal: number;
   tax: number;
@@ -179,19 +179,19 @@ export interface IOrder extends Document {
   discount?: number;
   total: number;
   currency: string;
-  
+
   // Partial fulfillment
   allowPartialFulfillment: boolean;
   minimumFulfillmentPercentage?: number;
-  
+
   // Shipments
   shipments: IShipment[];
-  
+
   // Payment
   paymentTerms: string;
   paymentStatus: 'pending' | 'partial' | 'paid' | 'overdue' | 'refunded';
   paymentDueDate?: Date;
-  
+
   // Temperature monitoring
   requiresTemperatureControl: boolean;
   temperatureMonitoring?: {
@@ -199,7 +199,7 @@ export interface IOrder extends Document {
     alertThreshold: number;
     alertEmails: string[];
   };
-  
+
   // Documents
   documents: {
     type: string;
@@ -208,23 +208,23 @@ export interface IOrder extends Document {
     uploadedAt: Date;
     uploadedBy: Types.ObjectId;
   }[];
-  
+
   // Notes
   buyerNotes?: string;
   supplierNotes?: string;
   internalNotes?: string;
-  
+
   // Compliance
   complianceChecked: boolean;
   complianceDocuments?: string[];
-  
+
   // Timestamps
   confirmedAt?: Date;
   shippedAt?: Date;
   deliveredAt?: Date;
   completedAt?: Date;
   cancelledAt?: Date;
-  
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -249,7 +249,7 @@ const LineItemSchema = new Schema<ILineItem>({
   unit: { type: String, required: true },
   unitPrice: { type: Number, required: true, min: 0 },
   totalPrice: { type: Number, required: true, min: 0 },
-  
+
   status: {
     type: String,
     enum: Object.values(LineItemStatus),
@@ -259,21 +259,21 @@ const LineItemSchema = new Schema<ILineItem>({
   shippedQuantity: { type: Number, default: 0, min: 0 },
   deliveredQuantity: { type: Number, default: 0, min: 0 },
   returnedQuantity: { type: Number, default: 0, min: 0 },
-  
+
   requiresTemperatureControl: Boolean,
   temperatureRange: {
     min: Number,
     max: Number,
     unit: { type: String, enum: ['C', 'F'] }
   },
-  
+
   batchNumber: String,
   expiryDate: Date,
   productionDate: Date,
-  
+
   warehouseLocation: String,
   pickingInstructions: String,
-  
+
   timeline: [{
     status: { type: String, enum: Object.values(LineItemStatus), required: true },
     timestamp: { type: Date, default: Date.now },
@@ -291,12 +291,12 @@ const ShipmentSchema = new Schema<IShipment>({
   },
   carrier: { type: String, required: true },
   trackingNumber: { type: String, required: true, index: true },
-  
+
   lineItems: [{
     lineItemId: { type: Schema.Types.ObjectId, required: true },
     quantity: { type: Number, required: true, min: 0 }
   }],
-  
+
   pickupAddress: {
     addressLine1: { type: String, required: true },
     addressLine2: String,
@@ -317,26 +317,26 @@ const ShipmentSchema = new Schema<IShipment>({
     contactName: { type: String, required: true },
     contactPhone: { type: String, required: true }
   },
-  
+
   estimatedPickupDate: Date,
   actualPickupDate: Date,
   estimatedDeliveryDate: Date,
   actualDeliveryDate: Date,
-  
+
   temperatureReadings: [TemperatureReadingSchema],
   temperatureAlerts: [{
     timestamp: { type: Date, required: true },
     message: { type: String, required: true },
     severity: { type: String, enum: ['low', 'medium', 'high'], required: true }
   }],
-  
+
   documents: [{
     type: { type: String, required: true },
     name: { type: String, required: true },
     url: { type: String, required: true },
     uploadedAt: { type: Date, default: Date.now }
   }],
-  
+
   trackingEvents: [{
     timestamp: { type: Date, required: true },
     location: { type: String, required: true },
@@ -366,7 +366,7 @@ const OrderSchema = new Schema<IOrder>({
     index: true
   },
   supplierName: { type: String, required: true },
-  
+
   status: {
     type: String,
     enum: Object.values(OrderStatus),
@@ -384,30 +384,30 @@ const OrderSchema = new Schema<IOrder>({
     required: true
   },
   requiredDate: Date,
-  
+
   lineItems: {
     type: [LineItemSchema],
     required: true,
     validate: {
-      validator: function(items: ILineItem[]) {
+      validator(items: ILineItem[]) {
         return items.length > 0;
       },
       message: 'Order must have at least one line item'
     }
   },
-  
+
   subtotal: { type: Number, required: true, min: 0 },
   tax: { type: Number, default: 0, min: 0 },
   shipping: { type: Number, default: 0, min: 0 },
   discount: { type: Number, default: 0, min: 0 },
   total: { type: Number, required: true, min: 0 },
   currency: { type: String, default: 'USD', required: true },
-  
+
   allowPartialFulfillment: { type: Boolean, default: false },
   minimumFulfillmentPercentage: { type: Number, min: 0, max: 100 },
-  
+
   shipments: [ShipmentSchema],
-  
+
   paymentTerms: { type: String, required: true },
   paymentStatus: {
     type: String,
@@ -415,14 +415,14 @@ const OrderSchema = new Schema<IOrder>({
     default: 'pending'
   },
   paymentDueDate: Date,
-  
+
   requiresTemperatureControl: { type: Boolean, default: false },
   temperatureMonitoring: {
     enabled: Boolean,
     alertThreshold: Number,
     alertEmails: [String]
   },
-  
+
   documents: [{
     type: { type: String, required: true },
     name: { type: String, required: true },
@@ -430,14 +430,14 @@ const OrderSchema = new Schema<IOrder>({
     uploadedAt: { type: Date, default: Date.now },
     uploadedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true }
   }],
-  
+
   buyerNotes: String,
   supplierNotes: String,
   internalNotes: String,
-  
+
   complianceChecked: { type: Boolean, default: false },
   complianceDocuments: [String],
-  
+
   confirmedAt: Date,
   shippedAt: Date,
   deliveredAt: Date,
@@ -481,7 +481,7 @@ OrderSchema.methods.updateLineItemStatus = async function(
   if (!lineItem) {
     throw new Error('Line item not found');
   }
-  
+
   lineItem.status = status;
   lineItem.timeline = lineItem.timeline || [];
   lineItem.timeline.push({
@@ -490,7 +490,7 @@ OrderSchema.methods.updateLineItemStatus = async function(
     user: userId,
     notes
   });
-  
+
   // Update quantities based on status
   switch (status) {
     case LineItemStatus.ALLOCATED:
@@ -503,16 +503,16 @@ OrderSchema.methods.updateLineItemStatus = async function(
       lineItem.deliveredQuantity = lineItem.quantity;
       break;
   }
-  
+
   // Update order status based on line items
   await this.updateOrderStatus();
-  
+
   return this.save();
 };
 
 OrderSchema.methods.updateOrderStatus = async function() {
   const allStatuses = this.lineItems.map(item => item.status);
-  
+
   if (allStatuses.every(s => s === LineItemStatus.DELIVERED)) {
     this.status = OrderStatus.DELIVERED;
     this.deliveredAt = new Date();
@@ -525,13 +525,13 @@ OrderSchema.methods.updateOrderStatus = async function() {
 
 OrderSchema.methods.addShipment = async function(shipmentData: Partial<IShipment>) {
   const shipmentId = `SHP-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
-  
+
   this.shipments.push({
     ...shipmentData,
     shipmentId,
     _id: new Types.ObjectId()
   } as IShipment);
-  
+
   // Update line item statuses
   for (const item of shipmentData.lineItems || []) {
     await this.updateLineItemStatus(
@@ -540,7 +540,7 @@ OrderSchema.methods.addShipment = async function(shipmentData: Partial<IShipment
       shipmentData.createdBy as Types.ObjectId
     );
   }
-  
+
   return this.save();
 };
 
@@ -552,17 +552,17 @@ OrderSchema.methods.addTemperatureReading = function(
   if (!shipment) {
     throw new Error('Shipment not found');
   }
-  
+
   shipment.temperatureReadings = shipment.temperatureReadings || [];
   shipment.temperatureReadings.push(reading);
-  
+
   // Check for temperature violations
   const tempControl = this.temperatureMonitoring;
   if (tempControl?.enabled && tempControl.alertThreshold) {
-    const violatesThreshold = reading.unit === 'C' 
+    const violatesThreshold = reading.unit === 'C'
       ? Math.abs(reading.temperature) > tempControl.alertThreshold
       : Math.abs((reading.temperature - 32) * 5/9) > tempControl.alertThreshold;
-      
+
     if (violatesThreshold) {
       shipment.temperatureAlerts = shipment.temperatureAlerts || [];
       shipment.temperatureAlerts.push({
@@ -572,7 +572,7 @@ OrderSchema.methods.addTemperatureReading = function(
       });
     }
   }
-  
+
   return this.save();
 };
 
@@ -587,14 +587,14 @@ OrderSchema.pre('save', function(next) {
     const random = Math.random().toString(36).substr(2, 6).toUpperCase();
     this.orderId = `ORD-${year}${month}${day}-${random}`;
   }
-  
+
   // Calculate totals
   this.subtotal = this.lineItems.reduce((sum, item) => sum + item.totalPrice, 0);
   this.total = this.subtotal + this.tax + this.shipping - (this.discount || 0);
-  
+
   // Check temperature control requirement
   this.requiresTemperatureControl = this.lineItems.some(item => item.requiresTemperatureControl);
-  
+
   next();
 });
 

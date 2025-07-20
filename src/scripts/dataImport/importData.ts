@@ -1,17 +1,19 @@
-﻿const mongoose = require('mongoose');
-const csv = require('csv-parser');
-const fs = require('fs');
+﻿const fs = require('fs');
 const path = require('path');
+
+const bcrypt = require('bcryptjs');
+const csv = require('csv-parser');
+const mongoose = require('mongoose');
+
 require('dotenv').config();
 
 // Import models
-const User = require('../../models/User');
 const Company = require('../../models/Company');
-const Request = require('../../models/Request');
-const RequestLineItem = require('../../models/RequestLineItem');
 const Product = require('../../models/Product');
 const Proposal = require('../../models/Proposal');
-const bcrypt = require('bcryptjs');
+const Request = require('../../models/Request');
+const RequestLineItem = require('../../models/RequestLineItem');
+const User = require('../../models/User');
 
 // Connect to MongoDB
 const connectDB = async () => {
@@ -28,14 +30,14 @@ const connectDB = async () => {
 };
 
 // Helper function to parse CSV
-const parseCSV = (filePath) => {
+const parseCSV = async (filePath) => {
   return new Promise((resolve, reject) => {
     const results = [];
     if (!fs.existsSync(filePath)) {
       reject(new Error(`File not found: ${filePath}`));
       return;
     }
-    
+
     fs.createReadStream(filePath)
       .pipe(csv())
       .on('data', (data) => results.push(data))
@@ -50,7 +52,7 @@ const importBuyers = async (filePath) => {
   try {
     const buyers = await parseCSV(filePath);
     let imported = 0;
-    
+
     for (const buyer of buyers) {
       try {
         // Create company
@@ -69,27 +71,27 @@ const importBuyers = async (filePath) => {
           status: 'active',
           logo: buyer['Company logo']
         });
-        
+
         await company.save();
-        
+
         // Create default user for the company
         const hashedPassword = await bcrypt.hash('password123', 10);
         const user = new User({
           email: buyer['Email address'] || `${buyer['Buyer Code']}@foodxchange.com`,
           password: hashedPassword,
-          name: buyer['Company name'] + ' Admin',
+          name: `${buyer['Company name']  } Admin`,
           role: 'buyer',
           company: company._id,
           isActive: true
         });
-        
+
         await user.save();
         imported++;
       } catch (error) {
         console.error(`Error importing buyer ${buyer['Company name']}:`, error.message);
       }
     }
-    
+
     console.log(`✅ Imported ${imported} buyers`);
   } catch (error) {
     console.error('Error importing buyers:', error);
@@ -102,14 +104,14 @@ const importRequests = async (filePath) => {
   try {
     const requests = await parseCSV(filePath);
     let imported = 0;
-    
+
     // First, get a mapping of buyer names to company IDs
     const buyers = await Company.find({ type: 'buyer' });
     const buyerMap = {};
     buyers.forEach(b => {
       buyerMap[b.name] = b._id;
     });
-    
+
     for (const request of requests) {
       try {
         const buyerCompany = buyerMap[request['Buyer']];
@@ -117,7 +119,7 @@ const importRequests = async (filePath) => {
           console.warn(`Buyer not found: ${request['Buyer']}`);
           continue;
         }
-        
+
         const newRequest = new Request({
           requestId: request['Request ID'],
           requestName: request['Request name'],
@@ -133,14 +135,14 @@ const importRequests = async (filePath) => {
           createdAt: new Date(request['First created']),
           updatedAt: new Date(request['Last Updated'])
         });
-        
+
         await newRequest.save();
         imported++;
       } catch (error) {
         console.error(`Error importing request ${request['Request name']}:`, error.message);
       }
     }
-    
+
     console.log(`✅ Imported ${imported} requests`);
   } catch (error) {
     console.error('Error importing requests:', error);
@@ -153,25 +155,25 @@ const importRequestLineItems = async (filePath) => {
   try {
     const lineItems = await parseCSV(filePath);
     let imported = 0;
-    
+
     // Get all requests for mapping
     const requests = await Request.find();
     const requestMap = {};
     requests.forEach(r => {
       requestMap[r.requestName] = r._id;
     });
-    
+
     for (const item of lineItems) {
       try {
         // Find the associated request
         const requestName = item['Link to Requests'];
         const requestId = requestMap[requestName];
-        
+
         if (!requestId) {
           console.warn(`Request not found for line item: ${requestName}`);
           continue;
         }
-        
+
         const lineItem = new RequestLineItem({
           request: requestId,
           productName: item['Requested Product name'],
@@ -183,20 +185,20 @@ const importRequestLineItems = async (filePath) => {
           benchmarkCompany: item["Benchmark's Company/Brand"],
           benchmarkLink: item["Benchmark's product link"]
         });
-        
+
         await lineItem.save();
-        
+
         // Update the request with this line item
         await Request.findByIdAndUpdate(requestId, {
           $push: { lineItems: lineItem._id }
         });
-        
+
         imported++;
       } catch (error) {
         console.error(`Error importing line item ${item['Request Product Name']}:`, error.message);
       }
     }
-    
+
     console.log(`✅ Imported ${imported} request line items`);
   } catch (error) {
     console.error('Error importing request line items:', error);
@@ -209,14 +211,14 @@ const importProducts = async (filePath) => {
   try {
     const products = await parseCSV(filePath);
     let imported = 0;
-    
+
     // Get supplier mapping
     const suppliers = await Company.find({ type: 'supplier' });
     const supplierMap = {};
     suppliers.forEach(s => {
       supplierMap[s.name] = s._id;
     });
-    
+
     for (const product of products) {
       try {
         // Find or create supplier
@@ -236,7 +238,7 @@ const importProducts = async (filePath) => {
           supplierId = supplier._id;
           supplierMap[product['Supplier']] = supplier._id;
         }
-        
+
         const newProduct = new Product({
           productId: product['Product ID'],
           productCode: product['Product code'],
@@ -275,14 +277,14 @@ const importProducts = async (filePath) => {
           },
           images: product['Product Images'] ? [product['Product Images']] : []
         });
-        
+
         await newProduct.save();
         imported++;
       } catch (error) {
         console.error(`Error importing product ${product['Product Name']}:`, error.message);
       }
     }
-    
+
     console.log(`✅ Imported ${imported} products`);
   } catch (error) {
     console.error('Error importing products:', error);
@@ -295,37 +297,37 @@ const importProposals = async (filePath) => {
   try {
     const proposals = await parseCSV(filePath);
     let imported = 0;
-    
+
     // Get mappings
     const requests = await Request.find();
     const suppliers = await Company.find({ type: 'supplier' });
     const products = await Product.find();
-    
+
     const requestMap = {};
     requests.forEach(r => {
       if (r.requestId) requestMap[r.requestId] = r._id;
     });
-    
+
     const supplierMap = {};
     suppliers.forEach(s => {
       supplierMap[s.name] = s._id;
     });
-    
+
     const productMap = {};
     products.forEach(p => {
       productMap[p.name] = p._id;
     });
-    
+
     for (const proposal of proposals) {
       try {
         const requestId = requestMap[proposal['ID (lookup from Request)']];
         const supplierId = supplierMap[proposal['Supplier']];
-        
+
         if (!requestId || !supplierId) {
           console.warn(`Missing request or supplier for proposal ${proposal['Proposal ID']}`);
           continue;
         }
-        
+
         const newProposal = new Proposal({
           proposalId: proposal['Proposal ID'],
           request: requestId,
@@ -346,14 +348,14 @@ const importProposals = async (filePath) => {
             forecast: proposal['Forecast Files']
           }
         });
-        
+
         await newProposal.save();
         imported++;
       } catch (error) {
         console.error(`Error importing proposal ${proposal['Proposal ID']}:`, error.message);
       }
     }
-    
+
     console.log(`✅ Imported ${imported} proposals`);
   } catch (error) {
     console.error('Error importing proposals:', error);
@@ -364,17 +366,17 @@ const importProposals = async (filePath) => {
 const runImport = async () => {
   try {
     await connectDB();
-    
+
     // Define file paths - adjust these to your actual CSV locations
     const dataDir = path.join(__dirname, '../../../data');
-    
+
     // Import in order of dependencies
     await importBuyers(path.join(dataDir, 'Buyers 23_6_2025.csv'));
     await importRequests(path.join(dataDir, 'Requests 23_6_2025.csv'));
     await importRequestLineItems(path.join(dataDir, 'Request line items 23_6_2025.csv'));
     await importProducts(path.join(dataDir, 'Products 23_6_2025.csv'));
     await importProposals(path.join(dataDir, 'Proposals  Samples 23_6_2025.csv'));
-    
+
     console.log('\n✅ Data import completed!');
     process.exit(0);
   } catch (error) {

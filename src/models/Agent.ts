@@ -3,7 +3,7 @@ import mongoose, { Document, Schema, Types } from 'mongoose';
 export interface IAgent extends Document {
   userId: Types.ObjectId;
   agentNumber: string;
-  
+
   personalInfo: {
     firstName: string;
     lastName: string;
@@ -26,7 +26,7 @@ export interface IAgent extends Document {
     bio?: string;
     languages?: string[];
   };
-  
+
   professionalInfo?: {
     companyName?: string;
     businessRegistration?: string;
@@ -43,7 +43,7 @@ export interface IAgent extends Document {
     linkedinProfile?: string;
     website?: string;
   };
-  
+
   expertise?: {
     categories?: Types.ObjectId[];
     specializations?: string[];
@@ -63,7 +63,7 @@ export interface IAgent extends Document {
       description: string;
     }>;
   };
-  
+
   territory?: {
     type: 'geographic' | 'category' | 'hybrid';
     geographic?: {
@@ -83,7 +83,7 @@ export interface IAgent extends Document {
     categories?: Types.ObjectId[];
     exclusivity: 'exclusive' | 'shared' | 'competitive';
   };
-  
+
   performance: {
     tier: 'bronze' | 'silver' | 'gold' | 'platinum';
     rating: {
@@ -112,7 +112,7 @@ export interface IAgent extends Document {
       };
     };
   };
-  
+
   commission: {
     structure: 'percentage' | 'fixed' | 'hybrid';
     baseRate: {
@@ -141,7 +141,7 @@ export interface IAgent extends Document {
       method: 'bank_transfer' | 'check' | 'paypal' | 'stripe';
     };
   };
-  
+
   banking?: {
     accountName?: string;
     bankName?: string;
@@ -157,9 +157,9 @@ export interface IAgent extends Document {
       uploadedAt: Date;
     }>;
   };
-  
+
   status: 'pending' | 'under_review' | 'approved' | 'active' | 'suspended' | 'inactive' | 'terminated';
-  
+
   verification: {
     identity: {
       status: 'pending' | 'verified' | 'rejected';
@@ -188,7 +188,7 @@ export interface IAgent extends Document {
       completedAt?: Date;
     };
   };
-  
+
   communication: {
     preferredMethod: 'whatsapp' | 'email' | 'phone' | 'app';
     notifications: {
@@ -204,7 +204,7 @@ export interface IAgent extends Document {
       timezone: string;
     };
   };
-  
+
   onboarding: {
     step: 'personal_info' | 'professional_info' | 'expertise' | 'territory' | 'verification' | 'banking' | 'training' | 'completed';
     completedSteps: string[];
@@ -214,7 +214,7 @@ export interface IAgent extends Document {
     agreementSigned: boolean;
     agreementSignedAt?: Date;
   };
-  
+
   internal?: {
     notes?: string[];
     tags?: string[];
@@ -227,18 +227,18 @@ export interface IAgent extends Document {
       terminationNotice: number;
     };
   };
-  
+
   lastActivity: Date;
   isActive: boolean;
   terminatedAt?: Date;
   terminationReason?: string;
-  
+
   // Virtual properties
   fullName?: string;
   tierMultiplier?: number;
   acceptanceRate?: number;
   conversionRate?: number;
-  
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -255,7 +255,7 @@ const agentSchema = new Schema<IAgent>({
     unique: true,
     required: true
   },
-  
+
   personalInfo: {
     firstName: { type: String, required: true, trim: true },
     lastName: { type: String, required: true, trim: true },
@@ -278,7 +278,7 @@ const agentSchema = new Schema<IAgent>({
     bio: String,
     languages: [String]
   },
-  
+
   professionalInfo: {
     companyName: String,
     businessRegistration: String,
@@ -295,7 +295,7 @@ const agentSchema = new Schema<IAgent>({
     linkedinProfile: String,
     website: String
   },
-  
+
   expertise: {
     categories: [{
       type: Schema.Types.ObjectId,
@@ -321,7 +321,7 @@ const agentSchema = new Schema<IAgent>({
       description: String
     }]
   },
-  
+
   territory: {
     type: {
       type: String,
@@ -352,7 +352,7 @@ const agentSchema = new Schema<IAgent>({
       default: 'shared'
     }
   },
-  
+
   performance: {
     tier: {
       type: String,
@@ -391,7 +391,7 @@ const agentSchema = new Schema<IAgent>({
       }
     }
   },
-  
+
   commission: {
     structure: {
       type: String,
@@ -432,7 +432,7 @@ const agentSchema = new Schema<IAgent>({
       }
     }
   },
-  
+
   banking: {
     accountName: String,
     bankName: String,
@@ -448,13 +448,13 @@ const agentSchema = new Schema<IAgent>({
       uploadedAt: Date
     }]
   },
-  
+
   status: {
     type: String,
     enum: ['pending', 'under_review', 'approved', 'active', 'suspended', 'inactive', 'terminated'],
     default: 'pending'
   },
-  
+
   verification: {
     identity: {
       status: { type: String, enum: ['pending', 'verified', 'rejected'], default: 'pending' },
@@ -483,7 +483,7 @@ const agentSchema = new Schema<IAgent>({
       completedAt: Date
     }
   },
-  
+
   communication: {
     preferredMethod: {
       type: String,
@@ -503,7 +503,7 @@ const agentSchema = new Schema<IAgent>({
       timezone: { type: String, default: 'UTC' }
     }
   },
-  
+
   onboarding: {
     step: {
       type: String,
@@ -517,7 +517,7 @@ const agentSchema = new Schema<IAgent>({
     agreementSigned: { type: Boolean, default: false },
     agreementSignedAt: Date
   },
-  
+
   internal: {
     notes: [String],
     tags: [String],
@@ -534,12 +534,12 @@ const agentSchema = new Schema<IAgent>({
       terminationNotice: { type: Number, default: 30 }
     }
   },
-  
+
   lastActivity: {
     type: Date,
     default: Date.now
   },
-  
+
   isActive: { type: Boolean, default: true },
   terminatedAt: Date,
   terminationReason: String

@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+
 import { Logger } from '../../core/logging/logger';
 import { MetricsService } from '../../core/metrics/MetricsService';
 
@@ -28,9 +29,9 @@ export interface SlowQuery {
 
 export class QueryOptimizer {
   private static instance: QueryOptimizer;
-  private metricsService: MetricsService;
-  private slowQueryThreshold: number = 100; // 100ms
-  private analysisCache: Map<string, QueryAnalysis> = new Map();
+  private readonly metricsService: MetricsService;
+  private readonly slowQueryThreshold: number = 100; // 100ms
+  private readonly analysisCache: Map<string, QueryAnalysis> = new Map();
 
   private constructor() {
     this.metricsService = new MetricsService();
@@ -45,22 +46,22 @@ export class QueryOptimizer {
 
   public async analyzeQuery(collection: string, query: any): Promise<QueryAnalysis> {
     const cacheKey = `${collection}_${JSON.stringify(query)}`;
-    
+
     // Check cache first
     if (this.analysisCache.has(cacheKey)) {
-      return this.analysisCache.get(cacheKey)!;
+      return this.analysisCache.get(cacheKey);
     }
 
     try {
       const startTime = Date.now();
-      const db = mongoose.connection.db;
+      const {db} = mongoose.connection;
       const coll = db.collection(collection);
-      
+
       // Get query execution plan
       const explainResult = await coll.find(query).explain('executionStats');
       const executionTime = Date.now() - startTime;
-      
-      const executionStats = explainResult.executionStats;
+
+      const {executionStats} = explainResult;
       const analysis: QueryAnalysis = {
         collection,
         query,
@@ -77,7 +78,7 @@ export class QueryOptimizer {
 
       // Cache the result
       this.analysisCache.set(cacheKey, analysis);
-      
+
       // Record metrics
       this.metricsService.recordTimer('query_execution_time_seconds', executionTime / 1000, {
         collection,
@@ -137,8 +138,8 @@ export class QueryOptimizer {
 
   public async getSlowQueries(limit: number = 10): Promise<SlowQuery[]> {
     try {
-      const db = mongoose.connection.db;
-      
+      const {db} = mongoose.connection;
+
       // Try to get from profiler collection
       const profilerData = await db.collection('system.profile')
         .find({
@@ -166,7 +167,7 @@ export class QueryOptimizer {
 
   public async enableProfiling(slowOpThreshold: number = 100): Promise<void> {
     try {
-      const db = mongoose.connection.db;
+      const {db} = mongoose.connection;
       await db.admin().command({
         profile: 2, // Profile all operations
         slowOpThreshold
@@ -179,7 +180,7 @@ export class QueryOptimizer {
 
   public async disableProfiling(): Promise<void> {
     try {
-      const db = mongoose.connection.db;
+      const {db} = mongoose.connection;
       await db.admin().command({ profile: 0 });
       logger.info('Database profiling disabled');
     } catch (error) {
@@ -189,12 +190,12 @@ export class QueryOptimizer {
 
   public async getQueryStats(collection: string): Promise<any> {
     try {
-      const db = mongoose.connection.db;
+      const {db} = mongoose.connection;
       const coll = db.collection(collection);
-      
+
       const stats = await coll.stats();
       const indexStats = await coll.aggregate([{ $indexStats: {} }]).toArray();
-      
+
       return {
         collection,
         documentCount: stats.count,
@@ -219,7 +220,7 @@ export class QueryOptimizer {
     suggestions: string[];
   }> {
     logger.info(`Starting optimization analysis for collection: ${collection}`);
-    
+
     const allSuggestions: string[] = [];
     let analyzed = 0;
     let optimized = 0;
@@ -227,14 +228,14 @@ export class QueryOptimizer {
     try {
       // Get collection stats
       const stats = await this.getQueryStats(collection);
-      
+
       // Analyze common query patterns
       const commonQueries = await this.getCommonQueryPatterns(collection);
-      
+
       for (const query of commonQueries) {
         const analysis = await this.analyzeQuery(collection, query);
         analyzed++;
-        
+
         if (analysis.suggestions.length > 0) {
           allSuggestions.push(...analysis.suggestions);
           optimized++;
@@ -302,11 +303,11 @@ export class QueryOptimizer {
 
   private async findUnusedIndexes(collection: string): Promise<string[]> {
     try {
-      const db = mongoose.connection.db;
+      const {db} = mongoose.connection;
       const coll = db.collection(collection);
-      
+
       const indexStats = await coll.aggregate([{ $indexStats: {} }]).toArray();
-      
+
       return indexStats
         .filter(stat => stat.accesses.ops === 0 && stat.name !== '_id_')
         .map(stat => stat.name);
@@ -318,21 +319,21 @@ export class QueryOptimizer {
 
   private async analyzeIndexEffectiveness(collection: string): Promise<string[]> {
     const suggestions: string[] = [];
-    
+
     try {
-      const db = mongoose.connection.db;
+      const {db} = mongoose.connection;
       const coll = db.collection(collection);
-      
+
       const indexStats = await coll.aggregate([{ $indexStats: {} }]).toArray();
-      
+
       for (const stat of indexStats) {
         if (stat.name === '_id_') continue;
-        
+
         // Low usage index
         if (stat.accesses.ops < 10) {
           suggestions.push(`Index '${stat.name}' has low usage (${stat.accesses.ops} operations)`);
         }
-        
+
         // Check if index is too large relative to usage
         if (stat.accesses.ops > 0) {
           const opsPerDay = stat.accesses.ops / ((Date.now() - new Date(stat.since).getTime()) / (24 * 60 * 60 * 1000));
@@ -344,7 +345,7 @@ export class QueryOptimizer {
     } catch (error) {
       logger.error('Failed to analyze index effectiveness', { collection, error });
     }
-    
+
     return suggestions;
   }
 

@@ -1,9 +1,10 @@
 // File: websocket-server.js
 // Save this file in your backend root directory: C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\
 
-const WebSocket = require('ws');
 const http = require('http');
 const url = require('url');
+
+const WebSocket = require('ws');
 
 class FoodXchangeWebSocketServer {
   constructor(port = 3001) {
@@ -17,7 +18,7 @@ class FoodXchangeWebSocketServer {
 
   start() {
     this.server = http.createServer();
-    this.wss = new WebSocket.Server({ 
+    this.wss = new WebSocket.Server({
       server: this.server,
       path: '/ws'
     });
@@ -29,13 +30,13 @@ class FoodXchangeWebSocketServer {
     this.server.listen(this.port, () => {
       console.log(`🌐 FoodXchange WebSocket Server running on port ${this.port}`);
       console.log(`📡 WebSocket endpoint: ws://localhost:${this.port}/ws`);
-      console.log(`🎯 Frontend connects automatically from http://localhost:3000`);
-      console.log(`🔗 Test: Open multiple browser tabs and watch real-time updates!`);
+      console.log('🎯 Frontend connects automatically from http://localhost:3000');
+      console.log('🔗 Test: Open multiple browser tabs and watch real-time updates!');
     });
   }
 
   handleConnection(ws, request) {
-    const query = url.parse(request.url, true).query;
+    const {query} = url.parse(request.url, true);
     const userId = query.userId || `user_${Date.now()}`;
     const userName = query.userName || `User ${userId}`;
 
@@ -94,7 +95,7 @@ class FoodXchangeWebSocketServer {
 
   handleMessage(userId, message) {
     const { type, payload } = message;
-    
+
     console.log(`📨 ${userId}: ${type}`);
 
     switch (type) {
@@ -150,9 +151,9 @@ class FoodXchangeWebSocketServer {
     if (!this.rfqRooms.has(rfqId)) {
       this.rfqRooms.set(rfqId, new Set());
     }
-    
+
     this.rfqRooms.get(rfqId).add(userId);
-    
+
     const client = this.clients.get(userId);
     if (client) {
       client.currentRfq = rfqId;
@@ -174,7 +175,7 @@ class FoodXchangeWebSocketServer {
   leaveRFQRoom(userId, rfqId) {
     if (this.rfqRooms.has(rfqId)) {
       this.rfqRooms.get(rfqId).delete(userId);
-      
+
       if (this.rfqRooms.get(rfqId).size === 0) {
         this.rfqRooms.delete(rfqId);
       }
@@ -200,7 +201,7 @@ class FoodXchangeWebSocketServer {
 
   handleRFQStatusUpdate(userId, payload) {
     const { rfqId, status, data } = payload;
-    
+
     // Simulate realistic RFQ update
     const updateData = {
       rfqId,
@@ -233,7 +234,7 @@ class FoodXchangeWebSocketServer {
   handleCollaborationMessage(userId, payload) {
     const { rfqId, message, metadata } = payload;
     const user = this.userActivity.get(userId);
-    
+
     const collaborationMessage = {
       id: `msg_${Date.now()}_${userId}`,
       rfqId,
@@ -272,7 +273,7 @@ class FoodXchangeWebSocketServer {
 
   handleUserStatusUpdate(userId, payload) {
     const { rfqId, status } = payload;
-    
+
     if (this.userActivity.has(userId)) {
       const user = this.userActivity.get(userId);
       user.status = status;
@@ -289,9 +290,9 @@ class FoodXchangeWebSocketServer {
 
   handleComplianceCheck(userId, payload) {
     const { rfqId, specifications } = payload;
-    
+
     console.log(`🛡️ Compliance check requested for RFQ ${rfqId} by ${userId}`);
-    
+
     // Simulate compliance check processing (2-5 seconds)
     setTimeout(() => {
       const complianceResult = {
@@ -393,7 +394,7 @@ class FoodXchangeWebSocketServer {
 
     // Remove client connection
     this.clients.delete(userId);
-    
+
     // Update user activity status
     if (this.userActivity.has(userId)) {
       const user = this.userActivity.get(userId);
@@ -408,7 +409,7 @@ class FoodXchangeWebSocketServer {
     setInterval(() => {
       const rfqIds = ['rfq_001', 'rfq_002', 'rfq_003'];
       const randomRfqId = rfqIds[Math.floor(Math.random() * rfqIds.length)];
-      
+
       // Only send updates if there are users watching this RFQ
       if (this.rfqRooms.has(randomRfqId) && this.rfqRooms.get(randomRfqId).size > 0) {
         this.broadcastToRFQ(randomRfqId, {
@@ -422,7 +423,7 @@ class FoodXchangeWebSocketServer {
             complianceScore: Math.floor(Math.random() * 20) + 80
           }
         });
-        
+
         console.log(`🎭 Demo update sent for RFQ ${randomRfqId}`);
       }
     }, 15000); // Every 15 seconds

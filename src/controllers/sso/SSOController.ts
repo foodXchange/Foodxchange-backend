@@ -1,20 +1,22 @@
-import { Request, Response } from 'express';
-import { User } from '../../models/User';
-import { Company } from '../../models/Company';
-import { 
-  ValidationError, 
-  AuthenticationError, 
-  ConflictError 
-} from '../../core/errors';
-import { Logger } from '../../core/logging/logger';
-import { AnalyticsService } from '../../services/analytics/AnalyticsService';
-import jwt from 'jsonwebtoken';
 import axios from 'axios';
+import { Request, Response } from 'express';
+import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 
+import {
+  ValidationError,
+  AuthenticationError,
+  ConflictError
+} from '../../core/errors';
+import { Logger } from '../../core/logging/logger';
+import { Company } from '../../models/Company';
+import { User } from '../../models/User';
+import { AnalyticsService } from '../../services/analytics/AnalyticsService';
+
+
 export class SSOController {
-  private logger: Logger;
-  private analyticsService: AnalyticsService;
+  private readonly logger: Logger;
+  private readonly analyticsService: AnalyticsService;
 
   constructor() {
     this.logger = new Logger('SSOController');
@@ -63,20 +65,20 @@ export class SSOController {
   async initiateGoogleAuth(req: Request, res: Response): Promise<void> {
     try {
       const { redirect_uri } = req.query;
-      
+
       if (!process.env.GOOGLE_CLIENT_ID) {
         throw new ValidationError('Google SSO not configured');
       }
 
       const state = uuidv4();
       const scope = 'openid profile email';
-      
+
       // Store state in session or cache for verification
       // For now, we'll just include it in the URL
-      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+      const authUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' +
         `client_id=${process.env.GOOGLE_CLIENT_ID}&` +
         `redirect_uri=${process.env.GOOGLE_REDIRECT_URI}&` +
-        `response_type=code&` +
+        'response_type=code&' +
         `scope=${encodeURIComponent(scope)}&` +
         `state=${state}`;
 
@@ -120,7 +122,7 @@ export class SSOController {
       });
 
       const googleUser = userResponse.data;
-      
+
       // Find or create user
       const user = await this.findOrCreateSSOUser({
         email: googleUser.email,
@@ -168,13 +170,13 @@ export class SSOController {
 
     } catch (error) {
       this.logger.error('Google callback error:', error);
-      
+
       await this.analyticsService.track('sso_login_failure', {
         provider: 'google',
         error: error.message,
         ip: req.ip
       });
-      
+
       throw error;
     }
   }
@@ -182,18 +184,18 @@ export class SSOController {
   async initiateMicrosoftAuth(req: Request, res: Response): Promise<void> {
     try {
       const { redirect_uri } = req.query;
-      
+
       if (!process.env.MICROSOFT_CLIENT_ID) {
         throw new ValidationError('Microsoft SSO not configured');
       }
 
       const state = uuidv4();
       const scope = 'openid profile email';
-      
-      const authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?` +
+
+      const authUrl = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?' +
         `client_id=${process.env.MICROSOFT_CLIENT_ID}&` +
         `redirect_uri=${process.env.MICROSOFT_REDIRECT_URI}&` +
-        `response_type=code&` +
+        'response_type=code&' +
         `scope=${encodeURIComponent(scope)}&` +
         `state=${state}`;
 
@@ -232,7 +234,7 @@ export class SSOController {
       });
 
       const microsoftUser = userResponse.data;
-      
+
       // Find or create user
       const user = await this.findOrCreateSSOUser({
         email: microsoftUser.mail || microsoftUser.userPrincipalName,
@@ -279,13 +281,13 @@ export class SSOController {
 
     } catch (error) {
       this.logger.error('Microsoft callback error:', error);
-      
+
       await this.analyticsService.track('sso_login_failure', {
         provider: 'microsoft',
         error: error.message,
         ip: req.ip
       });
-      
+
       throw error;
     }
   }
@@ -293,18 +295,18 @@ export class SSOController {
   async initiateLinkedInAuth(req: Request, res: Response): Promise<void> {
     try {
       const { redirect_uri } = req.query;
-      
+
       if (!process.env.LINKEDIN_CLIENT_ID) {
         throw new ValidationError('LinkedIn SSO not configured');
       }
 
       const state = uuidv4();
       const scope = 'r_liteprofile r_emailaddress';
-      
-      const authUrl = `https://www.linkedin.com/oauth/v2/authorization?` +
+
+      const authUrl = 'https://www.linkedin.com/oauth/v2/authorization?' +
         `client_id=${process.env.LINKEDIN_CLIENT_ID}&` +
         `redirect_uri=${process.env.LINKEDIN_REDIRECT_URI}&` +
-        `response_type=code&` +
+        'response_type=code&' +
         `scope=${encodeURIComponent(scope)}&` +
         `state=${state}`;
 
@@ -351,7 +353,7 @@ export class SSOController {
 
       const linkedInUser = profileResponse.data;
       const email = emailResponse.data.elements[0]['handle~'].emailAddress;
-      
+
       // Find or create user
       const user = await this.findOrCreateSSOUser({
         email,
@@ -398,13 +400,13 @@ export class SSOController {
 
     } catch (error) {
       this.logger.error('LinkedIn callback error:', error);
-      
+
       await this.analyticsService.track('sso_login_failure', {
         provider: 'linkedin',
         error: error.message,
         ip: req.ip
       });
-      
+
       throw error;
     }
   }
@@ -505,14 +507,14 @@ export class SSOController {
       if (!user.avatar && ssoData.avatar) {
         user.avatar = ssoData.avatar;
       }
-      
+
       // Mark email as verified for SSO users
       if (!user.isEmailVerified) {
         user.isEmailVerified = true;
         user.emailVerifiedAt = new Date();
         user.onboardingStep = 'company-details';
       }
-      
+
       await user.save();
     } else {
       // Create new user
@@ -530,7 +532,7 @@ export class SSOController {
         failedLoginAttempts: 0,
         loginCount: 0
       });
-      
+
       await user.save();
     }
 
@@ -539,10 +541,10 @@ export class SSOController {
 
   private generateAccessToken(user: any): string {
     return jwt.sign(
-      { 
+      {
         userId: user._id.toString(),
         email: user.email,
-        role: user.role 
+        role: user.role
       },
       process.env.JWT_SECRET || 'secret',
       { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
@@ -551,9 +553,9 @@ export class SSOController {
 
   private generateRefreshToken(user: any): string {
     return jwt.sign(
-      { 
+      {
         userId: user._id.toString(),
-        type: 'refresh' 
+        type: 'refresh'
       },
       process.env.JWT_REFRESH_SECRET || 'refresh-secret',
       { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d' }

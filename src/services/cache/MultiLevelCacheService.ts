@@ -1,5 +1,6 @@
-import NodeCache from 'node-cache';
 import Redis from 'ioredis';
+import NodeCache from 'node-cache';
+
 import { Logger } from '../../core/logging/logger';
 import { prometheusMetrics } from '../metrics/PrometheusMetricsService';
 
@@ -21,17 +22,17 @@ export interface CacheStats {
 
 export class MultiLevelCacheService {
   private static instance: MultiLevelCacheService;
-  private logger: Logger;
+  private readonly logger: Logger;
   private localCache: NodeCache;
   private redisClient: Redis;
-  private stats: CacheStats;
+  private readonly stats: CacheStats;
 
   // Cache configuration
   private readonly LOCAL_CACHE_CONFIG = {
     stdTTL: 300, // 5 minutes default
     checkperiod: 600, // Check for expired keys every 10 minutes
     maxKeys: 1000, // Maximum number of keys in local cache
-    useClones: false, // Don't clone objects for better performance
+    useClones: false // Don't clone objects for better performance
   };
 
   private readonly REDIS_CONFIG = {
@@ -41,7 +42,7 @@ export class MultiLevelCacheService {
     maxRetriesPerRequest: 3,
     lazyConnect: true,
     keepAlive: 30000,
-    commandTimeout: 5000,
+    commandTimeout: 5000
   };
 
   constructor() {
@@ -52,7 +53,7 @@ export class MultiLevelCacheService {
       redisCacheHits: 0,
       redisCacheMisses: 0,
       localCacheSize: 0,
-      totalOperations: 0,
+      totalOperations: 0
     };
 
     this.initializeLocalCache();
@@ -69,7 +70,7 @@ export class MultiLevelCacheService {
 
   private initializeLocalCache(): void {
     this.localCache = new NodeCache(this.LOCAL_CACHE_CONFIG);
-    
+
     // Set up event listeners for cache statistics
     this.localCache.on('set', (key, value) => {
       this.stats.localCacheSize = this.localCache.keys().length;
@@ -118,12 +119,12 @@ export class MultiLevelCacheService {
 
   private updateMetrics(): void {
     // Update cache hit rates
-    const localHitRate = this.stats.totalOperations > 0 
-      ? (this.stats.localCacheHits / this.stats.totalOperations) * 100 
+    const localHitRate = this.stats.totalOperations > 0
+      ? (this.stats.localCacheHits / this.stats.totalOperations) * 100
       : 0;
-    
-    const redisHitRate = this.stats.totalOperations > 0 
-      ? (this.stats.redisCacheHits / this.stats.totalOperations) * 100 
+
+    const redisHitRate = this.stats.totalOperations > 0
+      ? (this.stats.redisCacheHits / this.stats.totalOperations) * 100
       : 0;
 
     prometheusMetrics.setCacheHitRate('local', localHitRate);
@@ -159,13 +160,13 @@ export class MultiLevelCacheService {
       if (redisValue !== null) {
         this.stats.redisCacheHits++;
         prometheusMetrics.recordCacheOperation('get', 'redis', true);
-        
+
         const parsedValue = JSON.parse(redisValue) as T;
-        
+
         // Store in local cache for faster access next time
         const localTTL = Math.min(options.ttl || this.LOCAL_CACHE_CONFIG.stdTTL, this.LOCAL_CACHE_CONFIG.stdTTL);
         this.localCache.set(fullKey, parsedValue, localTTL);
-        
+
         this.logger.debug(`Cache hit (redis): ${fullKey}`);
         return parsedValue;
       }
@@ -173,7 +174,7 @@ export class MultiLevelCacheService {
       this.stats.redisCacheMisses++;
       prometheusMetrics.recordCacheOperation('get', 'redis', false);
       this.logger.debug(`Cache miss: ${fullKey}`);
-      
+
       return null;
     } catch (error) {
       this.logger.error(`Cache get error for key ${fullKey}:`, error);
@@ -193,14 +194,14 @@ export class MultiLevelCacheService {
       // Store in local cache
       const localTTL = Math.min(ttl, this.LOCAL_CACHE_CONFIG.stdTTL);
       this.localCache.set(fullKey, value, localTTL);
-      
+
       // Store in Redis
       const serializedValue = JSON.stringify(value);
       await this.redisClient.setex(fullKey, ttl, serializedValue);
-      
+
       prometheusMetrics.recordCacheOperation('set', 'local', true);
       prometheusMetrics.recordCacheOperation('set', 'redis', true);
-      
+
       this.logger.debug(`Cache set: ${fullKey} (TTL: ${ttl}s)`);
       return true;
     } catch (error) {
@@ -219,13 +220,13 @@ export class MultiLevelCacheService {
     try {
       // Delete from local cache
       this.localCache.del(fullKey);
-      
+
       // Delete from Redis
       await this.redisClient.del(fullKey);
-      
+
       prometheusMetrics.recordCacheOperation('delete', 'local', true);
       prometheusMetrics.recordCacheOperation('delete', 'redis', true);
-      
+
       this.logger.debug(`Cache delete: ${fullKey}`);
       return true;
     } catch (error) {
@@ -264,23 +265,23 @@ export class MultiLevelCacheService {
       if (namespace) {
         // Clear specific namespace
         const pattern = `${namespace}:*`;
-        
+
         // Clear from local cache
         const localKeys = this.localCache.keys().filter(key => key.startsWith(`${namespace}:`));
         localKeys.forEach(key => this.localCache.del(key));
-        
+
         // Clear from Redis
         const redisKeys = await this.redisClient.keys(pattern);
         if (redisKeys.length > 0) {
           await this.redisClient.del(...redisKeys);
         }
-        
+
         this.logger.info(`Cache cleared for namespace: ${namespace}`);
       } else {
         // Clear all cache
         this.localCache.flushAll();
         await this.redisClient.flushdb();
-        
+
         this.logger.info('All cache cleared');
       }
     } catch (error) {
@@ -294,7 +295,7 @@ export class MultiLevelCacheService {
   getStats(): CacheStats {
     return {
       ...this.stats,
-      localCacheSize: this.localCache.keys().length,
+      localCacheSize: this.localCache.keys().length
     };
   }
 
@@ -305,11 +306,11 @@ export class MultiLevelCacheService {
     try {
       const localKeys = this.localCache.keys();
       const redisKeys = await this.redisClient.keys(namespace ? `${namespace}:*` : '*');
-      
+
       // Combine and deduplicate
       const allKeys = [...new Set([...localKeys, ...redisKeys])];
-      
-      return namespace 
+
+      return namespace
         ? allKeys.filter(key => key.startsWith(`${namespace}:`))
         : allKeys;
     } catch (error) {
@@ -333,10 +334,10 @@ export class MultiLevelCacheService {
 
     // Execute function to get fresh data
     const freshData = await fetchFunction();
-    
+
     // Cache the result
     await this.set(key, freshData, options);
-    
+
     return freshData;
   }
 

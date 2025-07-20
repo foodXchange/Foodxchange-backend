@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import { twoFactorAuthService } from '../services/auth/TwoFactorAuthService';
+
 import { AuthenticationError } from '../core/errors';
 import { Logger } from '../core/logging/logger';
+import { twoFactorAuthService } from '../services/auth/TwoFactorAuthService';
 
 const logger = new Logger('TwoFactorAuthMiddleware');
 
@@ -27,11 +28,11 @@ export const requireTwoFactor = (operation: string = 'sensitive_operation') => {
       }
 
       const has2FA = await twoFactorAuthService.is2FAEnabled(req.userId);
-      
+
       if (has2FA) {
         const twoFactorToken = req.headers['x-2fa-token'] as string;
         const challengeId = req.headers['x-2fa-challenge'] as string;
-        
+
         if (!twoFactorToken || !challengeId) {
           logger.warn('2FA token or challenge ID missing for sensitive operation', {
             userId: req.userId,
@@ -39,7 +40,7 @@ export const requireTwoFactor = (operation: string = 'sensitive_operation') => {
             hasToken: !!twoFactorToken,
             hasChallengeId: !!challengeId
           });
-          
+
           return res.status(428).json({
             success: false,
             error: {
@@ -51,14 +52,14 @@ export const requireTwoFactor = (operation: string = 'sensitive_operation') => {
         }
 
         const isValid = await twoFactorAuthService.verifyChallengeCode(challengeId, twoFactorToken);
-        
+
         if (!isValid) {
           logger.warn('Invalid 2FA token provided', {
             userId: req.userId,
             operation,
             challengeId
           });
-          
+
           return res.status(401).json({
             success: false,
             error: {
@@ -98,7 +99,7 @@ export const checkTwoFactorRequired = async (req: Request, res: Response, next: 
 
     const has2FA = await twoFactorAuthService.is2FAEnabled(req.userId);
     req.requiresTwoFactor = has2FA;
-    
+
     next();
   } catch (error) {
     logger.error('Check 2FA required middleware error:', error);
@@ -117,13 +118,13 @@ export const recommendTwoFactor = (operation: string = 'recommended_operation') 
       }
 
       const has2FA = await twoFactorAuthService.is2FAEnabled(req.userId);
-      
+
       if (!has2FA) {
         logger.info('2FA recommended for operation', {
           userId: req.userId,
           operation
         });
-        
+
         // Add header to recommend 2FA setup
         res.setHeader('X-2FA-Recommendation', 'true');
         res.setHeader('X-2FA-Setup-URL', '/api/auth/2fa/setup');
@@ -145,24 +146,24 @@ export const twoFactorOperations = {
   PAYMENT_PROCESSING: 'payment_processing',
   REFUND_PROCESSING: 'refund_processing',
   BANK_ACCOUNT_CHANGE: 'bank_account_change',
-  
+
   // Account security
   PASSWORD_CHANGE: 'password_change',
   EMAIL_CHANGE: 'email_change',
   PHONE_CHANGE: 'phone_change',
   TWO_FACTOR_DISABLE: 'two_factor_disable',
-  
+
   // Business operations
   SUPPLIER_APPROVAL: 'supplier_approval',
   COMPLIANCE_OVERRIDE: 'compliance_override',
   LARGE_ORDER_APPROVAL: 'large_order_approval',
   CONTRACT_SIGNING: 'contract_signing',
-  
+
   // Data operations
   DATA_EXPORT: 'data_export',
   BULK_DELETE: 'bulk_delete',
   USER_IMPERSONATION: 'user_impersonation',
-  
+
   // Administrative
   ADMIN_SETTINGS: 'admin_settings',
   USER_SUSPENSION: 'user_suspension',

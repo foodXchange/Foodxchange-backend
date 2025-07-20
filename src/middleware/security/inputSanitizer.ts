@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import mongoSanitize from 'express-mongo-sanitize';
+
+import { ValidationError } from '../../core/errors';
 import { Logger } from '../../core/logging/logger';
 import { MetricsService } from '../../core/metrics/MetricsService';
-import { ValidationError } from '../../core/errors';
 
 const logger = new Logger('InputSanitizer');
 const metricsService = new MetricsService();
@@ -108,7 +109,7 @@ export class InputSanitizer {
     // Remove SQL injection patterns
     this.sqlInjectionPatterns.forEach(pattern => {
       if (pattern.test(sanitized)) {
-        logger.warn('SQL injection attempt detected', { 
+        logger.warn('SQL injection attempt detected', {
           input: input.substring(0, 100),
           pattern: pattern.source
         });
@@ -123,7 +124,7 @@ export class InputSanitizer {
     // Remove path traversal patterns
     this.pathTraversalPatterns.forEach(pattern => {
       if (pattern.test(sanitized)) {
-        logger.warn('Path traversal attempt detected', { 
+        logger.warn('Path traversal attempt detected', {
           input: input.substring(0, 100),
           pattern: pattern.source
         });
@@ -138,7 +139,7 @@ export class InputSanitizer {
     // Remove command injection patterns
     this.commandInjectionPatterns.forEach(pattern => {
       if (pattern.test(sanitized)) {
-        logger.warn('Command injection attempt detected', { 
+        logger.warn('Command injection attempt detected', {
           input: input.substring(0, 100),
           pattern: pattern.source
         });
@@ -251,7 +252,7 @@ export class InputSanitizer {
       /\.\./,
       /[<>:"\\|?*]/,
       /^\./,
-      /\.$/ 
+      /\.$/
     ];
 
     for (const pattern of suspiciousPatterns) {
@@ -274,19 +275,19 @@ export class InputSanitizer {
 
     // Remove directory traversal attempts
     let sanitized = filename.replace(/\.\./g, '');
-    
+
     // Remove special characters
     sanitized = sanitized.replace(/[<>:"\\|?*]/g, '');
-    
+
     // Remove leading/trailing dots and spaces
     sanitized = sanitized.replace(/^[\s\.]+|[\s\.]+$/g, '');
-    
+
     // Limit length
     if (sanitized.length > 255) {
       const extension = sanitized.substring(sanitized.lastIndexOf('.'));
       sanitized = sanitized.substring(0, 255 - extension.length) + extension;
     }
-    
+
     return sanitized;
   }
 
@@ -316,7 +317,7 @@ export class InputSanitizer {
 
     for (const [key, value] of Object.entries(headers)) {
       const lowerKey = key.toLowerCase();
-      
+
       if (allowedHeaders.includes(lowerKey)) {
         // Sanitize header value
         const sanitizedValue = this.sanitizeString(value, { maxLength: 1000 });
@@ -382,7 +383,7 @@ export class InputSanitizer {
 // Middleware factory
 export const createSanitizationMiddleware = (options: SanitizationOptions = {}) => {
   const sanitizer = InputSanitizer.getInstance();
-  
+
   return (req: Request, res: Response, next: NextFunction): void => {
     try {
       // Sanitize request body

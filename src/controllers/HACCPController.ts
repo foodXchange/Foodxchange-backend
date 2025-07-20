@@ -1,19 +1,20 @@
 import { Request, Response } from 'express';
-import { getHACCPService } from '../services/compliance/HACCPService';
-import { Logger } from '../core/logging/logger';
+
 import { ValidationError, AuthorizationError, NotFoundError } from '../core/errors';
+import { Logger } from '../core/logging/logger';
+import { getHACCPService } from '../services/compliance/HACCPService';
 
 const logger = new Logger('HACCPController');
 
 export class HACCPController {
-  private haccpService = getHACCPService();
+  private readonly haccpService = getHACCPService();
 
   /**
    * Get HACCP dashboard data
    */
   async getDashboard(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
+      const {tenantId} = req;
       const dashboardData = await this.haccpService.getDashboardData(tenantId);
 
       res.json({
@@ -49,7 +50,7 @@ export class HACCPController {
       });
     } catch (error) {
       logger.error('Create CCP error:', error);
-      
+
       if (error instanceof ValidationError) {
         res.status(400).json({
           success: false,
@@ -84,7 +85,7 @@ export class HACCPController {
       });
     } catch (error) {
       logger.error('Record measurement error:', error);
-      
+
       if (error instanceof ValidationError) {
         res.status(400).json({
           success: false,
@@ -104,7 +105,7 @@ export class HACCPController {
    */
   async getMeasurements(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
+      const {tenantId} = req;
       const filters = {
         ...req.query,
         tenantId
@@ -131,7 +132,7 @@ export class HACCPController {
    */
   async getAlerts(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
+      const {tenantId} = req;
       const filters = {
         ...req.query,
         tenantId
@@ -159,7 +160,7 @@ export class HACCPController {
   async acknowledgeAlert(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const userId = req.userId!;
+      const {userId} = req;
 
       const alert = await this.haccpService.acknowledgeAlert(id, userId);
 
@@ -170,7 +171,7 @@ export class HACCPController {
       });
     } catch (error) {
       logger.error('Acknowledge alert error:', error);
-      
+
       if (error instanceof NotFoundError) {
         res.status(404).json({
           success: false,
@@ -191,7 +192,7 @@ export class HACCPController {
   async resolveAlert(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const userId = req.userId!;
+      const {userId} = req;
       const resolution = req.body;
 
       const alert = await this.haccpService.resolveAlert(id, userId, resolution);
@@ -203,7 +204,7 @@ export class HACCPController {
       });
     } catch (error) {
       logger.error('Resolve alert error:', error);
-      
+
       if (error instanceof NotFoundError) {
         res.status(404).json({
           success: false,
@@ -223,7 +224,7 @@ export class HACCPController {
    */
   async generateReport(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
+      const {tenantId} = req;
       const { startDate, endDate } = req.query;
 
       if (!startDate || !endDate) {
@@ -242,7 +243,7 @@ export class HACCPController {
       });
     } catch (error) {
       logger.error('Generate report error:', error);
-      
+
       if (error instanceof ValidationError) {
         res.status(400).json({
           success: false,

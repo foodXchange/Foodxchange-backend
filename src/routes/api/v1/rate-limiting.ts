@@ -1,11 +1,13 @@
 import { Router } from 'express';
+import { body, param, query } from 'express-validator';
+
+import { Logger } from '../../../core/logging/logger';
+import { asyncHandler } from '../../../middleware/asyncHandler';
 import { authenticate } from '../../../middleware/auth';
 import { authorize } from '../../../middleware/authorize';
-import { asyncHandler } from '../../../middleware/asyncHandler';
-import { rateLimitingService } from '../../../services/security/RateLimitingService';
-import { Logger } from '../../../core/logging/logger';
-import { body, param, query } from 'express-validator';
 import { validateRequest } from '../../../middleware/validateRequest';
+import { rateLimitingService } from '../../../services/security/RateLimitingService';
+
 
 const router = Router();
 const logger = new Logger('RateLimitingRoutes');
@@ -22,7 +24,7 @@ router.use(authorize('admin'));
 router.get('/stats',
   asyncHandler(async (req, res) => {
     const stats = await rateLimitingService.getStatistics();
-    
+
     res.json({
       success: true,
       data: stats
@@ -42,11 +44,11 @@ router.post('/whitelist',
   ]),
   asyncHandler(async (req, res) => {
     const { key, duration } = req.body;
-    
+
     await rateLimitingService.addToWhitelist(key, duration);
-    
-    logger.info(`Added ${key} to whitelist`, { duration, adminId: (req as any).user.id });
-    
+
+    logger.info(`Added ${key} to whitelist`, { duration, adminId: (req).user.id });
+
     res.json({
       success: true,
       message: `Key ${key} added to whitelist`,
@@ -66,11 +68,11 @@ router.delete('/whitelist/:key',
   ]),
   asyncHandler(async (req, res) => {
     const { key } = req.params;
-    
+
     await rateLimitingService.resetLimit(`whitelist:${key}`);
-    
-    logger.info(`Removed ${key} from whitelist`, { adminId: (req as any).user.id });
-    
+
+    logger.info(`Removed ${key} from whitelist`, { adminId: (req).user.id });
+
     res.json({
       success: true,
       message: `Key ${key} removed from whitelist`
@@ -91,11 +93,11 @@ router.post('/blacklist',
   ]),
   asyncHandler(async (req, res) => {
     const { key, reason, duration } = req.body;
-    
+
     await rateLimitingService.addToBlacklist(key, reason, duration);
-    
-    logger.warn(`Added ${key} to blacklist`, { reason, duration, adminId: (req as any).user.id });
-    
+
+    logger.warn(`Added ${key} to blacklist`, { reason, duration, adminId: (req).user.id });
+
     res.json({
       success: true,
       message: `Key ${key} added to blacklist`,
@@ -116,11 +118,11 @@ router.delete('/blacklist/:key',
   ]),
   asyncHandler(async (req, res) => {
     const { key } = req.params;
-    
+
     await rateLimitingService.resetLimit(`blacklist:${key}`);
-    
-    logger.info(`Removed ${key} from blacklist`, { adminId: (req as any).user.id });
-    
+
+    logger.info(`Removed ${key} from blacklist`, { adminId: (req).user.id });
+
     res.json({
       success: true,
       message: `Key ${key} removed from blacklist`
@@ -139,11 +141,11 @@ router.post('/reset',
   ]),
   asyncHandler(async (req, res) => {
     const { pattern } = req.body;
-    
+
     const count = await rateLimitingService.resetLimit(pattern);
-    
-    logger.info(`Reset rate limits for pattern: ${pattern}`, { count, adminId: (req as any).user.id });
-    
+
+    logger.info(`Reset rate limits for pattern: ${pattern}`, { count, adminId: (req).user.id });
+
     res.json({
       success: true,
       message: `Reset ${count} rate limit keys`,
@@ -163,19 +165,19 @@ router.get('/check/:key',
   ]),
   asyncHandler(async (req, res) => {
     const { key } = req.params;
-    
+
     // Check if whitelisted
     const isWhitelisted = await rateLimitingService.isWhitelisted(key);
-    
+
     // Check if blacklisted
     const blacklistCheck = await rateLimitingService.isBlacklisted(key);
-    
+
     // Check current limits
     const limits = await rateLimitingService.checkRateLimit(key, {
       windowMs: 60000,
       maxRequests: 100
     });
-    
+
     res.json({
       success: true,
       data: {
@@ -264,24 +266,24 @@ router.post('/simulate',
   ]),
   asyncHandler(async (req, res) => {
     const { key, requests, windowMs = 60000, maxRequests = 100 } = req.body;
-    
+
     const results = [];
     let allowed = 0;
     let blocked = 0;
-    
+
     // Simulate requests
     for (let i = 0; i < requests; i++) {
       const result = await rateLimitingService.checkRateLimit(`simulate:${key}`, {
         windowMs,
         maxRequests
       });
-      
+
       if (result.allowed) {
         allowed++;
       } else {
         blocked++;
       }
-      
+
       if (i < 10 || !result.allowed) {
         results.push({
           request: i + 1,
@@ -290,17 +292,17 @@ router.post('/simulate',
         });
       }
     }
-    
+
     // Clean up simulation keys
     await rateLimitingService.resetLimit(`simulate:${key}`);
-    
+
     res.json({
       success: true,
       data: {
         totalRequests: requests,
         allowed,
         blocked,
-        blockRate: ((blocked / requests) * 100).toFixed(2) + '%',
+        blockRate: `${((blocked / requests) * 100).toFixed(2)  }%`,
         config: { windowMs, maxRequests },
         sampleResults: results
       }

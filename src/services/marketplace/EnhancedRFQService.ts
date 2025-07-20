@@ -1,12 +1,15 @@
-import { Logger } from '../../core/logging/logger';
-import { NotFoundError, ValidationError, ForbiddenError } from '../../core/errors';
-import { CacheService } from '../../infrastructure/cache/CacheService';
-import { AzureAIService } from '../../infrastructure/azure/ai/AzureAIService';
-import { MetricsService } from '../../core/monitoring/metrics';
 import { EventEmitter } from 'events';
+
+import mongoose from 'mongoose';
+
+import { NotFoundError, ValidationError, ForbiddenError } from '../../core/errors';
+import { Logger } from '../../core/logging/logger';
+import { MetricsService } from '../../core/monitoring/metrics';
+import { AzureAIService } from '../../infrastructure/azure/ai/AzureAIService';
+import { CacheService } from '../../infrastructure/cache/CacheService';
 import { AuditService } from '../audit/AuditService';
 import { NotificationService } from '../notifications/NotificationService';
-import mongoose from 'mongoose';
+
 
 const logger = new Logger('EnhancedRFQService');
 const metrics = metricsService;
@@ -459,10 +462,10 @@ export interface ComplianceCheckResult {
 }
 
 export class EnhancedRFQService extends EventEmitter {
-  private cache: CacheService;
-  private ai: AzureAIService;
-  private audit: AuditService;
-  private notifications: NotificationService;
+  private readonly cache: CacheService;
+  private readonly ai: AzureAIService;
+  private readonly audit: AuditService;
+  private readonly notifications: NotificationService;
 
   constructor() {
     super();
@@ -482,7 +485,7 @@ export class EnhancedRFQService extends EventEmitter {
     } = {}
   ): Promise<RFQ> {
     const timer = metrics.startTimer('rfq_create_duration');
-    
+
     try {
       logger.info('Creating RFQ', { buyerId, title: rfqData.title });
 
@@ -525,7 +528,7 @@ export class EnhancedRFQService extends EventEmitter {
         workflow: this.initializeWorkflow(),
         createdAt: new Date(),
         updatedAt: new Date(),
-        expiresAt: rfqData.deadline,
+        expiresAt: rfqData.deadline
       };
 
       // Generate supplier matching if requested
@@ -551,7 +554,7 @@ export class EnhancedRFQService extends EventEmitter {
         entityType: 'rfq',
         entityId: rfqId,
         details: { title: rfq.title, status: rfq.status },
-        timestamp: new Date(),
+        timestamp: new Date()
       });
 
       metrics.increment('rfqs_created');
@@ -574,7 +577,7 @@ export class EnhancedRFQService extends EventEmitter {
     } = {}
   ): Promise<RFQ> {
     const timer = metrics.startTimer('rfq_publish_duration');
-    
+
     try {
       logger.info('Publishing RFQ', { rfqId, buyerId });
 
@@ -626,7 +629,7 @@ export class EnhancedRFQService extends EventEmitter {
         entityType: 'rfq',
         entityId: rfqId,
         details: { title: rfq.title, potentialMatches: rfq.matching.potentialMatches },
-        timestamp: new Date(),
+        timestamp: new Date()
       });
 
       metrics.increment('rfqs_published');
@@ -651,7 +654,7 @@ export class EnhancedRFQService extends EventEmitter {
     } = {}
   ): Promise<RFQProposal> {
     const timer = metrics.startTimer('proposal_submit_duration');
-    
+
     try {
       logger.info('Submitting proposal', { rfqId, supplierId });
 
@@ -690,7 +693,7 @@ export class EnhancedRFQService extends EventEmitter {
         weaknesses: [],
         risks: [],
         recommendations: [],
-        confidence: 0,
+        confidence: 0
       };
 
       if (this.ai.isAvailable()) {
@@ -725,10 +728,10 @@ export class EnhancedRFQService extends EventEmitter {
           issues: [],
           recommendations: [],
           checkedAt: new Date(),
-          checkedBy: '',
+          checkedBy: ''
         },
         submittedAt: new Date(),
-        updatedAt: new Date(),
+        updatedAt: new Date()
       };
 
       // Perform compliance check if requested
@@ -758,7 +761,7 @@ export class EnhancedRFQService extends EventEmitter {
           title: 'New Proposal Received',
           message: `${supplier.company} submitted a proposal for "${rfq.title}"`,
           data: { rfqId, proposalId },
-          priority: 'medium',
+          priority: 'medium'
         });
       }
 
@@ -775,7 +778,7 @@ export class EnhancedRFQService extends EventEmitter {
         entityType: 'proposal',
         entityId: proposalId,
         details: { rfqId, totalPrice: proposal.totalPrice, status: proposal.status },
-        timestamp: new Date(),
+        timestamp: new Date()
       });
 
       metrics.increment('proposals_submitted');
@@ -801,7 +804,7 @@ export class EnhancedRFQService extends EventEmitter {
     } = {}
   ): Promise<RFQProposal> {
     const timer = metrics.startTimer('proposal_accept_duration');
-    
+
     try {
       logger.info('Accepting proposal', { rfqId, proposalId, buyerId });
 
@@ -855,7 +858,7 @@ export class EnhancedRFQService extends EventEmitter {
         title: 'Proposal Accepted',
         message: `Your proposal for "${rfq.title}" has been accepted!`,
         data: { rfqId, proposalId },
-        priority: 'high',
+        priority: 'high'
       });
 
       // Notify other suppliers if RFQ is closed
@@ -881,7 +884,7 @@ export class EnhancedRFQService extends EventEmitter {
         entityType: 'proposal',
         entityId: proposalId,
         details: { rfqId, supplierId: proposal.supplierId, value: proposal.totalPrice },
-        timestamp: new Date(),
+        timestamp: new Date()
       });
 
       metrics.increment('proposals_accepted');
@@ -913,7 +916,7 @@ export class EnhancedRFQService extends EventEmitter {
     recommendations: SupplierRecommendation[];
   }> {
     const timer = metrics.startTimer('rfq_opportunities_duration');
-    
+
     try {
       logger.info('Getting RFQ opportunities', { supplierId, filters });
 
@@ -944,7 +947,7 @@ export class EnhancedRFQService extends EventEmitter {
         total,
         page: pagination.page,
         pages: Math.ceil(total / pagination.limit),
-        recommendations,
+        recommendations
       };
     } catch (error) {
       timer();
@@ -983,7 +986,7 @@ export class EnhancedRFQService extends EventEmitter {
     `;
 
     const analysis = await this.ai.generateText(prompt, { maxTokens: 800 });
-    
+
     // Parse AI response and enhance specs
     return this.parseAISpecifications(analysis.text, specs);
   }
@@ -999,7 +1002,7 @@ export class EnhancedRFQService extends EventEmitter {
       certifications: requirements?.certifications || [],
       supplierRequirements: requirements?.supplierRequirements || [],
       contractTerms: requirements?.contractTerms || [],
-      specialInstructions: requirements?.specialInstructions || '',
+      specialInstructions: requirements?.specialInstructions || ''
     };
   }
 
@@ -1011,7 +1014,7 @@ export class EnhancedRFQService extends EventEmitter {
       matchingScore: 0,
       potentialMatches: 0,
       invitedSuppliers: [],
-      blacklistedSuppliers: [],
+      blacklistedSuppliers: []
     };
   }
 
@@ -1030,8 +1033,8 @@ export class EnhancedRFQService extends EventEmitter {
         supplierAvailability: 'unknown',
         marketTrends: [],
         seasonalFactors: [],
-        riskFactors: [],
-      },
+        riskFactors: []
+      }
     };
   }
 
@@ -1043,10 +1046,10 @@ export class EnhancedRFQService extends EventEmitter {
         { id: '2', name: 'Review', description: 'Internal review', order: 2, isActive: false },
         { id: '3', name: 'Published', description: 'Published to suppliers', order: 3, isActive: false },
         { id: '4', name: 'Evaluation', description: 'Proposal evaluation', order: 4, isActive: false },
-        { id: '5', name: 'Award', description: 'Award to supplier', order: 5, isActive: false },
+        { id: '5', name: 'Award', description: 'Award to supplier', order: 5, isActive: false }
       ],
       approvals: [],
-      history: [],
+      history: []
     };
   }
 
@@ -1082,7 +1085,7 @@ export class EnhancedRFQService extends EventEmitter {
         weaknesses: [],
         risks: [],
         recommendations: [],
-        confidence: 0,
+        confidence: 0
       };
     }
 
@@ -1099,7 +1102,7 @@ export class EnhancedRFQService extends EventEmitter {
     `;
 
     const analysis = await this.ai.generateText(prompt, { maxTokens: 600 });
-    
+
     return this.parseAIProposalAnalysis(analysis.text);
   }
 
@@ -1120,9 +1123,9 @@ export class EnhancedRFQService extends EventEmitter {
         criteria: '',
         weight: 0,
         score: 0,
-        details: '',
+        details: ''
       },
-      aiAnalysis,
+      aiAnalysis
     };
   }
 
@@ -1139,7 +1142,7 @@ export class EnhancedRFQService extends EventEmitter {
       penalties: 'Standard penalties apply',
       bonuses: 'No bonuses',
       exclusivity: false,
-      confidentiality: true,
+      confidentiality: true
     };
   }
 
@@ -1155,7 +1158,7 @@ export class EnhancedRFQService extends EventEmitter {
       issues: [],
       recommendations: [],
       checkedAt: new Date(),
-      checkedBy: '',
+      checkedBy: ''
     };
   }
 
@@ -1215,38 +1218,38 @@ export class EnhancedRFQService extends EventEmitter {
         maxDistance: 1000,
         preferredRegions: [],
         excludedRegions: [],
-        domesticOnly: false,
+        domesticOnly: false
       },
       experience: {
         minYears: 0,
         productCategories: [],
         clientTypes: [],
-        volumeExperience: 0,
+        volumeExperience: 0
       },
       capacity: {
         minCapacity: 0,
         currentUtilization: 0,
         scalability: false,
-        leadTime: 0,
+        leadTime: 0
       },
       quality: {
         minRating: 0,
         certifications: [],
         qualityHistory: false,
-        disputeHistory: false,
+        disputeHistory: false
       },
       price: {
         budget: { min: 0, max: 0 },
         priceWeight: 0.3,
         qualityWeight: 0.4,
-        serviceWeight: 0.3,
+        serviceWeight: 0.3
       },
       relationship: {
         existingRelationship: false,
         recommendedByNetwork: false,
         reputation: 0,
-        trustScore: 0,
-      },
+        trustScore: 0
+      }
     };
   }
 
@@ -1263,7 +1266,7 @@ export class EnhancedRFQService extends EventEmitter {
       weaknesses: [],
       risks: [],
       recommendations: [],
-      confidence: 0,
+      confidence: 0
     };
   }
 }

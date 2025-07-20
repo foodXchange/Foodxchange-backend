@@ -6,28 +6,28 @@ const agentCommunicationSchema = new mongoose.Schema({
     unique: true,
     required: true
   },
-  
+
   // Agent Reference
   agentId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Agent',
     required: true
   },
-  
+
   // Communication Type
   type: {
     type: String,
     enum: ['whatsapp', 'email', 'sms', 'push_notification', 'in_app', 'phone_call', 'video_call'],
     required: true
   },
-  
+
   // Message Direction
   direction: {
     type: String,
     enum: ['inbound', 'outbound'],
     required: true
   },
-  
+
   // Participants
   participants: {
     sender: {
@@ -39,7 +39,7 @@ const agentCommunicationSchema = new mongoose.Schema({
       whatsappNumber: String,
       role: { type: String, enum: ['agent', 'buyer', 'supplier', 'admin', 'system'] }
     },
-    
+
     recipients: [{
       userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
       agentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Agent' },
@@ -58,17 +58,17 @@ const agentCommunicationSchema = new mongoose.Schema({
       failureReason: String
     }]
   },
-  
+
   // Message Content
   content: {
     // Text content
     text: String,
     subject: String,
-    
+
     // Rich content
     html: String,
     markdown: String,
-    
+
     // Media attachments
     attachments: [{
       type: {
@@ -87,7 +87,7 @@ const agentCommunicationSchema = new mongoose.Schema({
         lng: Number
       }
     }],
-    
+
     // Interactive elements
     interactive: {
       type: {
@@ -115,7 +115,7 @@ const agentCommunicationSchema = new mongoose.Schema({
         options: [String]
       }]
     },
-    
+
     // Templates
     template: {
       type: String,
@@ -126,7 +126,7 @@ const agentCommunicationSchema = new mongoose.Schema({
       category: String
     }
   },
-  
+
   // Related Context
   context: {
     // Related entities
@@ -134,38 +134,38 @@ const agentCommunicationSchema = new mongoose.Schema({
     orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' },
     rfqId: { type: mongoose.Schema.Types.ObjectId, ref: 'RFQ' },
     proposalId: { type: mongoose.Schema.Types.ObjectId, ref: 'Proposal' },
-    
+
     // Thread information
     threadId: String,
     conversationId: String,
     parentMessageId: String,
     isReply: { type: Boolean, default: false },
-    
+
     // Business context
     businessContext: {
       type: String,
-      enum: ['lead_followup', 'proposal_discussion', 'order_update', 'payment_reminder', 
-             'support_request', 'onboarding', 'training', 'general_inquiry'],
+      enum: ['lead_followup', 'proposal_discussion', 'order_update', 'payment_reminder',
+        'support_request', 'onboarding', 'training', 'general_inquiry'],
       default: 'general_inquiry'
     },
-    
+
     // Urgency and priority
     priority: {
       type: String,
       enum: ['low', 'medium', 'high', 'urgent'],
       default: 'medium'
     },
-    
+
     // Tags for categorization
     tags: [String],
-    
+
     // Customer journey stage
     journeyStage: {
       type: String,
       enum: ['awareness', 'consideration', 'decision', 'purchase', 'retention', 'advocacy']
     }
   },
-  
+
   // Channel-Specific Data
   channelData: {
     // WhatsApp specific
@@ -181,7 +181,7 @@ const agentCommunicationSchema = new mongoose.Schema({
       quotedMessage: mongoose.Schema.Types.Mixed,
       reactionInfo: mongoose.Schema.Types.Mixed
     },
-    
+
     // Email specific
     email: {
       messageId: String,
@@ -199,7 +199,7 @@ const agentCommunicationSchema = new mongoose.Schema({
       bounceInfo: mongoose.Schema.Types.Mixed,
       spamScore: Number
     },
-    
+
     // SMS specific
     sms: {
       messageId: String,
@@ -211,7 +211,7 @@ const agentCommunicationSchema = new mongoose.Schema({
       shortCode: String,
       keyword: String
     },
-    
+
     // Push notification specific
     push: {
       notificationId: String,
@@ -229,7 +229,7 @@ const agentCommunicationSchema = new mongoose.Schema({
       priority: String,
       timeToLive: Number
     },
-    
+
     // Voice call specific
     voice: {
       callId: String,
@@ -247,7 +247,7 @@ const agentCommunicationSchema = new mongoose.Schema({
       hangupReason: String
     }
   },
-  
+
   // Delivery and Status
   delivery: {
     status: {
@@ -255,7 +255,7 @@ const agentCommunicationSchema = new mongoose.Schema({
       enum: ['pending', 'queued', 'sent', 'delivered', 'read', 'failed', 'expired'],
       default: 'pending'
     },
-    
+
     // Timestamps
     queuedAt: Date,
     sentAt: Date,
@@ -263,7 +263,7 @@ const agentCommunicationSchema = new mongoose.Schema({
     readAt: Date,
     failedAt: Date,
     expiredAt: Date,
-    
+
     // Delivery attempts
     attempts: [{
       attemptNumber: Number,
@@ -273,7 +273,7 @@ const agentCommunicationSchema = new mongoose.Schema({
       errorMessage: String,
       retryAfter: Date
     }],
-    
+
     // Delivery metrics
     metrics: {
       processingTime: Number, // milliseconds
@@ -282,7 +282,7 @@ const agentCommunicationSchema = new mongoose.Schema({
       retryCount: Number,
       finalAttempt: Boolean
     },
-    
+
     // Failure information
     failure: {
       errorCode: String,
@@ -294,12 +294,12 @@ const agentCommunicationSchema = new mongoose.Schema({
       providerError: String
     }
   },
-  
+
   // Automation and AI
   automation: {
     // Automated message flag
     isAutomated: { type: Boolean, default: false },
-    
+
     // Automation triggers
     trigger: {
       type: String,
@@ -309,7 +309,7 @@ const agentCommunicationSchema = new mongoose.Schema({
       scheduleId: String,
       aiModelVersion: String
     },
-    
+
     // AI processing
     ai: {
       processed: { type: Boolean, default: false },
@@ -338,7 +338,7 @@ const agentCommunicationSchema = new mongoose.Schema({
         usedSuggestion: Boolean
       }
     },
-    
+
     // Workflow integration
     workflow: {
       workflowId: String,
@@ -350,7 +350,7 @@ const agentCommunicationSchema = new mongoose.Schema({
       pendingActions: [String]
     }
   },
-  
+
   // Analytics and Insights
   analytics: {
     // Engagement metrics
@@ -366,7 +366,7 @@ const agentCommunicationSchema = new mongoose.Schema({
       clickedLinks: [String],
       timeSpentReading: Number // seconds
     },
-    
+
     // Performance metrics
     performance: {
       responseTime: Number, // minutes from previous message
@@ -376,7 +376,7 @@ const agentCommunicationSchema = new mongoose.Schema({
       leadProgression: Boolean,
       dealClosure: Boolean
     },
-    
+
     // Campaign tracking
     campaign: {
       campaignId: String,
@@ -387,7 +387,7 @@ const agentCommunicationSchema = new mongoose.Schema({
       abTestVariant: String,
       personalizedContent: Boolean
     },
-    
+
     // Attribution
     attribution: {
       source: String,
@@ -410,7 +410,7 @@ const agentCommunicationSchema = new mongoose.Schema({
       }
     }
   },
-  
+
   // Compliance and Privacy
   compliance: {
     // Consent management
@@ -424,7 +424,7 @@ const agentCommunicationSchema = new mongoose.Schema({
       optOutDate: Date,
       privacyPolicyVersion: String
     },
-    
+
     // Data retention
     retention: {
       retentionPeriod: Number, // days
@@ -434,7 +434,7 @@ const agentCommunicationSchema = new mongoose.Schema({
       archivedAt: Date,
       purgeEligible: Boolean
     },
-    
+
     // Security
     security: {
       encrypted: Boolean,
@@ -444,7 +444,7 @@ const agentCommunicationSchema = new mongoose.Schema({
       digitalSignature: String,
       certificateThumbprint: String
     },
-    
+
     // Compliance flags
     flags: {
       sensitiveData: Boolean,
@@ -457,7 +457,7 @@ const agentCommunicationSchema = new mongoose.Schema({
       restrictedContent: Boolean
     }
   },
-  
+
   // System metadata
   metadata: {
     version: { type: Number, default: 1 },
@@ -469,7 +469,7 @@ const agentCommunicationSchema = new mongoose.Schema({
     requestId: String,
     sessionId: String,
     traceId: String,
-    
+
     // Processing information
     processing: {
       processingNode: String,
@@ -479,7 +479,7 @@ const agentCommunicationSchema = new mongoose.Schema({
       processingErrors: [String],
       processingWarnings: [String]
     },
-    
+
     // Integration metadata
     integration: {
       providerId: String,
@@ -492,18 +492,18 @@ const agentCommunicationSchema = new mongoose.Schema({
       callbackUrl: String
     }
   },
-  
+
   // Timestamps
   createdAt: { type: Date, default: Date.now },
   updatedAt: Date,
   scheduledFor: Date,
   expiresAt: Date,
-  
+
   // System fields
   archived: { type: Boolean, default: false },
   archivedAt: Date,
   deletedAt: Date,
-  
+
   // Cost tracking
   cost: {
     amount: Number,
@@ -549,11 +549,11 @@ agentCommunicationSchema.virtual('messageAge').get(function() {
 agentCommunicationSchema.virtual('deliverySuccessRate').get(function() {
   const totalRecipients = this.participants.recipients.length;
   if (totalRecipients === 0) return 0;
-  
+
   const successfulDeliveries = this.participants.recipients.filter(
     recipient => recipient.deliveryStatus === 'delivered' || recipient.deliveryStatus === 'read'
   ).length;
-  
+
   return (successfulDeliveries / totalRecipients) * 100;
 });
 

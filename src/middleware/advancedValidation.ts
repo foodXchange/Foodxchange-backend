@@ -1,8 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import { validationResult, ValidationChain, body, param, query } from 'express-validator';
-import { Logger } from '../core/logging/logger';
-import validator from 'validator';
 import DOMPurify from 'isomorphic-dompurify';
+import validator from 'validator';
+
+import { Logger } from '../core/logging/logger';
+
 
 const logger = new Logger('AdvancedValidation');
 
@@ -47,14 +49,14 @@ export const foodIndustryValidators = {
   isGTIN: (value: string): boolean => {
     const gtin = value.replace(/\D/g, '');
     if (![8, 12, 13, 14].includes(gtin.length)) return false;
-    
+
     // Validate check digit
     const digits = gtin.split('').map(Number);
-    const checkDigit = digits.pop()!;
+    const checkDigit = digits.pop();
     const sum = digits.reduce((acc, digit, index) => {
       return acc + (digit * (index % 2 === 0 ? 1 : 3));
     }, 0);
-    
+
     return (10 - (sum % 10)) % 10 === checkDigit;
   },
 
@@ -69,9 +71,9 @@ export const foodIndustryValidators = {
   isValidTemperature: (value: number, unit: 'C' | 'F' = 'C'): boolean => {
     if (unit === 'C') {
       return value >= -273.15 && value <= 1000; // Absolute zero to reasonable max
-    } else {
-      return value >= -459.67 && value <= 1832; // Fahrenheit equivalent
     }
+    return value >= -459.67 && value <= 1832; // Fahrenheit equivalent
+
   },
 
   // Validate shelf life format
@@ -129,7 +131,7 @@ export const sanitizers = {
  */
 export const commonValidations = {
   // Email validation
-  email: () => 
+  email: () =>
     body('email')
       .trim()
       .toLowerCase()
@@ -217,28 +219,28 @@ export const foodValidations = {
       .isLength({ min: 2, max: 200 })
       .withMessage('Product name must be between 2 and 200 characters')
       .customSanitizer(sanitizers.sanitizeProductName),
-    
+
     body('category')
       .notEmpty()
       .withMessage('Category is required')
       .isIn(['beverages', 'dairy', 'meat', 'seafood', 'produce', 'packaged_foods'])
       .withMessage('Invalid category'),
-    
+
     body('gtin')
       .optional()
       .custom(foodIndustryValidators.isGTIN)
       .withMessage('Invalid GTIN format'),
-    
+
     body('nutritionalInfo')
       .optional()
       .isObject()
       .withMessage('Nutritional info must be an object'),
-    
+
     body('allergens')
       .optional()
       .isArray()
       .withMessage('Allergens must be an array')
-      .custom((allergens: string[]) => 
+      .custom((allergens: string[]) =>
         allergens.every(a => foodIndustryValidators.isValidAllergen(a))
       )
       .withMessage('Invalid allergen specified')
@@ -251,7 +253,7 @@ export const foodValidations = {
       .isFloat()
       .custom(value => foodIndustryValidators.isValidTemperature(value))
       .withMessage('Invalid minimum temperature'),
-    
+
     body('temperature.max')
       .optional()
       .isFloat()
@@ -272,12 +274,12 @@ export const foodValidations = {
       .notEmpty()
       .isIn(['organic', 'kosher', 'halal', 'non-gmo', 'fair-trade', 'haccp', 'iso22000'])
       .withMessage('Invalid certification type'),
-    
+
     body('certifications.*.number')
       .notEmpty()
       .matches(/^[A-Z0-9-]+$/i)
       .withMessage('Invalid certification number format'),
-    
+
     body('certifications.*.validUntil')
       .isISO8601()
       .withMessage('Invalid certification expiry date')
@@ -291,13 +293,13 @@ export const foodValidations = {
       .notEmpty()
       .custom(foodIndustryValidators.isValidLotCode)
       .withMessage('Invalid lot code format'),
-    
+
     body('productionDate')
       .isISO8601()
       .withMessage('Invalid production date')
       .custom(value => new Date(value) <= new Date())
       .withMessage('Production date cannot be in the future'),
-    
+
     body('expiryDate')
       .isISO8601()
       .withMessage('Invalid expiry date')
@@ -317,7 +319,7 @@ export const conditionalValidation = (
   condition: (req: Request) => boolean,
   validations: ValidationChain[]
 ): ValidationChain[] => {
-  return validations.map(validation => 
+  return validations.map(validation =>
     validation.if(condition)
   );
 };
@@ -331,8 +333,8 @@ export const roleBasedValidation = (validations: {
   return (req: Request, res: Response, next: NextFunction) => {
     const userRole = req.user?.role || 'guest';
     const roleValidations = validations[userRole] || validations['default'] || [];
-    
-    Promise.all(roleValidations.map(validation => validation.run(req)))
+
+    Promise.all(roleValidations.map(async validation => validation.run(req)))
       .then(() => validateRequest(req, res, next))
       .catch(next);
   };
@@ -343,14 +345,14 @@ export const roleBasedValidation = (validations: {
  */
 export const formatValidationErrors = (errors: any[]) => {
   const formatted: { [key: string]: string[] } = {};
-  
+
   errors.forEach(error => {
     if (!formatted[error.param]) {
       formatted[error.param] = [];
     }
     formatted[error.param].push(error.msg);
   });
-  
+
   return formatted;
 };
 

@@ -117,6 +117,18 @@ const loadRoutes = async (): Promise<void> => {
     app.use('/api/rfqs', rfqRoutes); // Also mount on /api/rfqs
     console.log('✅ RFQ routes loaded successfully');
     
+    // Audit routes
+    const auditModule = await import('./routes/audit');
+    const auditRoutes = auditModule.default || auditModule;
+    app.use('/api/audit', auditRoutes);
+    console.log('✅ Audit routes loaded successfully');
+    
+    // Payment routes
+    const paymentModule = await import('./src/routes/payment');
+    const paymentRoutes = paymentModule.default || paymentModule;
+    app.use('/api/payments', paymentRoutes);
+    console.log('✅ Payment routes loaded successfully');
+    
     // Add other routes here as they're converted to TypeScript
     // const authRoutes = await import('./routes/auth');
     // app.use('/api/auth', authRoutes.default);

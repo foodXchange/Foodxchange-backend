@@ -22,7 +22,7 @@ const analyticsSchema = new mongoose.Schema({
     inquiriesSent: { type: Number, default: 0 },
     inquiriesConverted: { type: Number, default: 0 },
     conversionRate: { type: Number, default: 0 },
-    
+
     // Product Metrics
     productsViewed: { type: Number, default: 0 },
     productsListed: { type: Number, default: 0 },
@@ -31,23 +31,23 @@ const analyticsSchema = new mongoose.Schema({
       product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
       views: Number
     }],
-    
+
     // Meeting Metrics
     meetingsScheduled: { type: Number, default: 0 },
     meetingsCompleted: { type: Number, default: 0 },
     meetingsCancelled: { type: Number, default: 0 },
     avgMeetingDuration: { type: Number, default: 0 },
     meetingSuccessRate: { type: Number, default: 0 },
-    
+
     // Response Metrics
     avgResponseTime: { type: Number, default: 0 }, // in hours
     responseRate: { type: Number, default: 0 },
-    
+
     // Financial Metrics
     totalRevenue: { type: Number, default: 0 },
     avgDealSize: { type: Number, default: 0 },
     totalOrders: { type: Number, default: 0 },
-    
+
     // Category Performance
     categoryPerformance: [{
       category: String,
@@ -55,7 +55,7 @@ const analyticsSchema = new mongoose.Schema({
       conversion: Number,
       revenue: Number
     }],
-    
+
     // Geographic Distribution
     geographicData: [{
       country: String,
@@ -113,7 +113,7 @@ analyticsSchema.pre('save', function(next) {
 // Generate insights based on metrics
 analyticsSchema.methods.generateInsights = function() {
   const insights = [];
-  
+
   // Check conversion rate
   if (this.metrics.conversionRate < 20) {
     insights.push({
@@ -124,7 +124,7 @@ analyticsSchema.methods.generateInsights = function() {
       actionable: true
     });
   }
-  
+
   // Check response time
   if (this.metrics.avgResponseTime > 24) {
     insights.push({
@@ -135,7 +135,7 @@ analyticsSchema.methods.generateInsights = function() {
       actionable: true
     });
   }
-  
+
   // Growth opportunities
   const topCategory = this.metrics.categoryPerformance.sort((a, b) => b.revenue - a.revenue)[0];
   if (topCategory) {
@@ -147,7 +147,7 @@ analyticsSchema.methods.generateInsights = function() {
       actionable: true
     });
   }
-  
+
   this.insights = insights;
   return insights;
 };

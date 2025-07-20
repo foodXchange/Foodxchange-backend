@@ -1,10 +1,11 @@
 import express from 'express';
-import { authenticate } from '../middleware/auth';
-import { authorize } from '../middleware/rbac';
-import { performanceHealthCheck, performanceRecommendations } from '../middleware/performance';
-import { getDatabaseOptimizationService } from '../services/performance/DatabaseOptimizationService';
-import { getApplicationCacheService } from '../services/performance/CacheService';
+
 import { Logger } from '../core/logging/logger';
+import { authenticate } from '../middleware/auth';
+import { performanceHealthCheck, performanceRecommendations } from '../middleware/performance';
+import { authorize } from '../middleware/rbac';
+import { getApplicationCacheService } from '../services/performance/CacheService';
+import { getDatabaseOptimizationService } from '../services/performance/DatabaseOptimizationService';
 
 const router = express.Router();
 const logger = new Logger('PerformanceRoutes');
@@ -30,10 +31,10 @@ router.get('/recommendations', authenticate, authorize(['admin', 'manager']), pe
 router.post('/optimize/database', authenticate, authorize(['admin']), async (req, res) => {
   try {
     logger.info('Starting database optimization', { userId: req.userId, tenantId: req.tenantId });
-    
+
     await dbOptimizationService.initializeIndexes();
     await dbOptimizationService.optimizeDatabaseConfiguration();
-    
+
     res.json({
       success: true,
       message: 'Database optimization completed successfully'
@@ -57,7 +58,7 @@ router.post('/optimize/database', authenticate, authorize(['admin']), async (req
 router.get('/database/metrics', authenticate, authorize(['admin', 'manager']), async (req, res) => {
   try {
     const metrics = await dbOptimizationService.getPerformanceMetrics();
-    
+
     res.json({
       success: true,
       data: metrics
@@ -81,7 +82,7 @@ router.get('/database/metrics', authenticate, authorize(['admin', 'manager']), a
 router.get('/database/indexes', authenticate, authorize(['admin', 'manager']), async (req, res) => {
   try {
     const indexStats = await dbOptimizationService.getIndexUsageStats();
-    
+
     res.json({
       success: true,
       data: indexStats
@@ -105,7 +106,7 @@ router.get('/database/indexes', authenticate, authorize(['admin', 'manager']), a
 router.get('/cache/stats', authenticate, authorize(['admin', 'manager']), async (req, res) => {
   try {
     const stats = await cacheService.getStats();
-    
+
     res.json({
       success: true,
       data: stats
@@ -129,9 +130,9 @@ router.get('/cache/stats', authenticate, authorize(['admin', 'manager']), async 
 router.post('/cache/clear', authenticate, authorize(['admin']), async (req, res) => {
   try {
     const { namespace } = req.body;
-    
+
     await cacheService.clear(namespace);
-    
+
     res.json({
       success: true,
       message: namespace ? `Cache cleared for namespace: ${namespace}` : 'All cache cleared'
@@ -155,7 +156,7 @@ router.post('/cache/clear', authenticate, authorize(['admin']), async (req, res)
 router.post('/cache/warm-up', authenticate, authorize(['admin']), async (req, res) => {
   try {
     await cacheService.warmUpCache();
-    
+
     res.json({
       success: true,
       message: 'Cache warm-up completed'
@@ -179,7 +180,7 @@ router.post('/cache/warm-up', authenticate, authorize(['admin']), async (req, re
 router.get('/memory', authenticate, authorize(['admin', 'manager']), async (req, res) => {
   try {
     const memoryUsage = process.memoryUsage();
-    
+
     res.json({
       success: true,
       data: {
@@ -255,7 +256,7 @@ router.post('/gc', authenticate, authorize(['admin']), async (req, res) => {
 router.get('/queries/slow', authenticate, authorize(['admin', 'manager']), async (req, res) => {
   try {
     const suggestions = await dbOptimizationService.suggestOptimizations();
-    
+
     res.json({
       success: true,
       data: {
@@ -282,7 +283,7 @@ router.get('/queries/slow', authenticate, authorize(['admin', 'manager']), async
 router.post('/queries/analyze', authenticate, authorize(['admin']), async (req, res) => {
   try {
     const { model, query, options } = req.body;
-    
+
     if (!model || !query) {
       return res.status(400).json({
         success: false,
@@ -292,7 +293,7 @@ router.post('/queries/analyze', authenticate, authorize(['admin']), async (req, 
         }
       });
     }
-    
+
     // This would need to be implemented with actual model references
     // For now, return a placeholder response
     res.json({
@@ -326,7 +327,7 @@ router.get('/system', authenticate, authorize(['admin']), async (req, res) => {
     const cpuUsage = process.cpuUsage();
     const memoryUsage = process.memoryUsage();
     const uptime = process.uptime();
-    
+
     res.json({
       success: true,
       data: {

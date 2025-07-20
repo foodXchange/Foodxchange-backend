@@ -1,6 +1,7 @@
 // File: C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\src\models\marketplace\SampleRequest.ts
 
 import mongoose, { Schema, Model, Types } from 'mongoose';
+
 import {
   SampleRequestDocument,
   Address,
@@ -32,10 +33,10 @@ const addressSchema = new Schema<Address>({
 
 // Shipping Information Schema
 const shippingInfoSchema = new Schema<ShippingInfo>({
-  method: { 
-    type: String, 
-    enum: ['standard', 'express', 'overnight', 'courier'] as ShippingMethod[], 
-    default: 'standard' 
+  method: {
+    type: String,
+    enum: ['standard', 'express', 'overnight', 'courier'] as ShippingMethod[],
+    default: 'standard'
   },
   cost: { type: Number, default: 0 },
   estimatedDays: { type: Number, default: 5 },
@@ -53,10 +54,10 @@ const sampleCostSchema = new Schema<SampleCost>({
   currency: { type: String, default: 'USD' },
   shippingCost: { type: Number, default: 0 },
   totalCost: { type: Number, default: 0 },
-  paymentStatus: { 
-    type: String, 
-    enum: ['free', 'pending', 'paid', 'refunded'] as PaymentStatus[], 
-    default: 'free' 
+  paymentStatus: {
+    type: String,
+    enum: ['free', 'pending', 'paid', 'refunded'] as PaymentStatus[],
+    default: 'free'
   },
   paymentMethod: { type: String },
   paymentDate: { type: Date }
@@ -77,10 +78,10 @@ const sampleFeedbackSchema = new Schema<SampleFeedback>({
 // Sample Communication Schema
 const sampleCommunicationSchema = new Schema<SampleCommunication>({
   senderId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  senderType: { 
-    type: String, 
-    enum: ['buyer', 'supplier', 'system'] as CommunicationSenderType[], 
-    required: true 
+  senderType: {
+    type: String,
+    enum: ['buyer', 'supplier', 'system'] as CommunicationSenderType[],
+    required: true
   },
   message: { type: String, required: true },
   attachments: [{
@@ -96,48 +97,48 @@ const sampleCommunicationSchema = new Schema<SampleCommunication>({
 // Sample Request Schema
 const sampleRequestSchema = new Schema<SampleRequestDocument>({
   // Request Identification
-  requestNumber: { 
-    type: String, 
-    unique: true, 
-    required: true 
+  requestNumber: {
+    type: String,
+    unique: true,
+    required: true
   },
-  
+
   // Related Entities
-  productId: { 
-    type: Schema.Types.ObjectId, 
-    ref: 'ProductEnhanced', 
-    required: true 
+  productId: {
+    type: Schema.Types.ObjectId,
+    ref: 'ProductEnhanced',
+    required: true
   },
-  buyerId: { 
-    type: Schema.Types.ObjectId, 
-    ref: 'User', 
-    required: true 
+  buyerId: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
   },
-  supplierId: { 
-    type: Schema.Types.ObjectId, 
-    ref: 'User', 
-    required: true 
+  supplierId: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
   },
-  companyId: { 
-    type: Schema.Types.ObjectId, 
-    ref: 'Company', 
-    required: true 
+  companyId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Company',
+    required: true
   },
-  
+
   // Request Status
-  status: { 
-    type: String, 
-    enum: ['pending', 'approved', 'rejected', 'preparing', 'shipped', 'delivered', 'completed', 'cancelled'] as SampleRequestStatus[], 
-    default: 'pending' 
+  status: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected', 'preparing', 'shipped', 'delivered', 'completed', 'cancelled'] as SampleRequestStatus[],
+    default: 'pending'
   },
-  
+
   // Request Details
   sampleQuantity: { type: String, required: true },
   intendedUse: { type: String, required: true },
   estimatedVolume: { type: String, required: true },
   timeframe: { type: String, required: true },
   additionalNotes: { type: String },
-  
+
   // Business Information
   businessType: {
     type: String,
@@ -149,11 +150,11 @@ const sampleRequestSchema = new Schema<SampleRequestDocument>({
     type: String,
     enum: ['weekly', 'monthly', 'quarterly', 'annually', 'one-time'] as OrderFrequency[]
   },
-  
+
   // Shipping Information
   shippingAddress: { type: addressSchema, required: true },
   shippingInfo: shippingInfoSchema,
-  
+
   // Sample Details
   sampleSpecs: {
     packaging: { type: String },
@@ -161,18 +162,18 @@ const sampleRequestSchema = new Schema<SampleRequestDocument>({
     specialRequirements: { type: String },
     storageInstructions: { type: String }
   },
-  
+
   // Evaluation and Feedback
   evaluationCriteria: [{ type: String }],
   evaluationDeadline: { type: Date },
   feedback: sampleFeedbackSchema,
-  
+
   // Communication Thread
   communications: [sampleCommunicationSchema],
-  
+
   // Cost and Payment
   sampleCost: sampleCostSchema,
-  
+
   // Compliance and Documentation
   regulatoryRequirements: [{ type: String }],
   requiredDocuments: [{
@@ -181,7 +182,7 @@ const sampleRequestSchema = new Schema<SampleRequestDocument>({
     url: { type: String },
     uploadedAt: { type: Date }
   }],
-  
+
   // Follow-up Actions
   followUpActions: [{
     action: { type: String },
@@ -191,13 +192,13 @@ const sampleRequestSchema = new Schema<SampleRequestDocument>({
     completedAt: { type: Date },
     notes: { type: String }
   }],
-  
+
   // Analytics and Performance
   responseTime: { type: Number }, // Hours from request to approval
   deliveryTime: { type: Number }, // Days from approval to delivery
   conversionToOrder: { type: Boolean, default: false },
   orderValue: { type: Number },
-  
+
   // Important Dates
   requestDate: { type: Date, default: Date.now },
   approvedDate: { type: Date },
@@ -205,12 +206,12 @@ const sampleRequestSchema = new Schema<SampleRequestDocument>({
   shippedDate: { type: Date },
   deliveredDate: { type: Date },
   completedDate: { type: Date },
-  
+
   // Metadata
-  priority: { 
-    type: String, 
-    enum: ['low', 'normal', 'high', 'urgent'] as Priority[], 
-    default: 'normal' 
+  priority: {
+    type: String,
+    enum: ['low', 'normal', 'high', 'urgent'] as Priority[],
+    default: 'normal'
   },
   tags: [{ type: String }],
   internalNotes: { type: String }
@@ -233,34 +234,34 @@ sampleRequestSchema.pre('save', async function(this: SampleRequestDocument, next
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
-    
+
     // Count existing requests for today
     const todayStart = new Date(year, date.getMonth(), date.getDate());
     const todayEnd = new Date(todayStart);
     todayEnd.setDate(todayEnd.getDate() + 1);
-    
+
     const count = await (this.constructor as SampleRequestModel).countDocuments({
       createdAt: { $gte: todayStart, $lt: todayEnd }
     });
-    
+
     const sequence = String(count + 1).padStart(4, '0');
     this.requestNumber = `SR-${year}${month}${day}-${sequence}`;
   }
-  
+
   this.updatedAt = new Date();
   next();
 });
 
 // Instance methods
-sampleRequestSchema.methods.updateStatus = function(
+sampleRequestSchema.methods.updateStatus = async function(
   this: SampleRequestDocument,
-  newStatus: SampleRequestStatus, 
-  userId: string, 
+  newStatus: SampleRequestStatus,
+  userId: string,
   notes?: string
 ): Promise<SampleRequestDocument> {
   const oldStatus = this.status;
   this.status = newStatus;
-  
+
   // Set appropriate dates based on status
   const now = new Date();
   switch (newStatus) {
@@ -286,24 +287,24 @@ sampleRequestSchema.methods.updateStatus = function(
       this.completedDate = now;
       break;
   }
-  
+
   // Add communication entry for status change
   this.communications.push({
     senderId: new Types.ObjectId(userId),
     senderType: 'system',
-    message: `Status changed from ${oldStatus} to ${newStatus}${notes ? ': ' + notes : ''}`,
+    message: `Status changed from ${oldStatus} to ${newStatus}${notes ? `: ${  notes}` : ''}`,
     timestamp: now,
     isInternal: false
   });
-  
+
   return this.save();
 };
 
-sampleRequestSchema.methods.addCommunication = function(
+sampleRequestSchema.methods.addCommunication = async function(
   this: SampleRequestDocument,
-  senderId: string, 
-  senderType: CommunicationSenderType, 
-  message: string, 
+  senderId: string,
+  senderType: CommunicationSenderType,
+  message: string,
   attachments: any[] = []
 ): Promise<SampleRequestDocument> {
   this.communications.push({
@@ -314,36 +315,36 @@ sampleRequestSchema.methods.addCommunication = function(
     timestamp: new Date(),
     isInternal: false
   });
-  
+
   return this.save();
 };
 
-sampleRequestSchema.methods.submitFeedback = function(
+sampleRequestSchema.methods.submitFeedback = async function(
   this: SampleRequestDocument,
   feedbackData: Partial<SampleFeedback>
 ): Promise<SampleRequestDocument> {
   this.feedback = {
-    ...feedbackData as SampleFeedback,
+    ...feedbackData,
     submittedAt: new Date()
   };
-  
+
   this.status = 'completed';
   this.completedDate = new Date();
-  
+
   return this.save();
 };
 
-sampleRequestSchema.methods.updateShipping = function(
+sampleRequestSchema.methods.updateShipping = async function(
   this: SampleRequestDocument,
   shippingData: Partial<ShippingInfo>
 ): Promise<SampleRequestDocument> {
   this.shippingInfo = { ...this.shippingInfo, ...shippingData } as ShippingInfo;
-  
+
   if (shippingData.trackingNumber && this.status === 'preparing') {
     this.status = 'shipped';
     this.shippedDate = new Date();
   }
-  
+
   return this.save();
 };
 
@@ -356,76 +357,76 @@ interface SampleRequestModel extends Model<SampleRequestDocument> {
 }
 
 // Static methods
-sampleRequestSchema.statics.findBySupplier = function(
+sampleRequestSchema.statics.findBySupplier = async function(
   this: SampleRequestModel,
-  supplierId: string, 
+  supplierId: string,
   status?: SampleRequestStatus
 ): Promise<SampleRequestDocument[]> {
   const query: any = { supplierId };
   if (status) query.status = status;
-  
+
   return this.find(query)
     .populate('productId', 'name category images')
     .populate('buyerId', 'name email company')
     .sort({ createdAt: -1 });
 };
 
-sampleRequestSchema.statics.findByBuyer = function(
+sampleRequestSchema.statics.findByBuyer = async function(
   this: SampleRequestModel,
-  buyerId: string, 
+  buyerId: string,
   status?: SampleRequestStatus
 ): Promise<SampleRequestDocument[]> {
   const query: any = { buyerId };
   if (status) query.status = status;
-  
+
   return this.find(query)
     .populate('productId', 'name category images supplier')
     .populate('supplierId', 'name email company')
     .sort({ createdAt: -1 });
 };
 
-sampleRequestSchema.statics.getPendingRequests = function(
+sampleRequestSchema.statics.getPendingRequests = async function(
   this: SampleRequestModel,
   supplierId?: string
 ): Promise<SampleRequestDocument[]> {
   const query: any = { status: 'pending' };
   if (supplierId) query.supplierId = supplierId;
-  
+
   return this.find(query)
     .populate('productId', 'name category')
     .populate('buyerId', 'name email company')
     .sort({ priority: -1, createdAt: 1 });
 };
 
-sampleRequestSchema.statics.getPerformanceMetrics = function(
+sampleRequestSchema.statics.getPerformanceMetrics = async function(
   this: SampleRequestModel,
-  supplierId: string, 
+  supplierId: string,
   dateRange: { start?: string; end?: string } = {}
 ): Promise<any[]> {
   const matchQuery: any = { supplierId };
-  
+
   if (dateRange.start || dateRange.end) {
     matchQuery.createdAt = {};
     if (dateRange.start) matchQuery.createdAt.$gte = new Date(dateRange.start);
     if (dateRange.end) matchQuery.createdAt.$lte = new Date(dateRange.end);
   }
-  
+
   return this.aggregate([
     { $match: matchQuery },
     {
       $group: {
         _id: null,
         totalRequests: { $sum: 1 },
-        approvedRequests: { 
-          $sum: { $cond: [{ $eq: ['$status', 'approved'] }, 1, 0] } 
+        approvedRequests: {
+          $sum: { $cond: [{ $eq: ['$status', 'approved'] }, 1, 0] }
         },
-        completedRequests: { 
-          $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } 
+        completedRequests: {
+          $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] }
         },
         averageResponseTime: { $avg: '$responseTime' },
         averageDeliveryTime: { $avg: '$deliveryTime' },
-        conversionRate: { 
-          $avg: { $cond: ['$conversionToOrder', 1, 0] } 
+        conversionRate: {
+          $avg: { $cond: ['$conversionToOrder', 1, 0] }
         }
       }
     }

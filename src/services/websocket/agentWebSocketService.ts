@@ -1,5 +1,6 @@
-const WebSocket = require('ws');
 const jwt = require('jsonwebtoken');
+const WebSocket = require('ws');
+
 const Agent = require('../../models/Agent');
 const AgentActivity = require('../../models/AgentActivity');
 const whatsappService = require('../whatsappService');
@@ -16,40 +17,40 @@ class AgentWebSocketService {
    */
   initialize(io) {
     this.io = io;
-    
+
     // Agent namespace
     const agentNamespace = io.of('/agents');
-    
+
     agentNamespace.use(async (socket, next) => {
       try {
-        const token = socket.handshake.auth.token;
+        const {token} = socket.handshake.auth;
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-        
+
         // Verify user has agent role
         if (decoded.role !== 'agent') {
           return next(new Error('Not authorized as agent'));
         }
-        
+
         // Get agent profile
         const agent = await Agent.findOne({ userId: decoded._id });
         if (!agent) {
           return next(new Error('Agent profile not found'));
         }
-        
+
         socket.userId = decoded._id;
         socket.agentId = agent._id.toString();
         socket.agent = agent;
-        
+
         next();
       } catch (err) {
         next(new Error('Authentication failed'));
       }
     });
-    
+
     agentNamespace.on('connection', (socket) => {
       this.handleAgentConnection(socket);
     });
-    
+
     console.log('🚀 Agent WebSocket service initialized');
   }
 
@@ -58,19 +59,19 @@ class AgentWebSocketService {
    */
   handleAgentConnection(socket) {
     const { agentId, agent } = socket;
-    
+
     console.log(`🟢 Agent connected: ${agent.fullName} (${agentId})`);
-    
+
     // Store connection
     this.agentConnections.set(agentId, socket);
     this.userToAgent.set(socket.userId, agentId);
-    
+
     // Update agent status
     this.updateAgentStatus(agentId, 'online');
-    
+
     // Join agent's personal room
     socket.join(`agent:${agentId}`);
-    
+
     // Send initial data
     socket.emit('connected', {
       agentId,
@@ -81,16 +82,16 @@ class AgentWebSocketService {
       },
       timestamp: new Date()
     });
-    
+
     // Log activity
     this.logAgentActivity(agentId, 'login', {
       source: 'websocket',
       platform: 'web_app'
     });
-    
+
     // Handle events
     this.setupAgentEventHandlers(socket);
-    
+
     // Handle disconnection
     socket.on('disconnect', () => {
       console.log(`🔴 Agent disconnected: ${agent.fullName} (${agentId})`);
@@ -103,7 +104,7 @@ class AgentWebSocketService {
    */
   setupAgentEventHandlers(socket) {
     const { agentId } = socket;
-    
+
     // Lead events
     socket.on('join_lead_room', (leadId) => {
       socket.join(`lead:${leadId}`);
@@ -113,30 +114,30 @@ class AgentWebSocketService {
       this.leadRooms.get(leadId).add(agentId);
       console.log(`Agent ${agentId} joined lead room: ${leadId}`);
     });
-    
+
     socket.on('leave_lead_room', (leadId) => {
       socket.leave(`lead:${leadId}`);
       if (this.leadRooms.has(leadId)) {
         this.leadRooms.get(leadId).delete(agentId);
       }
     });
-    
+
     // Lead acceptance/decline
     socket.on('lead_response', async (data) => {
       const { leadId, action, reason } = data;
       await this.handleLeadResponse(agentId, leadId, action, reason);
     });
-    
+
     // Status updates
     socket.on('update_status', async (status) => {
       await this.updateAgentStatus(agentId, status);
     });
-    
+
     // Location updates
     socket.on('location_update', async (location) => {
       await this.updateAgentLocation(agentId, location);
     });
-    
+
     // Typing indicators
     socket.on('typing', (data) => {
       const { leadId, isTyping } = data;
@@ -146,7 +147,7 @@ class AgentWebSocketService {
         timestamp: new Date()
       });
     });
-    
+
     // Message sending
     socket.on('send_message', async (data) => {
       const { leadId, message, type } = data;
@@ -160,15 +161,15 @@ class AgentWebSocketService {
   async handleAgentDisconnection(agentId) {
     // Remove from connections
     this.agentConnections.delete(agentId);
-    
+
     // Remove from all lead rooms
     this.leadRooms.forEach((agents, leadId) => {
       agents.delete(agentId);
     });
-    
+
     // Update status
     await this.updateAgentStatus(agentId, 'offline');
-    
+
     // Log activity
     await this.logAgentActivity(agentId, 'logout', {
       source: 'websocket',
@@ -197,7 +198,7 @@ class AgentWebSocketService {
   broadcastToLead(leadId, event, data, excludeAgentId = null) {
     const room = `lead:${leadId}`;
     const io = this.io.of('/agents');
-    
+
     if (excludeAgentId) {
       io.to(room).except(`agent:${excludeAgentId}`).emit(event, data);
     } else {
@@ -211,7 +212,7 @@ class AgentWebSocketService {
   async notifyNewLead(lead, matchedAgents) {
     for (const match of matchedAgents) {
       const agentId = match.agentId.toString();
-      
+
       // Send real-time notification if connected
       const sent = this.sendToAgent(agentId, 'new_lead_available', {
         lead: {
@@ -226,11 +227,11 @@ class AgentWebSocketService {
           timeRemaining: match.offerExpiresAt - Date.now()
         }
       });
-      
+
       if (sent) {
         console.log(`📬 New lead notification sent to agent ${agentId}`);
       }
-      
+
       // Also send WhatsApp notification
       try {
         await whatsappService.notifyNewLead(agentId, lead);
@@ -238,7 +239,7 @@ class AgentWebSocketService {
       } catch (error) {
         console.error(`WhatsApp notification failed for agent ${agentId}:`, error);
       }
-      
+
       // Start countdown timer for lead offer
       this.startLeadOfferTimer(agentId, lead._id, match.offerExpiresAt);
     }
@@ -250,7 +251,7 @@ class AgentWebSocketService {
   startLeadOfferTimer(agentId, leadId, expiresAt) {
     const intervalId = setInterval(() => {
       const timeRemaining = expiresAt - Date.now();
-      
+
       if (timeRemaining <= 0) {
         clearInterval(intervalId);
         this.sendToAgent(agentId, 'lead_offer_expired', { leadId });
@@ -262,7 +263,7 @@ class AgentWebSocketService {
         });
       }
     }, 10000); // Update every 10 seconds
-    
+
     // Store interval ID for cleanup if needed
     if (!this.leadTimers) this.leadTimers = new Map();
     this.leadTimers.set(`${agentId}:${leadId}`, intervalId);
@@ -280,7 +281,7 @@ class AgentWebSocketService {
         this.leadTimers.delete(`${agentId}:${leadId}`);
       }
     }
-    
+
     // Notify other agents in the lead room
     this.broadcastToLead(leadId, 'lead_status_update', {
       leadId,
@@ -288,7 +289,7 @@ class AgentWebSocketService {
       action,
       timestamp: new Date()
     }, agentId);
-    
+
     // Log activity
     await this.logAgentActivity(agentId, `lead_${action}`, {
       leadId,
@@ -310,7 +311,7 @@ class AgentWebSocketService {
         leadNumber: commission.source.referenceNumber
       }
     });
-    
+
     // Also send WhatsApp notification
     try {
       await whatsappService.notifyCommissionUpdate(agentId, commission);
@@ -344,7 +345,7 @@ class AgentWebSocketService {
         'performance.metrics.lastLoginAt': new Date(),
         lastActivity: new Date()
       });
-      
+
       // Broadcast status to relevant parties
       this.io.emit('agent_status_update', {
         agentId,
@@ -366,7 +367,7 @@ class AgentWebSocketService {
         location,
         source: 'websocket'
       });
-      
+
       console.log(`📍 Agent ${agentId} location updated`);
     } catch (error) {
       console.error('Error updating agent location:', error);
@@ -386,7 +387,7 @@ class AgentWebSocketService {
         type,
         timestamp: new Date()
       });
-      
+
       // Log communication activity
       await this.logAgentActivity(agentId, 'message_sent', {
         leadId,
@@ -420,7 +421,7 @@ class AgentWebSocketService {
           status: 'success'
         }
       });
-      
+
       await activity.save();
     } catch (error) {
       console.error('Error logging agent activity:', error);
@@ -440,7 +441,7 @@ class AgentWebSocketService {
       'message_sent': 'communication',
       'location_update': 'system'
     };
-    
+
     return categories[activityType] || 'system';
   }
 

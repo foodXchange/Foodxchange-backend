@@ -40,7 +40,7 @@ module.exports = {
   detectOpenHandles: true,
   forceExit: true,
   maxWorkers: 4,
-  moduleNameMapping: {
+  moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     '^@config/(.*)$': '<rootDir>/src/config/$1',
     '^@middleware/(.*)$': '<rootDir>/src/middleware/$1',
@@ -64,10 +64,5 @@ module.exports = {
     'js',
     'json'
   ],
-  setupFilesAfterEnv: ['<rootDir>/src/tests/setup.ts'],
-  globals: {
-    'ts-jest': {
-      tsconfig: 'tsconfig.json'
-    }
-  }
+  setupFilesAfterEnv: ['<rootDir>/src/tests/setup.simple.ts']
 };

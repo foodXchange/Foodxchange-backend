@@ -65,7 +65,14 @@
       "Bash(start http://localhost:5001/api-docs)",
       "Bash(npm start)",
       "Bash(echo $PATH)",
-      "Bash(echo $SHELL)"
+      "Bash(echo $SHELL)",
+      "Bash(tree:*)",
+      "Bash(npm test:*)",
+      "Bash(timeout 10 curl -f http://localhost:5000/api/health)",
+      "Bash(timeout:*)",
+      "Bash(copy .env.development .env)",
+      "Bash(set DISABLE_REDIS=true)",
+      "Bash(del nul)"
     ],
     "deny": []
   }

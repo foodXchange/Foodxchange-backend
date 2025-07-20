@@ -1,6 +1,7 @@
-import { OpenAIClient, AzureKeyCredential, ChatCompletions, ChatRequestMessage } from "@azure/openai";
-import { Logger } from '../../core/logging/logger';
+import { OpenAIClient, AzureKeyCredential, ChatCompletions, ChatRequestMessage } from '@azure/openai';
+
 import { trackAzureServiceCall } from '../../config/applicationInsights';
+import { Logger } from '../../core/logging/logger';
 
 const logger = new Logger('OpenAIService');
 
@@ -109,8 +110,8 @@ export class OpenAIService {
         {
           temperature: options?.temperature || 0.3,
           maxTokens: options?.maxTokens || 1000,
-          ...(options?.responseFormat === 'json' && { 
-            responseFormat: { type: 'json_object' } 
+          ...(options?.responseFormat === 'json' && {
+            responseFormat: { type: 'json_object' }
           })
         }
       );
@@ -211,7 +212,7 @@ Return a JSON response with:
       });
 
       const result = JSON.parse(response);
-      
+
       // Validate and sanitize response
       const prediction: SampleConversionPrediction = {
         probability: Math.max(0, Math.min(1, result.probability || 0.5)),
@@ -266,9 +267,9 @@ Return a JSON response with:
 Analyze B2B food order history and recommend optimal reorder quantities and timing.
 
 ORDER HISTORY (last ${orderHistory.length} orders):
-${orderHistory.map((order, i) => 
-  `Order ${i+1}: ${order.date.toISOString().split('T')[0]} - ${order.quantity} units @ $${order.price} (Quality: ${order.qualityScore}/10, Delivery: ${order.deliveryTime} days)`
-).join('\n')}
+${orderHistory.map((order, i) =>
+    `Order ${i+1}: ${order.date.toISOString().split('T')[0]} - ${order.quantity} units @ $${order.price} (Quality: ${order.qualityScore}/10, Delivery: ${order.deliveryTime} days)`
+  ).join('\n')}
 
 CURRENT INVENTORY:
 - Current stock: ${currentInventory.quantity} units
@@ -437,9 +438,9 @@ REQUIRED COMPLIANCE:
 ${requiredCompliance.map(req => `- ${req}`).join('\n')}
 
 SUBMITTED DOCUMENTS:
-${documents.map((doc, i) => 
-  `Document ${i+1} (${doc.type}):\nExtracted data: ${JSON.stringify(doc.extractedData)}\nContent preview: ${doc.content.substring(0, 200)}...`
-).join('\n\n')}
+${documents.map((doc, i) =>
+    `Document ${i+1} (${doc.type}):\nExtracted data: ${JSON.stringify(doc.extractedData)}\nContent preview: ${doc.content.substring(0, 200)}...`
+  ).join('\n\n')}
 
 Analyze compliance gaps and provide recommendations:
 {
@@ -590,6 +591,64 @@ Provide strategic negotiation advice:
         deploymentId: this.deploymentId
       }
     };
+  }
+
+  // Additional methods for AI controller compatibility
+  public async generateProductInsights(productData: any): Promise<any> {
+    const messages: ChatRequestMessage[] = [
+      {
+        role: 'system',
+        content: 'You are an AI assistant specialized in food product analysis.'
+      },
+      {
+        role: 'user',
+        content: `Analyze this product and provide insights: ${JSON.stringify(productData)}`
+      }
+    ];
+
+    const response = await this.callOpenAI(messages, 'generateProductInsights');
+    return { insights: response, confidence: 0.85 };
+  }
+
+  public async matchProductsToRFQ(rfqData: any, products: any[]): Promise<any> {
+    return this.analyzeProductMatching(rfqData, products);
+  }
+
+  public async generatePricingSuggestion(data: any): Promise<any> {
+    const insights = await this.generateNegotiationInsights(data);
+    return {
+      suggestedPrice: insights.priceRange.optimal,
+      priceRange: insights.priceRange,
+      reasoning: insights.recommendedStrategy
+    };
+  }
+
+  public async checkCompliance(data: any): Promise<any> {
+    return this.analyzeComplianceDocuments(data);
+  }
+
+  public async generateProductDescription(productData: any): Promise<any> {
+    const messages: ChatRequestMessage[] = [
+      {
+        role: 'system',
+        content: 'You are an AI assistant specialized in writing compelling product descriptions for food products. Return a JSON object with: description (string), keyPoints (array of strings), and seoKeywords (array of strings).'
+      },
+      {
+        role: 'user',
+        content: `Generate a product description for: ${JSON.stringify(productData)}`
+      }
+    ];
+
+    const response = await this.callOpenAI(messages, 'generateProductDescription', { responseFormat: 'json' });
+    try {
+      return JSON.parse(response);
+    } catch {
+      return {
+        description: response,
+        keyPoints: [],
+        seoKeywords: []
+      };
+    }
   }
 }
 

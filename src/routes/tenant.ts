@@ -1,14 +1,16 @@
 import express from 'express';
-import { requireAuth } from '../middleware/auth';
-import { 
-  extractTenantContext, 
-  enforceTenantIsolation, 
-  requireTenantFeature,
-  tenantFeatures 
-} from '../middleware/tenantIsolation';
+import { body, param, query } from 'express-validator';
+
 import { TenantController } from '../controllers/TenantController';
 import { validateRequest } from '../middleware/advancedValidation';
-import { body, param, query } from 'express-validator';
+import { requireAuth } from '../middleware/auth';
+import {
+  extractTenantContext,
+  enforceTenantIsolation,
+  requireTenantFeature,
+  tenantFeatures
+} from '../middleware/tenantIsolation';
+
 
 const router = express.Router();
 const tenantController = new TenantController();
@@ -122,7 +124,7 @@ router.get('/settings', tenantController.getTenantSettings);
  *       200:
  *         description: Tenant settings updated successfully
  */
-router.put('/settings', 
+router.put('/settings',
   [
     body('customBranding').optional().isBoolean(),
     body('customDomain').optional().isURL(),

@@ -7,12 +7,12 @@ export interface IRFQ extends Document {
   description: string;
   category: string;
   tags: string[];
-  
+
   // Buyer Information
   buyer: mongoose.Types.ObjectId;
   buyerCompany: mongoose.Types.ObjectId;
   tenantId: string;
-  
+
   // Product Requirements
   items: Array<{
     productId?: mongoose.Types.ObjectId;
@@ -26,7 +26,7 @@ export interface IRFQ extends Document {
     requiredCertifications?: string[];
     preferredBrands?: string[];
   }>;
-  
+
   // Delivery Requirements
   deliveryLocation: {
     address: string;
@@ -39,13 +39,13 @@ export interface IRFQ extends Document {
       lng: number;
     };
   };
-  
+
   deliveryTerms: {
     incoterm: string;
     preferredShippingMethod?: string;
     specialInstructions?: string;
   };
-  
+
   deliverySchedule: {
     type: 'one-time' | 'recurring' | 'flexible';
     requestedDate?: Date;
@@ -56,24 +56,24 @@ export interface IRFQ extends Document {
       count: number;
     };
   };
-  
+
   // Payment Terms
   paymentTerms: {
     method: 'net30' | 'net60' | 'net90' | 'cod' | 'prepaid' | 'custom';
     customTerms?: string;
     currency: string;
   };
-  
+
   // RFQ Timeline
   issuedDate: Date;
   dueDate: Date;
   validUntil: Date;
-  
+
   // Status and State
   status: 'draft' | 'published' | 'closed' | 'awarded' | 'cancelled' | 'expired';
   visibility: 'public' | 'private' | 'invited';
   invitedSuppliers?: mongoose.Types.ObjectId[];
-  
+
   // Quote Management
   quotes: Array<{
     _id?: mongoose.Types.ObjectId;
@@ -101,7 +101,7 @@ export interface IRFQ extends Document {
     score?: number;
     ranking?: number;
   }>;
-  
+
   // Selection Criteria
   selectionCriteria: {
     priceWeight: number;
@@ -111,13 +111,13 @@ export interface IRFQ extends Document {
     certificationWeight: number;
     sustainabilityWeight: number;
   };
-  
+
   // Award Information
   awardedTo?: mongoose.Types.ObjectId;
   awardedQuote?: mongoose.Types.ObjectId;
   awardedDate?: Date;
   awardReason?: string;
-  
+
   // Compliance Requirements
   compliance: {
     requiredCertifications: string[];
@@ -126,7 +126,7 @@ export interface IRFQ extends Document {
     sustainabilityRequirements?: string[];
     packagingRequirements?: string[];
   };
-  
+
   // Additional Requirements
   additionalRequirements: {
     sampleRequired: boolean;
@@ -136,7 +136,7 @@ export interface IRFQ extends Document {
     preferredSuppliers?: mongoose.Types.ObjectId[];
     excludedSuppliers?: mongoose.Types.ObjectId[];
   };
-  
+
   // Attachments
   attachments: Array<{
     name: string;
@@ -146,7 +146,7 @@ export interface IRFQ extends Document {
     uploadedAt: Date;
     uploadedBy: mongoose.Types.ObjectId;
   }>;
-  
+
   // Activity Log
   activityLog: Array<{
     action: string;
@@ -154,19 +154,19 @@ export interface IRFQ extends Document {
     timestamp: Date;
     details?: any;
   }>;
-  
+
   // Metadata
   createdAt: Date;
   updatedAt: Date;
   createdBy: mongoose.Types.ObjectId;
   updatedBy?: mongoose.Types.ObjectId;
   version: number;
-  
+
   // Virtual fields
   isActive: boolean;
   quoteCount: number;
   daysRemaining: number;
-  
+
   // Methods
   canSubmitQuote(supplierId: string): boolean;
   submitQuote(quote: any): Promise<void>;
@@ -201,7 +201,7 @@ const rfqSchema = new Schema<IRFQ>({
     enum: ['beverages', 'dairy', 'meat', 'seafood', 'produce', 'packaged_foods', 'bakery', 'frozen', 'organic', 'ingredients', 'other']
   },
   tags: [String],
-  
+
   // Buyer Information
   buyer: {
     type: mongoose.Schema.Types.ObjectId,
@@ -218,7 +218,7 @@ const rfqSchema = new Schema<IRFQ>({
     required: true,
     index: true
   },
-  
+
   // Product Requirements
   items: [{
     productId: {
@@ -248,7 +248,7 @@ const rfqSchema = new Schema<IRFQ>({
     requiredCertifications: [String],
     preferredBrands: [String]
   }],
-  
+
   // Delivery Requirements
   deliveryLocation: {
     address: {
@@ -273,7 +273,7 @@ const rfqSchema = new Schema<IRFQ>({
       lng: Number
     }
   },
-  
+
   deliveryTerms: {
     incoterm: {
       type: String,
@@ -283,7 +283,7 @@ const rfqSchema = new Schema<IRFQ>({
     preferredShippingMethod: String,
     specialInstructions: String
   },
-  
+
   deliverySchedule: {
     type: {
       type: String,
@@ -301,7 +301,7 @@ const rfqSchema = new Schema<IRFQ>({
       count: Number
     }
   },
-  
+
   // Payment Terms
   paymentTerms: {
     method: {
@@ -316,7 +316,7 @@ const rfqSchema = new Schema<IRFQ>({
       uppercase: true
     }
   },
-  
+
   // RFQ Timeline
   issuedDate: {
     type: Date,
@@ -326,7 +326,7 @@ const rfqSchema = new Schema<IRFQ>({
     type: Date,
     required: [true, 'Due date is required'],
     validate: {
-      validator: function(this: IRFQ, value: Date) {
+      validator(this: IRFQ, value: Date) {
         return value > this.issuedDate;
       },
       message: 'Due date must be after issued date'
@@ -336,13 +336,13 @@ const rfqSchema = new Schema<IRFQ>({
     type: Date,
     required: [true, 'Valid until date is required'],
     validate: {
-      validator: function(this: IRFQ, value: Date) {
+      validator(this: IRFQ, value: Date) {
         return value >= this.dueDate;
       },
       message: 'Valid until date must be after or equal to due date'
     }
   },
-  
+
   // Status and State
   status: {
     type: String,
@@ -358,7 +358,7 @@ const rfqSchema = new Schema<IRFQ>({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Company'
   }],
-  
+
   // Quote Management
   quotes: [{
     supplier: {
@@ -425,7 +425,7 @@ const rfqSchema = new Schema<IRFQ>({
     score: Number,
     ranking: Number
   }],
-  
+
   // Selection Criteria
   selectionCriteria: {
     priceWeight: {
@@ -465,7 +465,7 @@ const rfqSchema = new Schema<IRFQ>({
       max: 100
     }
   },
-  
+
   // Award Information
   awardedTo: {
     type: mongoose.Schema.Types.ObjectId,
@@ -476,7 +476,7 @@ const rfqSchema = new Schema<IRFQ>({
   },
   awardedDate: Date,
   awardReason: String,
-  
+
   // Compliance Requirements
   compliance: {
     requiredCertifications: [String],
@@ -485,7 +485,7 @@ const rfqSchema = new Schema<IRFQ>({
     sustainabilityRequirements: [String],
     packagingRequirements: [String]
   },
-  
+
   // Additional Requirements
   additionalRequirements: {
     sampleRequired: {
@@ -514,7 +514,7 @@ const rfqSchema = new Schema<IRFQ>({
       ref: 'Company'
     }]
   },
-  
+
   // Attachments
   attachments: [{
     name: {
@@ -543,7 +543,7 @@ const rfqSchema = new Schema<IRFQ>({
       required: true
     }
   }],
-  
+
   // Activity Log
   activityLog: [{
     action: {
@@ -561,7 +561,7 @@ const rfqSchema = new Schema<IRFQ>({
     },
     details: mongoose.Schema.Types.Mixed
   }],
-  
+
   // Metadata
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -616,18 +616,18 @@ rfqSchema.pre('save', async function(next) {
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     this.rfqNumber = `RFQ-${year}${month}-${(count + 1).toString().padStart(5, '0')}`;
   }
-  
+
   // Validate selection criteria weights
   const totalWeight = Object.values(this.selectionCriteria).reduce((sum, weight) => sum + weight, 0);
   if (totalWeight !== 100) {
     throw new Error('Selection criteria weights must sum to 100');
   }
-  
+
   // Auto-expire RFQs
   if (this.status === 'published' && new Date() > this.dueDate) {
     this.status = 'expired';
   }
-  
+
   next();
 });
 
@@ -635,24 +635,24 @@ rfqSchema.pre('save', async function(next) {
 rfqSchema.methods.canSubmitQuote = function(supplierId: string): boolean {
   // Check if RFQ is active
   if (!this.isActive) return false;
-  
+
   // Check visibility
   if (this.visibility === 'private') return false;
-  
+
   if (this.visibility === 'invited') {
     return this.invitedSuppliers.some((id: any) => id.toString() === supplierId);
   }
-  
+
   // Check if supplier is excluded
   if (this.additionalRequirements.excludedSuppliers?.some((id: any) => id.toString() === supplierId)) {
     return false;
   }
-  
+
   // Check if already submitted
-  const existingQuote = this.quotes.find((q: any) => 
+  const existingQuote = this.quotes.find((q: any) =>
     q.supplier.toString() === supplierId && q.status !== 'withdrawn'
   );
-  
+
   return !existingQuote;
 };
 
@@ -660,7 +660,7 @@ rfqSchema.methods.submitQuote = async function(quote: any): Promise<void> {
   if (!this.canSubmitQuote(quote.supplier)) {
     throw new Error('Cannot submit quote for this RFQ');
   }
-  
+
   this.quotes.push(quote);
   await this.addActivityLog('quote_submitted', quote.supplier, { quoteId: quote._id });
   await this.save();
@@ -669,49 +669,49 @@ rfqSchema.methods.submitQuote = async function(quote: any): Promise<void> {
 rfqSchema.methods.evaluateQuotes = async function(): Promise<void> {
   // Score and rank quotes based on selection criteria
   const quotes = this.quotes.filter((q: any) => q.status === 'submitted');
-  
+
   quotes.forEach((quote: any) => {
     let score = 0;
-    
+
     // Price scoring (lower is better)
     const prices = quotes.map((q: any) => q.totalAmount);
     const minPrice = Math.min(...prices);
     const maxPrice = Math.max(...prices);
-    const priceScore = maxPrice > minPrice ? 
+    const priceScore = maxPrice > minPrice ?
       ((maxPrice - quote.totalAmount) / (maxPrice - minPrice)) * 100 : 100;
     score += (priceScore * this.selectionCriteria.priceWeight) / 100;
-    
+
     // Other criteria would be scored here...
-    
+
     quote.score = Math.round(score * 100) / 100;
   });
-  
+
   // Rank quotes
   quotes.sort((a: any, b: any) => b.score - a.score);
   quotes.forEach((quote: any, index: number) => {
     quote.ranking = index + 1;
   });
-  
+
   await this.save();
 };
 
 rfqSchema.methods.awardToSupplier = async function(
-  supplierId: string, 
+  supplierId: string,
   quoteId: string
 ): Promise<void> {
-  const quote = this.quotes.find((q: any) => 
+  const quote = this.quotes.find((q: any) =>
     q._id.toString() === quoteId && q.supplier.toString() === supplierId
   );
-  
+
   if (!quote) {
     throw new Error('Quote not found');
   }
-  
+
   this.status = 'awarded';
   this.awardedTo = supplierId as any;
   this.awardedQuote = quoteId as any;
   this.awardedDate = new Date();
-  
+
   // Update quote statuses
   this.quotes.forEach((q: any) => {
     if (q._id.toString() === quoteId) {
@@ -720,10 +720,10 @@ rfqSchema.methods.awardToSupplier = async function(
       q.status = 'rejected';
     }
   });
-  
-  await this.addActivityLog('rfq_awarded', supplierId, { 
-    quoteId, 
-    amount: quote.totalAmount 
+
+  await this.addActivityLog('rfq_awarded', supplierId, {
+    quoteId,
+    amount: quote.totalAmount
   });
   await this.save();
 };
@@ -732,7 +732,7 @@ rfqSchema.methods.cancelRFQ = async function(reason: string): Promise<void> {
   if (['awarded', 'cancelled'].includes(this.status)) {
     throw new Error('Cannot cancel RFQ in current status');
   }
-  
+
   this.status = 'cancelled';
   await this.addActivityLog('rfq_cancelled', this.createdBy, { reason });
   await this.save();
@@ -742,24 +742,24 @@ rfqSchema.methods.extendDeadline = async function(newDate: Date): Promise<void> 
   if (this.status !== 'published') {
     throw new Error('Can only extend deadline for published RFQs');
   }
-  
+
   if (newDate <= this.dueDate) {
     throw new Error('New deadline must be after current deadline');
   }
-  
+
   const oldDate = this.dueDate;
   this.dueDate = newDate;
-  
-  await this.addActivityLog('deadline_extended', this.createdBy, { 
-    oldDate, 
-    newDate 
+
+  await this.addActivityLog('deadline_extended', this.createdBy, {
+    oldDate,
+    newDate
   });
   await this.save();
 };
 
 rfqSchema.methods.addActivityLog = async function(
-  action: string, 
-  userId: string, 
+  action: string,
+  userId: string,
   details?: any
 ): Promise<void> {
   this.activityLog.push({

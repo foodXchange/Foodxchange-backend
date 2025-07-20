@@ -1,30 +1,33 @@
-import { Request, Response } from 'express';
-import * as bcrypt from 'bcryptjs';
-import * as jwt from 'jsonwebtoken';
 import * as crypto from 'crypto';
-import { User } from '../../models/User';
-import { Company } from '../../models/Company';
-import { Agent } from '../../models/Agent';
-import { 
-  ValidationError, 
-  AuthenticationError, 
-  ConflictError, 
-  NotFoundError 
+
+import axios from 'axios';
+import * as bcrypt from 'bcryptjs';
+import { Request, Response } from 'express';
+import * as jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
+import { v4 as uuidv4 } from 'uuid';
+
+import {
+  ValidationError,
+  AuthenticationError,
+  ConflictError,
+  NotFoundError
 } from '../../core/errors/index';
 import { Logger } from '../../core/logging/logger';
+import { Agent } from '../../models/Agent';
+import { Company } from '../../models/Company';
+import { User } from '../../models/User';
 import { AnalyticsService } from '../../services/analytics/AnalyticsService';
-import { EmailService } from '../../services/email/EmailService';
 import { TwoFactorAuthService } from '../../services/auth/TwoFactorAuthService';
 import { multiLevelCache } from '../../services/cache/MultiLevelCacheService';
-import { v4 as uuidv4 } from 'uuid';
-import axios from 'axios';
-import mongoose from 'mongoose';
+import { EmailService } from '../../services/email/EmailService';
+
 
 export class AuthController {
-  private logger: Logger;
-  private analyticsService: AnalyticsService;
-  private emailService: EmailService;
-  private twoFactorAuthService: TwoFactorAuthService;
+  private readonly logger: Logger;
+  private readonly analyticsService: AnalyticsService;
+  private readonly emailService: EmailService;
+  private readonly twoFactorAuthService: TwoFactorAuthService;
 
   constructor() {
     this.logger = new Logger('AuthController');
@@ -37,13 +40,13 @@ export class AuthController {
    * Register new user
    */
   async register(req: Request, res: Response): Promise<void> {
-    const { 
-      email, 
-      password, 
+    const {
+      email,
+      password,
       firstName,
       lastName,
       name, // For backward compatibility
-      role, 
+      role,
       company: companyName,
       companyType,
       businessType,
@@ -70,7 +73,7 @@ export class AuthController {
           data: { email, reason: 'email_exists' },
           ipAddress: req.ip
         });
-        
+
         throw new ConflictError('User already exists');
       }
 
@@ -85,7 +88,7 @@ export class AuthController {
           company = new Company({
             name: companyName,
             type: companyType || businessType || role,
-            email: email,
+            email,
             country: country || '',
             description: companyDescription || '',
             verificationStatus: 'pending'
@@ -111,7 +114,7 @@ export class AuthController {
         accountStatus: 'active',
         acceptedTermsAt: acceptTerms ? new Date() : undefined,
         failedLoginAttempts: 0,
-        loginCount: 0,
+        loginCount: 0
         // isActive field removed - using accountStatus instead,
         // profile fields are stored directly on user, not in a profile object
       });
@@ -128,7 +131,7 @@ export class AuthController {
       // Create agent profile if role is agent
       if (role === 'agent') {
         const agent = new Agent({
-          userId: user._id,
+          userId: user._id as mongoose.Types.ObjectId,
           personalInfo: {
             firstName: user.firstName,
             lastName: user.lastName,
@@ -146,7 +149,7 @@ export class AuthController {
 
       // Generate email verification token
       const verificationToken = this.generateEmailVerificationToken(user);
-      
+
       // Send verification email
       await this.emailService.sendVerificationEmail(email, verificationToken);
 
@@ -158,7 +161,7 @@ export class AuthController {
         tenantId: companyId?.toString() || 'default',
         eventType: 'signup_success',
         category: 'user',
-        userId: user._id,
+        userId: user._id as mongoose.Types.ObjectId,
         data: { email: user.email, role: user.role, companyName },
         ipAddress: req.ip
       });
@@ -211,7 +214,7 @@ export class AuthController {
           data: { email, reason: 'user_not_found' },
           ipAddress: req.ip
         });
-        
+
         throw new AuthenticationError('Invalid credentials');
       }
 
@@ -222,9 +225,9 @@ export class AuthController {
 
       // Check if account is locked
       if (user.isAccountLocked?.() || user.accountStatus === 'locked') {
-        const lockDuration = user.accountLockedAt ? 
+        const lockDuration = user.accountLockedAt ?
           new Date(user.accountLockedAt.getTime() + 30 * 60 * 1000) : null;
-        
+
         if (lockDuration && lockDuration > new Date()) {
           await this.analyticsService.trackEvent({
             tenantId: req.tenantId || user.company?.toString() || 'default',
@@ -233,7 +236,7 @@ export class AuthController {
             data: { email, reason: 'account_locked' },
             ipAddress: req.ip
           });
-          
+
           throw new AuthenticationError('Account is locked due to multiple failed login attempts. Please try again later or contact support.');
         } else {
           // Unlock account if lock duration has passed
@@ -245,7 +248,7 @@ export class AuthController {
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
         await this.incrementFailedLoginAttempts(user);
-        
+
         await this.analyticsService.trackEvent({
           tenantId: req.tenantId || user.company?.toString() || 'default',
           eventType: 'login_failure',
@@ -253,7 +256,7 @@ export class AuthController {
           data: { email, reason: 'invalid_password' },
           ipAddress: req.ip
         });
-        
+
         throw new AuthenticationError('Invalid credentials');
       }
 
@@ -262,11 +265,11 @@ export class AuthController {
       if (is2FAEnabled) {
         // Generate 2FA challenge
         const challengeId = await this.twoFactorAuthService.sendEmailChallenge(
-          user._id.toString(), 
+          user._id.toString(),
           user.email
         );
 
-        return res.json({
+        res.json({
           success: true,
           data: {
             requiresTwoFactor: true,
@@ -274,6 +277,7 @@ export class AuthController {
             message: 'Please check your email for the verification code'
           }
         });
+        return;
       }
 
       // Reset failed login attempts on successful login
@@ -292,7 +296,7 @@ export class AuthController {
         tenantId: req.tenantId || user.company?.toString() || 'default',
         eventType: 'login_success',
         category: 'user',
-        userId: user._id,
+        userId: user._id as mongoose.Types.ObjectId,
         data: { email: user.email, role: user.role },
         ipAddress: req.ip
       });
@@ -336,7 +340,7 @@ export class AuthController {
 
     try {
       const isValid = await this.twoFactorAuthService.verifyChallengeCode(challengeId, code);
-      
+
       if (!isValid) {
         throw new AuthenticationError('Invalid verification code');
       }
@@ -385,9 +389,9 @@ export class AuthController {
   async enableTwoFactor(req: Request | any, res: Response): Promise<void> {
     try {
       const userId = req.userId || req.user?._id;
-      
+
       const secret = await this.twoFactorAuthService.generateTOTPSecret(userId);
-      
+
       res.json({
         success: true,
         data: {
@@ -412,7 +416,7 @@ export class AuthController {
 
     try {
       const success = await this.twoFactorAuthService.verifyAndEnable2FA(userId, token);
-      
+
       if (!success) {
         throw new ValidationError('Invalid verification code');
       }
@@ -434,9 +438,9 @@ export class AuthController {
   async disableTwoFactor(req: Request | any, res: Response): Promise<void> {
     try {
       const userId = req.userId || req.user?._id;
-      
+
       await this.twoFactorAuthService.disable2FA(userId);
-      
+
       res.json({
         success: true,
         message: 'Two-factor authentication disabled successfully'
@@ -454,11 +458,11 @@ export class AuthController {
   async getMe(req: Request | any, res: Response): Promise<void> {
     try {
       const userId = req.userId || req.user?._id;
-      
+
       const user = await User.findById(userId)
         .populate('company')
         .select('-password');
-      
+
       if (!user) {
         throw new NotFoundError('User not found');
       }
@@ -481,23 +485,23 @@ export class AuthController {
     try {
       const userId = req.userId || req.user?._id;
       const { name, firstName, lastName, phone, preferences } = req.body;
-      
+
       const user = await User.findById(userId);
       if (!user) {
         throw new NotFoundError('User not found');
       }
-      
+
       // Update allowed fields
       // Note: name is handled by firstName and lastName
       if (firstName) user.firstName = firstName;
       if (lastName) user.lastName = lastName;
       if (phone) user.phone = phone;
       if (preferences) user.preferences = { ...user.preferences, ...preferences };
-      
+
       // Profile fields are stored directly on user
-      
+
       await user.save();
-      
+
       res.json({
         success: true,
         message: 'Profile updated successfully',
@@ -526,7 +530,7 @@ export class AuthController {
     try {
       const userId = req.userId || req.user?._id;
       const { currentPassword, newPassword } = req.body;
-      
+
       // Get user with password
       const user = await User.findById(userId).select('+password');
       if (!user) {
@@ -564,9 +568,9 @@ export class AuthController {
       const user = await User.findOne({ email });
       if (!user) {
         // Don't reveal if user exists or not
-        res.json({ 
+        res.json({
           success: true,
-          message: 'If the email exists, a password reset link has been sent.' 
+          message: 'If the email exists, a password reset link has been sent.'
         });
         return;
       }
@@ -588,12 +592,12 @@ export class AuthController {
         tenantId: req.tenantId || user.company?.toString() || 'default',
         eventType: 'password_reset_requested',
         category: 'user',
-        userId: user._id,
+        userId: user._id as mongoose.Types.ObjectId,
         data: { email: user.email },
         ipAddress: req.ip
       });
 
-      res.json({ 
+      res.json({
         success: true,
         message: 'If the email exists, a password reset link has been sent.',
         // Remove in production
@@ -638,14 +642,14 @@ export class AuthController {
         tenantId: req.tenantId || user.company?.toString() || 'default',
         eventType: 'password_reset_success',
         category: 'user',
-        userId: user._id,
+        userId: user._id as mongoose.Types.ObjectId,
         data: { email: user.email },
         ipAddress: req.ip
       });
 
-      res.json({ 
+      res.json({
         success: true,
-        message: 'Password reset successfully' 
+        message: 'Password reset successfully'
       });
 
     } catch (error) {
@@ -667,10 +671,10 @@ export class AuthController {
 
       // Verify refresh token
       const decoded = jwt.verify(
-        refreshToken, 
+        refreshToken,
         process.env.JWT_REFRESH_SECRET || 'refresh-secret'
       ) as any;
-      
+
       // Find user with matching refresh token
       const user = await User.findOne({
         _id: decoded.userId,
@@ -704,7 +708,7 @@ export class AuthController {
   async logout(req: Request | any, res: Response): Promise<void> {
     try {
       const userId = req.userId || req.user?._id || req.user?.id;
-      
+
       if (userId) {
         // Clear refresh token
         await User.findByIdAndUpdate(userId, {
@@ -721,9 +725,9 @@ export class AuthController {
         });
       }
 
-      res.json({ 
+      res.json({
         success: true,
-        message: 'Logged out successfully' 
+        message: 'Logged out successfully'
       });
 
     } catch (error) {
@@ -738,15 +742,15 @@ export class AuthController {
   async logoutAll(req: Request | any, res: Response): Promise<void> {
     try {
       const userId = req.userId || req.user?._id;
-      
+
       // Clear refresh token and increment login count to invalidate all tokens
       await User.findByIdAndUpdate(userId, {
         refreshToken: undefined,
         $inc: { loginCount: 1 }
       });
-      
+
       this.logger.info('User logged out from all devices', { userId });
-      
+
       res.json({
         success: true,
         message: 'Logged out from all devices successfully'
@@ -767,19 +771,19 @@ export class AuthController {
     try {
       // Verify email token
       const decoded = jwt.verify(
-        token, 
+        token,
         process.env.JWT_SECRET || 'secret'
       ) as any;
-      
+
       const user = await User.findById(decoded.userId);
       if (!user) {
         throw new ValidationError('Invalid verification token');
       }
 
       if (user.isEmailVerified) {
-        res.json({ 
+        res.json({
           success: true,
-          message: 'Email already verified' 
+          message: 'Email already verified'
         });
         return;
       }
@@ -795,14 +799,14 @@ export class AuthController {
         tenantId: req.tenantId || user.company?.toString() || 'default',
         eventType: 'email_verified',
         category: 'user',
-        userId: user._id,
+        userId: user._id as mongoose.Types.ObjectId,
         data: { email: user.email },
         ipAddress: req.ip
       });
 
-      res.json({ 
+      res.json({
         success: true,
-        message: 'Email verified successfully' 
+        message: 'Email verified successfully'
       });
 
     } catch (error) {
@@ -817,18 +821,18 @@ export class AuthController {
   async googleLogin(req: Request, res: Response): Promise<void> {
     try {
       const { redirect_uri } = req.query;
-      
+
       if (!process.env.GOOGLE_CLIENT_ID) {
         throw new ValidationError('Google SSO not configured');
       }
 
       const state = uuidv4();
       const scope = 'openid profile email';
-      
-      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+
+      const authUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' +
         `client_id=${process.env.GOOGLE_CLIENT_ID}&` +
         `redirect_uri=${process.env.GOOGLE_REDIRECT_URI}&` +
-        `response_type=code&` +
+        'response_type=code&' +
         `scope=${encodeURIComponent(scope)}&` +
         `state=${state}`;
 
@@ -870,7 +874,7 @@ export class AuthController {
       });
 
       const googleUser = userResponse.data;
-      
+
       // Find or create user
       const user = await this.findOrCreateSocialUser({
         email: googleUser.email,
@@ -889,7 +893,7 @@ export class AuthController {
         tenantId: req.tenantId || user.company?.toString() || 'default',
         eventType: 'social_login_success',
         category: 'user',
-        userId: user._id,
+        userId: user._id as mongoose.Types.ObjectId,
         data: { email: user.email, provider: 'google' },
         ipAddress: req.ip
       });
@@ -920,14 +924,14 @@ export class AuthController {
   private async generateTokenPair(userId: string, rememberMe: boolean = false) {
     const accessToken = this.generateAccessToken(userId);
     const refreshToken = this.generateRefreshToken(userId);
-    
+
     // Store refresh token in database
     await User.findByIdAndUpdate(userId, {
       refreshToken,
       $inc: { loginCount: 1 },
       lastLoginAt: new Date()
     });
-    
+
     return { accessToken, refreshToken };
   }
 
@@ -936,37 +940,37 @@ export class AuthController {
     return jwt.sign(
       { userId },
       process.env.JWT_SECRET || 'secret',
-      { expiresIn }
+      { expiresIn } as jwt.SignOptions
     );
   }
 
   private generateRefreshToken(userId: string): string {
     return jwt.sign(
-      { 
+      {
         userId,
         type: 'refresh',
         random: crypto.randomBytes(16).toString('hex')
       },
       process.env.JWT_REFRESH_SECRET || 'refresh-secret',
-      { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d' }
+      { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d' } as jwt.SignOptions
     );
   }
 
   private generateEmailVerificationToken(user: any): string {
     return jwt.sign(
-      { 
+      {
         userId: user._id.toString(),
-        type: 'email_verification' 
+        type: 'email_verification'
       },
       process.env.JWT_SECRET || 'secret',
-      { expiresIn: '24h' }
+      { expiresIn: '24h' } as jwt.SignOptions
     );
   }
 
   private async incrementFailedLoginAttempts(user: any): Promise<void> {
     const attempts = (user.failedLoginAttempts || 0) + 1;
     const maxAttempts = parseInt(process.env.MAX_LOGIN_ATTEMPTS || '5', 10);
-    
+
     const updateData: any = {
       failedLoginAttempts: attempts,
       lastFailedLoginAt: new Date()
@@ -976,7 +980,7 @@ export class AuthController {
     if (attempts >= maxAttempts) {
       updateData.accountStatus = 'locked';
       updateData.accountLockedAt = new Date();
-      
+
       this.logger.warn('Account locked due to failed login attempts', {
         userId: user._id.toString(),
         email: user.email,
@@ -1012,14 +1016,14 @@ export class AuthController {
       if (!user.avatar && socialData.avatar) {
         user.avatar = socialData.avatar;
       }
-      
+
       // Mark email as verified for social users
       if (!user.isEmailVerified) {
         user.isEmailVerified = true;
         user.emailVerifiedAt = new Date();
         user.onboardingStep = 'company-details';
       }
-      
+
       await user.save();
     } else {
       // Create new user
@@ -1036,10 +1040,10 @@ export class AuthController {
         onboardingStep: 'company-details',
         accountStatus: 'active',
         failedLoginAttempts: 0,
-        loginCount: 0,
+        loginCount: 0
         // isActive field removed - using accountStatus instead
       });
-      
+
       await user.save();
     }
 

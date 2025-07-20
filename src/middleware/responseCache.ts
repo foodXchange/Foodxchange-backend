@@ -1,7 +1,9 @@
+import crypto from 'crypto';
+
 import { Request, Response, NextFunction } from 'express';
+
 import { cacheService } from '../config/redis';
 import { Logger } from '../core/logging/logger';
-import crypto from 'crypto';
 
 const logger = new Logger('ResponseCache');
 
@@ -65,19 +67,19 @@ export const responseCache = (options: CacheOptions = {}) => {
       const cached = await cacheService.get(cacheKey);
       if (cached) {
         logger.debug(`Cache hit: ${cacheKey}`);
-        
+
         // Set cache headers
         res.setHeader('X-Cache', 'HIT');
         res.setHeader('X-Cache-Key', cacheKey);
-        
+
         // Parse and send cached response
         const { statusCode, headers, body } = cached as any;
-        
+
         // Set headers
         Object.entries(headers).forEach(([key, value]) => {
           res.setHeader(key, value as string);
         });
-        
+
         // Send response
         res.status(statusCode).send(body);
         return;
@@ -99,7 +101,7 @@ export const responseCache = (options: CacheOptions = {}) => {
     // Override send method to cache response
     res.send = function(data: any): Response {
       res.send = originalSend; // Restore original method
-      
+
       // Only cache successful responses
       if (res.statusCode >= 200 && res.statusCode < 300) {
         const responseData = {
@@ -107,20 +109,20 @@ export const responseCache = (options: CacheOptions = {}) => {
           headers: res.getHeaders(),
           body: data
         };
-        
+
         // Cache asynchronously
         cacheService.set(cacheKey, responseData, ttl).catch(error => {
           logger.error('Cache write error:', error);
         });
       }
-      
+
       return originalSend.call(this, data);
     };
 
     // Override json method to cache response
     res.json = function(data: any): Response {
       res.json = originalJson; // Restore original method
-      
+
       // Only cache successful responses
       if (res.statusCode >= 200 && res.statusCode < 300) {
         const responseData = {
@@ -128,13 +130,13 @@ export const responseCache = (options: CacheOptions = {}) => {
           headers: res.getHeaders(),
           body: JSON.stringify(data)
         };
-        
+
         // Cache asynchronously
         cacheService.set(cacheKey, responseData, ttl).catch(error => {
           logger.error('Cache write error:', error);
         });
       }
-      
+
       return originalJson.call(this, data);
     };
 
@@ -169,34 +171,34 @@ export const clearCacheOnMutation = (patterns: string[] | ((req: Request) => str
     // Override send method to clear cache after successful mutation
     res.send = function(data: any): Response {
       res.send = originalSend; // Restore original method
-      
+
       // Only clear cache on successful responses
       if (res.statusCode >= 200 && res.statusCode < 300) {
         const patternsToClear = typeof patterns === 'function' ? patterns(req) : patterns;
-        
+
         // Clear cache asynchronously
         clearCache(patternsToClear).catch(error => {
           logger.error('Cache clear error:', error);
         });
       }
-      
+
       return originalSend.call(this, data);
     };
 
     // Override json method
     res.json = function(data: any): Response {
       res.json = originalJson; // Restore original method
-      
+
       // Only clear cache on successful responses
       if (res.statusCode >= 200 && res.statusCode < 300) {
         const patternsToClear = typeof patterns === 'function' ? patterns(req) : patterns;
-        
+
         // Clear cache asynchronously
         clearCache(patternsToClear).catch(error => {
           logger.error('Cache clear error:', error);
         });
       }
-      
+
       return originalJson.call(this, data);
     };
 

@@ -1,23 +1,25 @@
 import { Request, Response } from 'express';
-import { Order, IOrder } from '../models/Order';
+import mongoose from 'mongoose';
+
+import { ValidationError, AuthorizationError, NotFoundError, ConflictError } from '../core/errors';
+import { Logger } from '../core/logging/logger';
 import { Company } from '../models/Company';
-import { User } from '../models/User';
+import { Order, IOrder } from '../models/Order';
 import { Product } from '../models/Product';
 import { RFQ } from '../models/RFQ';
-import { Logger } from '../core/logging/logger';
-import { ValidationError, AuthorizationError, NotFoundError, ConflictError } from '../core/errors';
-import { validateOrderData, validateOrderUpdateData } from '../utils/validation';
-import { sendEmail } from '../utils/email';
-import { sendSMS } from '../utils/sms';
+import { User } from '../models/User';
 import { publishToServiceBus, getServiceBusService } from '../services/azure/ServiceBusService';
 import { getRealtimeEventService } from '../services/realtime/RealtimeEventService';
-import mongoose from 'mongoose';
+import { sendEmail } from '../utils/email';
+import { sendSMS } from '../utils/sms';
+import { validateOrderData, validateOrderUpdateData } from '../utils/validation';
+
 
 const logger = new Logger('OrderController');
 
 export class OrderController {
-  private realtimeEventService = getRealtimeEventService();
-  private serviceBusService = getServiceBusService();
+  private readonly realtimeEventService = getRealtimeEventService();
+  private readonly serviceBusService = getServiceBusService();
   /**
    * Create a new order
    */
@@ -47,13 +49,13 @@ export class OrderController {
         const productIds = orderData.items
           .filter(item => item.productId)
           .map(item => item.productId);
-        
+
         if (productIds.length > 0) {
-          const products = await Product.find({ 
-            _id: { $in: productIds }, 
-            tenantId: req.tenantId 
+          const products = await Product.find({
+            _id: { $in: productIds },
+            tenantId: req.tenantId
           });
-          
+
           if (products.length !== productIds.length) {
             throw new ValidationError('One or more products not found');
           }
@@ -72,29 +74,31 @@ export class OrderController {
 
       // Set up approval chain if required
       if (requiresApproval) {
-        await this.setupApprovalChain(order, req.tenantId!);
+        await this.setupApprovalChain(order, req.tenantId);
       }
 
       // Log activity
-      await order.addActivityLog('order_created', req.userId!, {
+      await order.addActivityLog('order_created', req.userId, {
         orderNumber: order.orderNumber,
         totalAmount: order.totalAmount
       });
 
-      // Send notifications
-      await this.sendOrderNotifications(order, 'created');
+      // Send notifications asynchronously (non-blocking)
+      this.sendOrderNotifications(order, 'created').catch(error => {
+        logger.error('Failed to send order notifications:', error);
+      });
 
       // Emit real-time event
       await this.realtimeEventService.emitOrderCreated(
         order._id.toString(),
         order.buyer.toString(),
         order.supplier.toString(),
-        req.tenantId!,
+        req.tenantId,
         order
       );
 
       // Publish to Service Bus
-      await this.serviceBusService.sendOrderEvent('created', order._id.toString(), req.tenantId!, req.userId!, {
+      await this.serviceBusService.sendOrderEvent('created', order._id.toString(), req.tenantId, req.userId, {
         orderId: order._id.toString(),
         orderNumber: order.orderNumber,
         totalAmount: order.totalAmount,
@@ -112,7 +116,7 @@ export class OrderController {
       });
     } catch (error) {
       logger.error('Create order error:', error);
-      
+
       if (error instanceof ValidationError || error instanceof AuthorizationError) {
         res.status(400).json({
           success: false,
@@ -251,7 +255,7 @@ export class OrderController {
       });
     } catch (error) {
       logger.error('Get order by ID error:', error);
-      
+
       if (error instanceof NotFoundError) {
         res.status(404).json({
           success: false,
@@ -273,7 +277,7 @@ export class OrderController {
     try {
       const { id } = req.params;
       const { error, value } = validateOrderUpdateData(req.body);
-      
+
       if (error) {
         throw new ValidationError(error.details.map(d => d.message).join(', '));
       }
@@ -296,7 +300,7 @@ export class OrderController {
       await order.save();
 
       // Log activity
-      await order.addActivityLog('order_updated', req.userId!, {
+      await order.addActivityLog('order_updated', req.userId, {
         updatedFields: Object.keys(updateData)
       });
 
@@ -308,8 +312,8 @@ export class OrderController {
         order._id.toString(),
         'updated',
         order.status,
-        req.userId!,
-        req.tenantId!
+        req.userId,
+        req.tenantId
       );
 
       res.json({
@@ -319,7 +323,7 @@ export class OrderController {
       });
     } catch (error) {
       logger.error('Update order error:', error);
-      
+
       if (error instanceof ValidationError || error instanceof NotFoundError || error instanceof ConflictError) {
         res.status(400).json({
           success: false,
@@ -352,7 +356,7 @@ export class OrderController {
       }
 
       // Check if user can approve this order
-      const canApprove = order.approvalChain.some(approval => 
+      const canApprove = order.approvalChain.some(approval =>
         approval.approver.toString() === req.userId && approval.status === 'pending'
       );
 
@@ -360,7 +364,7 @@ export class OrderController {
         throw new AuthorizationError('You are not authorized to approve this order');
       }
 
-      await order.processApproval(req.userId!, decision, comments);
+      await order.processApproval(req.userId, decision, comments);
 
       // Send notifications
       await this.sendOrderNotifications(order, `approval_${decision}`);
@@ -369,14 +373,14 @@ export class OrderController {
       if (decision === 'approved') {
         await this.realtimeEventService.emit('order:approved', {
           type: 'order:approved',
-          tenantId: req.tenantId!,
-          data: { orderId: order._id.toString(), approver: req.userId!, comments }
+          tenantId: req.tenantId,
+          data: { orderId: order._id.toString(), approver: req.userId, comments }
         });
       } else {
         await this.realtimeEventService.emit('order:rejected', {
           type: 'order:rejected',
-          tenantId: req.tenantId!,
-          data: { orderId: order._id.toString(), rejector: req.userId!, comments }
+          tenantId: req.tenantId,
+          data: { orderId: order._id.toString(), rejector: req.userId, comments }
         });
       }
 
@@ -399,7 +403,7 @@ export class OrderController {
       });
     } catch (error) {
       logger.error('Process approval error:', error);
-      
+
       if (error instanceof ValidationError || error instanceof NotFoundError || error instanceof AuthorizationError) {
         res.status(400).json({
           success: false,
@@ -431,10 +435,10 @@ export class OrderController {
         throw new ConflictError('Order cannot be cancelled in current status');
       }
 
-      await order.updateStatus('cancelled', req.userId!);
+      await order.updateStatus('cancelled', req.userId);
 
       // Log cancellation reason
-      await order.addActivityLog('order_cancelled', req.userId!, { reason });
+      await order.addActivityLog('order_cancelled', req.userId, { reason });
 
       // Send notifications
       await this.sendOrderNotifications(order, 'cancelled');
@@ -442,7 +446,7 @@ export class OrderController {
       // Emit real-time event for cancellation
       await this.realtimeEventService.emit('order:cancelled', {
         type: 'order:cancelled',
-        tenantId: req.tenantId!,
+        tenantId: req.tenantId,
         data: { orderId: order._id.toString(), reason }
       });
 
@@ -453,7 +457,7 @@ export class OrderController {
       });
     } catch (error) {
       logger.error('Cancel order error:', error);
-      
+
       if (error instanceof NotFoundError || error instanceof ConflictError) {
         res.status(400).json({
           success: false,
@@ -492,7 +496,7 @@ export class OrderController {
       await order.addShipment(shipmentData);
 
       // Log activity
-      await order.addActivityLog('shipment_added', req.userId!, {
+      await order.addActivityLog('shipment_added', req.userId, {
         shipmentNumber: shipmentData.shipmentNumber,
         carrier: shipmentData.carrier
       });
@@ -503,9 +507,9 @@ export class OrderController {
       // Emit real-time event for shipment creation
       await this.realtimeEventService.emit('shipment:created', {
         type: 'shipment:created',
-        tenantId: req.tenantId!,
-        data: { 
-          orderId: order._id.toString(), 
+        tenantId: req.tenantId,
+        data: {
+          orderId: order._id.toString(),
           shipmentId: order.shipments[order.shipments.length - 1]._id.toString(),
           carrier: shipmentData.carrier,
           trackingNumber: shipmentData.trackingNumber
@@ -519,7 +523,7 @@ export class OrderController {
       });
     } catch (error) {
       logger.error('Add shipment error:', error);
-      
+
       if (error instanceof NotFoundError || error instanceof ConflictError) {
         res.status(400).json({
           success: false,
@@ -550,7 +554,7 @@ export class OrderController {
       await order.updateShipmentTracking(shipmentId, trackingData);
 
       // Log activity
-      await order.addActivityLog('shipment_tracking_updated', req.userId!, {
+      await order.addActivityLog('shipment_tracking_updated', req.userId, {
         shipmentId,
         status: trackingData.status
       });
@@ -560,8 +564,8 @@ export class OrderController {
         order._id.toString(),
         shipmentId,
         trackingData,
-        req.userId!,
-        req.tenantId!
+        req.userId,
+        req.tenantId
       );
 
       res.json({
@@ -571,7 +575,7 @@ export class OrderController {
       });
     } catch (error) {
       logger.error('Update shipment tracking error:', error);
-      
+
       if (error instanceof NotFoundError) {
         res.status(404).json({
           success: false,
@@ -671,16 +675,31 @@ export class OrderController {
       { amount: 100000, role: 'ceo' }
     ];
 
+    // Get all required roles that meet the threshold
+    const requiredRoles = approvalThresholds
+      .filter(threshold => order.totalAmount >= threshold.amount)
+      .map(threshold => threshold.role);
+
+    if (requiredRoles.length === 0) return;
+
+    // Fetch all approvers in one query
+    const approvers = await User.find({
+      companyId: order.buyerCompany,
+      role: { $in: requiredRoles },
+      tenantId
+    });
+
+    // Create a map for quick lookup
+    const approversByRole = new Map();
+    approvers.forEach(approver => {
+      approversByRole.set(approver.role, approver);
+    });
+
+    // Add approvers to chain in order
     let approvalOrder = 1;
     for (const threshold of approvalThresholds) {
       if (order.totalAmount >= threshold.amount) {
-        // Find approver by role
-        const approver = await User.findOne({ 
-          companyId: order.buyerCompany, 
-          role: threshold.role,
-          tenantId 
-        });
-
+        const approver = approversByRole.get(threshold.role);
         if (approver) {
           await order.addToApprovalChain(approver._id.toString(), threshold.role, approvalOrder++);
         }

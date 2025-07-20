@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+
 import { Logger } from '../../core/logging/logger';
 
 const logger = new Logger('QueryOptimizer');
@@ -194,15 +195,15 @@ export class QueryOptimizer {
 
     for (const collection of collections) {
       const stats = await this.getIndexUsageStats(collection);
-      const unused = stats.filter(idx => 
-        idx.usage === 'UNUSED' && 
-        idx.name !== '_id_' && 
+      const unused = stats.filter(idx =>
+        idx.usage === 'UNUSED' &&
+        idx.name !== '_id_' &&
         !idx.name.includes('unique')
       );
 
       if (unused.length > 0) {
         unusedIndexes.push({ collection, indexes: unused });
-        
+
         if (!dryRun) {
           for (const idx of unused) {
             try {
@@ -246,7 +247,7 @@ export const queryPerformanceMonitor = () => {
   // Monitor all mongoose queries
   mongoose.set('debug', (collectionName: string, method: string, query: any, doc: any, options: any) => {
     const start = Date.now();
-    
+
     // Log slow queries
     process.nextTick(() => {
       const duration = Date.now() - start;
@@ -271,21 +272,21 @@ export class AggregationOptimizer {
    */
   static optimizePipeline(pipeline: any[]): any[] {
     const optimized = [...pipeline];
-    
+
     // Move $match stages to the beginning
     const matchStages = optimized.filter(stage => '$match' in stage);
     const otherStages = optimized.filter(stage => !('$match' in stage));
-    
+
     // Combine consecutive $match stages
     const combinedMatch = matchStages.reduce((acc, stage) => {
       return { $match: { ...acc.$match, ...stage.$match } };
     }, { $match: {} });
-    
+
     // Place combined $match at the beginning if it has conditions
     if (Object.keys(combinedMatch.$match).length > 0) {
       return [combinedMatch, ...otherStages];
     }
-    
+
     return otherStages;
   }
 
@@ -308,7 +309,7 @@ export class ConnectionPoolOptimizer {
    * Get connection pool statistics
    */
   static getPoolStats() {
-    const connection = mongoose.connection;
+    const {connection} = mongoose;
     return {
       readyState: connection.readyState,
       host: connection.host,
@@ -319,13 +320,15 @@ export class ConnectionPoolOptimizer {
 
   /**
    * Optimize connection pool settings
+   * Note: poolSize is deprecated - use maxPoolSize in connection options instead
    */
   static optimizePool(options: {
     poolSize?: number;
     serverSelectionTimeoutMS?: number;
     socketTimeoutMS?: number;
   }) {
-    mongoose.set('poolSize', options.poolSize || 10);
+    // poolSize is deprecated in mongoose - connection pool should be configured via connect options
+    console.warn('Warning: poolSize is deprecated. Use maxPoolSize and minPoolSize in connection options instead.');
     mongoose.set('serverSelectionTimeoutMS', options.serverSelectionTimeoutMS || 5000);
     mongoose.set('socketTimeoutMS', options.socketTimeoutMS || 45000);
   }

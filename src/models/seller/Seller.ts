@@ -6,37 +6,37 @@ const sellerSchema = new mongoose.Schema({
   companyName: { type: String, required: true },
   supplierCode: { type: String, unique: true, sparse: true },
   autoNumber: { type: String, unique: true }, // From your data: 6-digit codes
-  
+
   // Authentication
   email: { type: String, required: true, unique: true, lowercase: true },
   password: { type: String, required: true },
   isActive: { type: Boolean, default: false }, // Pending verification
   isVerified: { type: Boolean, default: false },
-  
+
   // Company Details
   companyEmail: { type: String, required: true },
   companyWebsite: { type: String },
   phone: { type: String },
   vatNumber: { type: String },
-  
+
   // Address & Location
   address: { type: String },
   country: { type: String, required: true },
   closestSeaPort: { type: String },
   distanceToSeaport: { type: Number }, // in km
-  
+
   // Business Information
   categories: [String], // Product categories
   productCategoryText: { type: String }, // Detailed category description
   description: { type: String }, // Company description
-  
+
   // Trading Terms
   incoterms: {
     type: String,
     enum: ['EXW', 'FOB', 'CIF', 'CFR', 'DDP', 'FCA', 'CPT', 'CIP', 'DAT', 'DAP']
   },
   paymentTerms: { type: String },
-  
+
   // Certifications
   certifications: {
     kosher: { type: Boolean, default: false },
@@ -47,7 +47,7 @@ const sellerSchema = new mongoose.Schema({
     ifs: { type: Boolean, default: false },
     other: [String]
   },
-  
+
   // Documents & Media
   companyLogo: { type: String },
   profileImages: [String],
@@ -57,7 +57,7 @@ const sellerSchema = new mongoose.Schema({
     expiryDate: { type: Date },
     uploadedAt: { type: Date, default: Date.now }
   }],
-  
+
   // Contacts
   primaryContact: {
     name: { type: String, required: true },
@@ -74,7 +74,7 @@ const sellerSchema = new mongoose.Schema({
     office: String,
     isActive: { type: Boolean, default: true }
   }],
-  
+
   // Performance Metrics
   metrics: {
     totalProducts: { type: Number, default: 0 },
@@ -85,16 +85,16 @@ const sellerSchema = new mongoose.Schema({
     responseRate: { type: Number, default: 0 }, // Percentage
     onTimeDelivery: { type: Number, default: 0 } // Percentage
   },
-  
+
   // Relationships
   products: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
   proposals: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Proposal' }],
   orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
-  
+
   // Import tracking
   importSource: { type: String }, // Track where data came from
   originalData: { type: mongoose.Schema.Types.Mixed }, // Store original import data
-  
+
   // Timestamps
   registeredAt: { type: Date, default: Date.now },
   lastLoginAt: { type: Date },
@@ -116,7 +116,7 @@ sellerSchema.virtual('fullAddress').get(function() {
 
 // Method to check if certification is valid
 sellerSchema.methods.hasValidCertification = function(certType) {
-  const cert = this.certificationDocs.find(doc => 
+  const cert = this.certificationDocs.find(doc =>
     doc.type === certType && doc.expiryDate > new Date()
   );
   return !!cert;
@@ -128,17 +128,17 @@ sellerSchema.methods.getProfileCompletion = function() {
     'companyName', 'country', 'categories', 'description',
     'primaryContact.name', 'primaryContact.email'
   ];
-  
+
   let completed = 0;
   requiredFields.forEach(field => {
-    const value = field.includes('.') 
+    const value = field.includes('.')
       ? field.split('.').reduce((obj, key) => obj?.[key], this)
       : this[field];
     if (value && (Array.isArray(value) ? value.length > 0 : true)) {
       completed++;
     }
   });
-  
+
   return Math.round((completed / requiredFields.length) * 100);
 };
 

@@ -16,8 +16,8 @@ export const authenticate = async (
   try {
     // Get token from header
     const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+
+    if (!authHeader?.startsWith('Bearer ')) {
       return res.status(401).json({
         success: false,
         error: 'No token provided'
@@ -29,28 +29,28 @@ export const authenticate = async (
 
     // Verify token
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-    
+
     // Add user ID to request
     req.userId = decoded.userId;
-    
+
     next();
   } catch (error: any) {
     console.error('Auth middleware error:', error);
-    
+
     if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({
         success: false,
         error: 'Invalid token'
       });
     }
-    
+
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({
         success: false,
         error: 'Token expired'
       });
     }
-    
+
     res.status(500).json({
       success: false,
       error: 'Authentication error'

@@ -1,10 +1,12 @@
 // File: src/api/routes/compliance.ts
 import { Router } from 'express';
-import { asyncHandler } from '../../core/errors';
+import { body, param, query } from 'express-validator';
+
 import { complianceController } from '../../controllers/compliance/complianceController';
+import { asyncHandler } from '../../core/errors';
 import { authenticate } from '../../middleware/auth';
 import { validateRequest } from '../../middleware/validation';
-import { body, param, query } from 'express-validator';
+
 
 const router = Router();
 
@@ -14,7 +16,7 @@ router.use(authenticate);
 // @route   POST /api/compliance/check
 // @desc    Run compliance check on a product
 // @access  Private
-router.post('/check', 
+router.post('/check',
   validateRequest([
     body('productId').isMongoId().withMessage('Valid product ID is required'),
     body('region').notEmpty().withMessage('Region is required'),

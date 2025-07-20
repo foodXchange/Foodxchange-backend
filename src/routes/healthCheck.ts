@@ -1,10 +1,12 @@
+import os from 'os';
+
 import express from 'express';
+import asyncHandler from 'express-async-handler';
 import mongoose from 'mongoose';
+
 import { redisClient } from '../config/redis';
 import { Logger } from '../core/logging/logger';
 import { metricsService } from '../core/metrics/MetricsService';
-import os from 'os';
-import asyncHandler from 'express-async-handler';
 
 const router = express.Router();
 const logger = new Logger('HealthCheck');
@@ -43,15 +45,15 @@ router.get('/detailed', asyncHandler(async (req, res) => {
 
   // Check MongoDB
   checks.mongodb = await checkMongoDB();
-  
+
   // Check Redis
   checks.redis = await checkRedis();
-  
+
   // Check external services if configured
   if (process.env.AZURE_STORAGE_CONNECTION_STRING) {
     checks.azureStorage = await checkAzureStorage();
   }
-  
+
   if (process.env.SENDGRID_API_KEY || process.env.SMTP_HOST) {
     checks.email = await checkEmailService();
   }
@@ -59,7 +61,7 @@ router.get('/detailed', asyncHandler(async (req, res) => {
   // Calculate overall status
   const statuses = Object.values(checks).map(check => check.status);
   const overallStatus = statuses.includes('unhealthy') ? 'unhealthy' :
-                       statuses.includes('degraded') ? 'degraded' : 'healthy';
+    statuses.includes('degraded') ? 'degraded' : 'healthy';
 
   const response = {
     status: overallStatus,
@@ -73,7 +75,7 @@ router.get('/detailed', asyncHandler(async (req, res) => {
 
   // Set appropriate status code
   const statusCode = overallStatus === 'healthy' ? 200 :
-                    overallStatus === 'degraded' ? 200 : 503;
+    overallStatus === 'degraded' ? 200 : 503;
 
   res.status(statusCode).json(response);
 }));
@@ -158,7 +160,7 @@ router.get('/cache', asyncHandler(async (req, res) => {
 async function checkMongoDB(): Promise<HealthStatus> {
   try {
     const start = Date.now();
-    
+
     if (mongoose.connection.readyState !== 1) {
       return {
         status: 'unhealthy',
@@ -168,9 +170,9 @@ async function checkMongoDB(): Promise<HealthStatus> {
 
     // Ping the database
     await mongoose.connection.db.admin().ping();
-    
+
     const responseTime = Date.now() - start;
-    
+
     return {
       status: responseTime > 1000 ? 'degraded' : 'healthy',
       message: 'MongoDB is responding',
@@ -188,7 +190,7 @@ async function checkMongoDB(): Promise<HealthStatus> {
 async function checkRedis(): Promise<HealthStatus> {
   try {
     const start = Date.now();
-    
+
     // Check if Redis client is ready
     if (redisClient.status !== 'ready') {
       return {
@@ -199,9 +201,9 @@ async function checkRedis(): Promise<HealthStatus> {
 
     // Ping Redis
     await redisClient.ping();
-    
+
     const responseTime = Date.now() - start;
-    
+
     return {
       status: responseTime > 100 ? 'degraded' : 'healthy',
       message: 'Redis is responding',
@@ -272,7 +274,7 @@ async function getDatabaseStats() {
 
     const admin = mongoose.connection.db.admin();
     const dbStats = await admin.command({ dbStats: 1 });
-    
+
     return {
       collections: dbStats.collections,
       documents: dbStats.objects,
@@ -295,10 +297,10 @@ async function getCacheStats() {
 
     const info = await redisClient.info();
     const stats: any = {};
-    
+
     // Parse Redis INFO output
     info.split('\r\n').forEach(line => {
-      if (line && line.includes(':')) {
+      if (line?.includes(':')) {
         const [key, value] = line.split(':');
         if (['used_memory_human', 'connected_clients', 'total_commands_processed', 'keyspace_hits', 'keyspace_misses'].includes(key)) {
           stats[key] = value;
@@ -310,8 +312,8 @@ async function getCacheStats() {
     const hits = parseInt(stats.keyspace_hits || '0');
     const misses = parseInt(stats.keyspace_misses || '0');
     const total = hits + misses;
-    
-    stats.hit_rate = total > 0 ? ((hits / total) * 100).toFixed(2) + '%' : 'N/A';
+
+    stats.hit_rate = total > 0 ? `${((hits / total) * 100).toFixed(2)  }%` : 'N/A';
 
     return stats;
   } catch (error) {
@@ -350,7 +352,7 @@ router.post('/check', asyncHandler(async (req, res) => {
   }
 
   const overallHealthy = Object.values(results).every(r => r.status !== 'unhealthy');
-  
+
   res.status(overallHealthy ? 200 : 503).json({
     status: overallHealthy ? 'healthy' : 'unhealthy',
     services: results

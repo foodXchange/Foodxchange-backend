@@ -6,33 +6,33 @@ const companySchema = new mongoose.Schema({
   _id: { type: mongoose.Schema.Types.ObjectId, auto: true },
   legacyId: { type: String, unique: true, sparse: true }, // Original IDs from CSV
   companyCode: { type: String, unique: true }, // Auto-generated or from data
-  
+
   // Basic Information
-  name: { 
-    type: String, 
-    required: true, 
+  name: {
+    type: String,
+    required: true,
     trim: true,
     index: 'text' // For Azure Search integration
   },
   displayName: String, // For UI display
   legalName: String, // Official legal name
-  
+
   // Company Type & Status
-  type: { 
-    type: String, 
+  type: {
+    type: String,
     enum: ['supplier', 'buyer', 'both', 'agent', 'contractor'],
     required: true,
     index: true
   },
   isActive: { type: Boolean, default: true, index: true },
-  
+
   // Contact Information
   contact: {
-    email: { 
-      type: String, 
+    email: {
+      type: String,
       lowercase: true,
       validate: {
-        validator: function(v) {
+        validator(v) {
           return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
         },
         message: 'Invalid email format'
@@ -40,17 +40,17 @@ const companySchema = new mongoose.Schema({
     },
     phone: String,
     mobile: String,
-    website: { 
+    website: {
       type: String,
       validate: {
-        validator: function(v) {
+        validator(v) {
           return !v || /^https?:\/\/.+/.test(v);
         },
         message: 'Website must start with http:// or https://'
       }
     }
   },
-  
+
   // Address Information
   address: {
     street: String,
@@ -64,7 +64,7 @@ const companySchema = new mongoose.Schema({
       lng: Number
     }
   },
-  
+
   // Warehouse/Shipping Address (for buyers)
   warehouseAddress: {
     contactName: String,
@@ -78,7 +78,7 @@ const companySchema = new mongoose.Schema({
     phone: String,
     email: String
   },
-  
+
   // Business Information
   business: {
     description: { type: String, maxlength: 2000 },
@@ -97,7 +97,7 @@ const companySchema = new mongoose.Schema({
       enum: ['<1M', '1M-10M', '10M-50M', '50M-100M', '100M+']
     }
   },
-  
+
   // Supplier-specific information
   supplierInfo: {
     capabilities: {
@@ -123,7 +123,7 @@ const companySchema = new mongoose.Schema({
     preferredPorts: [String],
     exportCountries: [String]
   },
-  
+
   // Buyer-specific information
   buyerInfo: {
     supplierNumbers: [{
@@ -134,7 +134,7 @@ const companySchema = new mongoose.Schema({
     paymentTermsPreferred: [String],
     volumeRequirements: String
   },
-  
+
   // Media & Documents (Azure Blob Storage URLs)
   media: {
     logo: String, // Azure CDN URL
@@ -147,12 +147,12 @@ const companySchema = new mongoose.Schema({
       uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
     }]
   },
-  
+
   // Verification & Compliance
   verification: {
-    status: { 
-      type: String, 
-      enum: ['pending', 'verified', 'rejected', 'suspended'], 
+    status: {
+      type: String,
+      enum: ['pending', 'verified', 'rejected', 'suspended'],
       default: 'pending',
       index: true
     },
@@ -161,7 +161,7 @@ const companySchema = new mongoose.Schema({
     notes: String,
     documents: [String] // URLs to verification documents
   },
-  
+
   // Performance Metrics
   metrics: {
     rating: {
@@ -186,7 +186,7 @@ const companySchema = new mongoose.Schema({
       lastResponseAt: Date
     }
   },
-  
+
   // Financial Information
   financial: {
     commissionRates: [{
@@ -198,7 +198,7 @@ const companySchema = new mongoose.Schema({
     creditTerms: String,
     creditLimit: Decimal128
   },
-  
+
   // AI/ML Features (leveraging Azure AI)
   aiData: {
     matchingKeywords: [String], // For AI-powered matching
@@ -207,7 +207,7 @@ const companySchema = new mongoose.Schema({
     riskScore: Number, // AI-calculated risk assessment
     lastAnalyzed: Date
   },
-  
+
   // Original Data Preservation
   originalData: {
     buyerCompanyId: String,
@@ -217,7 +217,7 @@ const companySchema = new mongoose.Schema({
     importedAt: { type: Date, default: Date.now },
     rawData: mongoose.Schema.Types.Mixed // Preserve original CSV data
   },
-  
+
   // Comments & Feedback System
   comments: [{
     type: {
@@ -233,16 +233,16 @@ const companySchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now },
     updatedAt: Date
   }],
-  
+
   // System Fields
   lastActivityAt: { type: Date, default: Date.now },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
-}, { 
+}, {
   timestamps: true,
-  toJSON: { 
+  toJSON: {
     virtuals: true,
-    transform: function(doc, ret) {
+    transform(doc, ret) {
       // Convert Decimal128 to numbers for JSON output
       if (ret.supplierInfo?.capabilities?.minOrderValue) {
         ret.supplierInfo.capabilities.minOrderValue = parseFloat(ret.supplierInfo.capabilities.minOrderValue.toString());
@@ -288,15 +288,15 @@ companySchema.pre('save', function(next) {
   if (this.isNew && !this.companyCode) {
     this.companyCode = `${this.type.toUpperCase()}-${Date.now().toString().slice(-6)}`;
   }
-  
+
   // Update activity timestamp
   this.lastActivityAt = new Date();
-  
+
   next();
 });
 
 // Post-save middleware for AI processing
-companySchema.post('save', async function(doc) {
+companySchema.post('save', async (doc) => {
   // Trigger Azure AI analysis for new companies
   if (doc.isNew) {
     // Queue for AI keyword extraction and embeddings

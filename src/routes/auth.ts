@@ -1,8 +1,10 @@
 import express from 'express';
-import { authController } from '../controllers/auth/authController';
-import { protect } from '../middleware/auth';
-import { validateRequest } from '../middleware/advancedValidation';
 import { body } from 'express-validator';
+
+import * as authController from '../controllers/auth.controller';
+import { validateRequest } from '../middleware/advancedValidation';
+import { auditAuth } from '../middleware/audit';
+import { protect } from '../middleware/auth';
 
 const router = express.Router();
 
@@ -58,19 +60,19 @@ const refreshTokenValidation = [
 ];
 
 // Public routes
-router.post('/register', registerValidation, validateRequest, (req, res) => authController.register(req, res));
-router.post('/login', loginValidation, validateRequest, (req, res) => authController.login(req, res));
-router.post('/refresh', refreshTokenValidation, validateRequest, (req, res) => authController.refreshToken(req, res));
+router.post('/register', registerValidation, validateRequest, auditAuth('user_registered'), async (req, res) => authController.register(req, res));
+router.post('/login', loginValidation, validateRequest, auditAuth('user_login'), async (req, res) => authController.login(req, res));
+router.post('/refresh', refreshTokenValidation, validateRequest, auditAuth('token_refreshed'), async (req, res) => authController.refreshToken(req, res));
 
 // Protected routes
-router.get('/me', protect, (req, res) => authController.getMe(req, res));
-router.put('/update-password', protect, updatePasswordValidation, validateRequest, (req, res) => authController.updatePassword(req, res));
-router.post('/logout', protect, (req, res) => authController.logout(req, res));
-router.post('/logout-all', protect, (req, res) => authController.logoutAll(req, res));
+router.get('/me', protect, auditAuth('user_profile_accessed'), async (req, res) => authController.getMe(req, res));
+router.put('/update-password', protect, updatePasswordValidation, validateRequest, auditAuth('password_changed'), async (req, res) => authController.updatePassword(req, res));
+router.post('/logout', protect, auditAuth('user_logout'), async (req, res) => authController.logout(req, res));
+router.post('/logout-all', protect, auditAuth('user_logout_all_sessions'), async (req, res) => authController.logoutAll(req, res));
 
 // Health check
 router.get('/health', (req, res) => {
-  res.json({ 
+  res.json({
     message: 'Auth service is running',
     timestamp: new Date().toISOString(),
     endpoints: {

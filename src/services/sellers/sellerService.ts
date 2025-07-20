@@ -1,7 +1,7 @@
-const Seller = require('../../models/sellers/Seller');
-const Product = require('../../models/Product');
 const Order = require('../../models/Order');
+const Product = require('../../models/Product');
 const RFQ = require('../../models/RFQ');
+const Seller = require('../../models/sellers/Seller');
 
 class SellerService {
   // Match RFQs to seller based on their capabilities
@@ -20,9 +20,9 @@ class SellerService {
         { targetCountries: { $size: 0 } } // No specific country requirement
       ]
     })
-    .populate('buyer', 'companyName country')
-    .sort('-createdAt')
-    .limit(20);
+      .populate('buyer', 'companyName country')
+      .sort('-createdAt')
+      .limit(20);
 
     return matchingRFQs;
   }
@@ -30,7 +30,7 @@ class SellerService {
   // Calculate seller performance metrics
   async calculateMetrics(sellerId) {
     const orders = await Order.find({ seller: sellerId });
-    
+
     const metrics = {
       totalOrders: orders.length,
       completedOrders: orders.filter(o => o.status === 'completed').length,
@@ -61,8 +61,8 @@ class SellerService {
   async validateDocuments(sellerId) {
     const seller = await Seller.findById(sellerId);
     const requiredDocs = ['license', 'insurance'];
-    
-    const missingDocs = requiredDocs.filter(docType => 
+
+    const missingDocs = requiredDocs.filter(docType =>
       !seller.documents.some(doc => doc.type === docType && doc.expiryDate > new Date())
     );
 
@@ -75,17 +75,17 @@ class SellerService {
   // Update seller rating
   async updateRating(sellerId, newRating) {
     const seller = await Seller.findById(sellerId);
-    
+
     const currentAvg = seller.rating.average || 0;
     const currentCount = seller.rating.count || 0;
-    
+
     const newAvg = ((currentAvg * currentCount) + newRating) / (currentCount + 1);
-    
+
     seller.rating = {
       average: Math.round(newAvg * 10) / 10, // Round to 1 decimal
       count: currentCount + 1
     };
-    
+
     await seller.save();
     return seller.rating;
   }

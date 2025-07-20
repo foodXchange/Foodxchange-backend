@@ -1,11 +1,13 @@
 import express from 'express';
 import { Request, Response, NextFunction } from 'express';
-import { auth } from '../../middleware/auth';
-import { validateRequest } from '../../middleware/advancedValidation';
-import { Logger } from '../../core/logging/logger';
-import { apiResponse } from '../../utils/apiResponse';
-import EnhancedComplianceService from '../../services/compliance/EnhancedComplianceService';
 import { z } from 'zod';
+
+import { Logger } from '../../core/logging/logger';
+import { validateRequest } from '../../middleware/advancedValidation';
+import { auth } from '../../middleware/auth';
+import EnhancedComplianceService from '../../services/compliance/EnhancedComplianceService';
+import { apiResponse } from '../../utils/apiResponse';
+
 
 const router = express.Router();
 const logger = new Logger('ComplianceRoutes');
@@ -17,8 +19,8 @@ const complianceCheckSchema = z.object({
   options: z.object({
     skipCache: z.boolean().optional(),
     includeAIAnalysis: z.boolean().optional(),
-    generateReport: z.boolean().optional(),
-  }).optional(),
+    generateReport: z.boolean().optional()
+  }).optional()
 });
 
 const certificationUploadSchema = z.object({
@@ -31,12 +33,12 @@ const certificationUploadSchema = z.object({
   documentUrl: z.string().url().optional(),
   scope: z.string().optional(),
   restrictions: z.array(z.string()).optional(),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.any()).optional()
 });
 
 const complianceReportSchema = z.object({
   checkId: z.string().min(1),
-  reportType: z.enum(['summary', 'detailed', 'regulatory', 'audit']).default('summary'),
+  reportType: z.enum(['summary', 'detailed', 'regulatory', 'audit']).default('summary')
 });
 
 /**
@@ -295,7 +297,7 @@ router.post('/certification', auth, validateRequest(certificationUploadSchema), 
     const certification = await EnhancedComplianceService.createCertification(companyId, {
       ...certificationData,
       issueDate: new Date(certificationData.issueDate),
-      expiryDate: new Date(certificationData.expiryDate),
+      expiryDate: new Date(certificationData.expiryDate)
     });
 
     res.status(201).json(apiResponse.success(certification, 'Certification uploaded successfully'));
@@ -340,7 +342,7 @@ router.get('/certifications', auth, async (req: Request, res: Response, next: Ne
     );
 
     // Filter by type if specified
-    const filteredCertifications = type 
+    const filteredCertifications = type
       ? certifications.filter(cert => cert.type === type)
       : certifications;
 

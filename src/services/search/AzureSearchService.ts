@@ -1,7 +1,8 @@
 import { SearchClient, SearchIndexClient, SearchIndexerClient, AzureKeyCredential } from '@azure/search-documents';
+
+import { ValidationError } from '../../core/errors';
 import { Logger } from '../../core/logging/logger';
 import { IProduct } from '../../models/Product';
-import { ValidationError } from '../../core/errors';
 
 const logger = new Logger('AzureSearchService');
 
@@ -40,12 +41,12 @@ export interface SearchOptions {
 }
 
 export class AzureSearchService {
-  private searchClient: SearchClient<any>;
-  private indexClient: SearchIndexClient;
-  private indexerClient: SearchIndexerClient;
-  private indexName: string;
-  private endpoint: string;
-  private apiKey: string;
+  private readonly searchClient: SearchClient<any>;
+  private readonly indexClient: SearchIndexClient;
+  private readonly indexerClient: SearchIndexerClient;
+  private readonly indexName: string;
+  private readonly endpoint: string;
+  private readonly apiKey: string;
 
   constructor() {
     this.endpoint = process.env.AZURE_SEARCH_ENDPOINT || '';
@@ -58,7 +59,7 @@ export class AzureSearchService {
     }
 
     const credential = new AzureKeyCredential(this.apiKey);
-    
+
     this.searchClient = new SearchClient(
       this.endpoint,
       this.indexName,
@@ -173,10 +174,10 @@ export class AzureSearchService {
     try {
       const document = this.transformProductForIndex(product);
       await this.searchClient.uploadDocuments([document]);
-      
-      logger.debug('Product indexed successfully', { 
-        productId: product._id, 
-        sku: product.sku 
+
+      logger.debug('Product indexed successfully', {
+        productId: product._id,
+        sku: product.sku
       });
     } catch (error) {
       logger.error('Failed to index product:', error);
@@ -191,7 +192,7 @@ export class AzureSearchService {
     try {
       const documents = products.map(p => this.transformProductForIndex(p));
       const result = await this.searchClient.uploadDocuments(documents);
-      
+
       logger.info(`Indexed ${result.results.length} products successfully`);
     } catch (error) {
       logger.error('Failed to index products:', error);
@@ -239,7 +240,7 @@ export class AzureSearchService {
 
       // Build filters
       const filters: string[] = [];
-      
+
       // Always filter by tenant
       if (options.filters?.tenantId) {
         filters.push(`tenantId eq '${options.filters.tenantId}'`);
@@ -247,18 +248,18 @@ export class AzureSearchService {
 
       // Only show published products
       filters.push('isPublished eq true');
-      filters.push(`status eq 'active'`);
+      filters.push('status eq \'active\'');
 
       if (options.filters) {
-        const { 
-          category, 
-          supplier, 
-          brand, 
-          priceRange, 
-          allergens, 
-          dietary, 
-          certifications, 
-          inStock 
+        const {
+          category,
+          supplier,
+          brand,
+          priceRange,
+          allergens,
+          dietary,
+          certifications,
+          inStock
         } = options.filters;
 
         if (category && category.length > 0) {
@@ -312,7 +313,7 @@ export class AzureSearchService {
         }
 
         if (certifications && certifications.length > 0) {
-          filters.push(`(${certifications.map(c => 
+          filters.push(`(${certifications.map(c =>
             `certifications/any(cert: cert eq '${c}')`
           ).join(' or ')})`);
         }
@@ -372,9 +373,9 @@ export class AzureSearchService {
 
       // Execute search
       const searchResults = await this.searchClient.search(query || '*', searchOptions);
-      
+
       const results: SearchResult[] = [];
-      let totalCount = 0;
+      const totalCount = 0;
 
       for await (const result of searchResults.results) {
         results.push({
@@ -392,7 +393,7 @@ export class AzureSearchService {
           top: 5,
           filter: searchOptions.filter
         });
-        
+
         suggestions = suggestionResults.results.map(s => s.text);
       }
 
@@ -422,7 +423,7 @@ export class AzureSearchService {
       }
 
       const filter = `tenantId eq '${tenantId}' and isPublished eq true and status eq 'active'`;
-      
+
       const results = await this.searchClient.suggest(query, 'sg', {
         top: maxSuggestions,
         filter,
@@ -447,7 +448,7 @@ export class AzureSearchService {
     try {
       // First, get the product
       const product = await this.searchClient.getDocument(productId);
-      
+
       if (!product) {
         return [];
       }
@@ -469,7 +470,7 @@ export class AzureSearchService {
       });
 
       const results: SearchResult[] = [];
-      
+
       for await (const result of searchResults.results) {
         results.push({
           id: result.document.id,
@@ -490,7 +491,7 @@ export class AzureSearchService {
    */
   private transformProductForIndex(product: IProduct): any {
     const primaryImage = product.images.find(img => img.isPrimary);
-    
+
     return {
       id: product._id.toString(),
       tenantId: product.tenantId,

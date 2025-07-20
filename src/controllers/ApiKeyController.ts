@@ -1,11 +1,13 @@
 import { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
-import { Logger } from '../core/logging/logger';
+
+import { redisClient } from '../config/redis';
 import { ValidationError } from '../core/errors';
-import { 
-  createAPIKey, 
-  revokeAPIKey, 
-  listAPIKeys, 
+import { Logger } from '../core/logging/logger';
+import {
+  createAPIKey,
+  revokeAPIKey,
+  listAPIKeys,
   getAPIKeyUsage,
   validateAPIKeyFormat,
   hashAPIKey,
@@ -13,7 +15,6 @@ import {
   cacheAPIKey,
   getCachedAPIKey
 } from '../middleware/apiKeyAuth';
-import { redisClient } from '../config/redis';
 
 const logger = new Logger('ApiKeyController');
 
@@ -44,8 +45,8 @@ export class ApiKeyController {
     const status = req.query.status as string;
 
     // In production, query from database
-    const keys = await this.getStoredApiKeys(req.tenantId!, status);
-    
+    const keys = await this.getStoredApiKeys(req.tenantId, status);
+
     // Paginate results
     const startIndex = (page - 1) * limit;
     const endIndex = page * limit;
@@ -85,12 +86,12 @@ export class ApiKeyController {
     const { name, permissions, expiresIn, rateLimit, allowedIPs, allowedDomains } = req.body;
 
     // Check tenant API key limit
-    const existingKeys = await this.getStoredApiKeys(req.tenantId!);
+    const existingKeys = await this.getStoredApiKeys(req.tenantId);
     const activeKeys = existingKeys.filter(k => k.isActive).length;
-    
-    const maxKeys = req.tenantContext?.subscriptionTier === 'enterprise' ? 100 : 
-                   req.tenantContext?.subscriptionTier === 'premium' ? 50 : 
-                   req.tenantContext?.subscriptionTier === 'standard' ? 20 : 10;
+
+    const maxKeys = req.tenantContext?.subscriptionTier === 'enterprise' ? 100 :
+      req.tenantContext?.subscriptionTier === 'premium' ? 50 :
+        req.tenantContext?.subscriptionTier === 'standard' ? 20 : 10;
 
     if (activeKeys >= maxKeys) {
       throw new ValidationError(`API key limit reached. Your tier allows ${maxKeys} active keys.`);
@@ -98,10 +99,10 @@ export class ApiKeyController {
 
     // Create the API key
     const result = await createAPIKey(
-      req.tenantId!,
+      req.tenantId,
       name,
       permissions,
-      req.userId!,
+      req.userId,
       {
         expiresIn,
         rateLimit,
@@ -114,7 +115,7 @@ export class ApiKeyController {
     await this.storeApiKey({
       ...result.keyData,
       hashedKey: result.keyData.key,
-      createdBy: req.userId!
+      createdBy: req.userId
     });
 
     logger.info('API key created', {
@@ -145,8 +146,8 @@ export class ApiKeyController {
   getApiKey = asyncHandler(async (req: Request, res: Response) => {
     const { keyId } = req.params;
 
-    const apiKey = await this.getStoredApiKey(keyId, req.tenantId!);
-    
+    const apiKey = await this.getStoredApiKey(keyId, req.tenantId);
+
     if (!apiKey) {
       throw new ValidationError('API key not found');
     }
@@ -176,8 +177,8 @@ export class ApiKeyController {
     const { keyId } = req.params;
     const { name, permissions, rateLimit, allowedIPs, allowedDomains } = req.body;
 
-    const apiKey = await this.getStoredApiKey(keyId, req.tenantId!);
-    
+    const apiKey = await this.getStoredApiKey(keyId, req.tenantId);
+
     if (!apiKey) {
       throw new ValidationError('API key not found');
     }
@@ -233,15 +234,15 @@ export class ApiKeyController {
   revokeApiKey = asyncHandler(async (req: Request, res: Response) => {
     const { keyId } = req.params;
 
-    const apiKey = await this.getStoredApiKey(keyId, req.tenantId!);
-    
+    const apiKey = await this.getStoredApiKey(keyId, req.tenantId);
+
     if (!apiKey) {
       throw new ValidationError('API key not found');
     }
 
     // Revoke the key
-    await revokeAPIKey(keyId, req.userId!);
-    
+    await revokeAPIKey(keyId, req.userId);
+
     // Update in storage
     apiKey.isActive = false;
 
@@ -263,14 +264,14 @@ export class ApiKeyController {
   regenerateApiKey = asyncHandler(async (req: Request, res: Response) => {
     const { keyId } = req.params;
 
-    const apiKey = await this.getStoredApiKey(keyId, req.tenantId!);
-    
+    const apiKey = await this.getStoredApiKey(keyId, req.tenantId);
+
     if (!apiKey) {
       throw new ValidationError('API key not found');
     }
 
     // Revoke old key
-    await revokeAPIKey(keyId, req.userId!);
+    await revokeAPIKey(keyId, req.userId);
 
     // Generate new key
     const newKey = generateAPIKey();
@@ -321,8 +322,8 @@ export class ApiKeyController {
     const { keyId } = req.params;
     const days = parseInt(req.query.days as string) || 30;
 
-    const apiKey = await this.getStoredApiKey(keyId, req.tenantId!);
-    
+    const apiKey = await this.getStoredApiKey(keyId, req.tenantId);
+
     if (!apiKey) {
       throw new ValidationError('API key not found');
     }
@@ -331,10 +332,10 @@ export class ApiKeyController {
 
     // Calculate statistics
     const dates = Object.keys(usage).sort();
-    const totalRequests = Object.values(usage).reduce((sum, count) => sum + count, 0);
-    const averagePerDay = totalRequests / days;
-    const peakDay = dates.reduce((max, date) => 
-      usage[date] > usage[max] ? date : max, dates[0]
+    const totalRequests = Object.values(usage).reduce((sum: number, count: unknown) => sum + Number(count || 0), 0);
+    const averagePerDay = Number(totalRequests) / Number(days);
+    const peakDay = dates.reduce((max, date) =>
+      Number(usage[date] || 0) > Number(usage[max] || 0) ? date : max, dates[0]
     );
 
     res.json({
@@ -360,50 +361,54 @@ export class ApiKeyController {
   /**
    * Validate API key
    */
-  validateApiKey = asyncHandler(async (req: Request, res: Response) => {
+  validateApiKey = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { key } = req.body;
 
     if (!validateAPIKeyFormat(key)) {
-      return res.json({
+      res.json({
         success: true,
         data: {
           valid: false,
           reason: 'Invalid format'
         }
       });
+      return;
     }
 
     const hashedKey = hashAPIKey(key);
     const keyData = await getCachedAPIKey(hashedKey);
 
     if (!keyData) {
-      return res.json({
+      res.json({
         success: true,
         data: {
           valid: false,
           reason: 'Key not found'
         }
       });
+      return;
     }
 
     if (!keyData.isActive) {
-      return res.json({
+      res.json({
         success: true,
         data: {
           valid: false,
           reason: 'Key is inactive'
         }
       });
+      return;
     }
 
     if (keyData.expiresAt && new Date(keyData.expiresAt) < new Date()) {
-      return res.json({
+      res.json({
         success: true,
         data: {
           valid: false,
           reason: 'Key has expired'
         }
       });
+      return;
     }
 
     res.json({
@@ -429,16 +434,16 @@ export class ApiKeyController {
       const data = await redisClient.get(key);
       if (data) {
         const apiKey = JSON.parse(data) as StoredAPIKey;
-        
+
         if (status === 'active' && !apiKey.isActive) continue;
         if (status === 'inactive' && apiKey.isActive) continue;
         if (status === 'expired' && (!apiKey.expiresAt || new Date(apiKey.expiresAt) > new Date())) continue;
-        
+
         apiKeys.push(apiKey);
       }
     }
 
-    return apiKeys.sort((a, b) => 
+    return apiKeys.sort((a, b) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
   }
@@ -447,11 +452,11 @@ export class ApiKeyController {
     // Placeholder - in production, query from database
     const key = `api_key_store:${tenantId}:${keyId}`;
     const data = await redisClient.get(key);
-    
+
     if (data) {
       return JSON.parse(data) as StoredAPIKey;
     }
-    
+
     return null;
   }
 

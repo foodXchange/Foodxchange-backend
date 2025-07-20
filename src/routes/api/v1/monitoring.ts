@@ -1,10 +1,11 @@
 import { Router } from 'express';
 import { Request, Response } from 'express';
+
 import { databaseManager } from '../../../config/database';
+import { Logger } from '../../../core/logging/logger';
 import { MetricsService } from '../../../core/metrics/MetricsService';
 import { protect } from '../../../middleware/auth';
 import { authorize } from '../../../middleware/auth';
-import { Logger } from '../../../core/logging/logger';
 
 const router = Router();
 const logger = new Logger('MonitoringRoutes');
@@ -17,7 +18,7 @@ const requireAdmin = [protect, authorize(['admin'])];
 router.get('/health', async (req: Request, res: Response) => {
   try {
     const healthStatus = await databaseManager.getHealthStatus();
-    
+
     const response = {
       status: healthStatus.connected && healthStatus.initialized ? 'healthy' : 'unhealthy',
       timestamp: new Date().toISOString(),
@@ -75,7 +76,7 @@ router.get('/performance', requireAdmin, async (req: Request, res: Response) => 
     const limit = parseInt(req.query.limit as string) || 10;
     const performanceMonitor = databaseManager.getPerformanceMonitor();
     const performanceHistory = performanceMonitor.getPerformanceHistory(limit);
-    
+
     res.json({
       success: true,
       data: performanceHistory,
@@ -97,7 +98,7 @@ router.get('/alerts', requireAdmin, async (req: Request, res: Response) => {
     const resolved = req.query.resolved === 'true' ? true : req.query.resolved === 'false' ? false : undefined;
     const performanceMonitor = databaseManager.getPerformanceMonitor();
     const alerts = performanceMonitor.getAlerts(resolved);
-    
+
     res.json({
       success: true,
       data: alerts,
@@ -119,7 +120,7 @@ router.post('/alerts/:id/resolve', requireAdmin, async (req: Request, res: Respo
     const { id } = req.params;
     const performanceMonitor = databaseManager.getPerformanceMonitor();
     const resolved = performanceMonitor.resolveAlert(id);
-    
+
     if (resolved) {
       res.json({
         success: true,
@@ -148,7 +149,7 @@ router.get('/migrations', requireAdmin, async (req: Request, res: Response) => {
   try {
     const migrationManager = databaseManager.getMigrationManager();
     const migrationStatus = await migrationManager.getMigrationStatus();
-    
+
     res.json({
       success: true,
       data: migrationStatus,
@@ -168,7 +169,7 @@ router.get('/migrations', requireAdmin, async (req: Request, res: Response) => {
 router.post('/migrations/run', requireAdmin, async (req: Request, res: Response) => {
   try {
     await databaseManager.runMigrations();
-    
+
     res.json({
       success: true,
       message: 'Migrations completed successfully',
@@ -190,7 +191,7 @@ router.post('/migrations/:id/rollback', requireAdmin, async (req: Request, res: 
   try {
     const { id } = req.params;
     await databaseManager.rollbackMigration(id);
-    
+
     res.json({
       success: true,
       message: `Migration ${id} rolled back successfully`,
@@ -212,7 +213,7 @@ router.get('/indexes', requireAdmin, async (req: Request, res: Response) => {
   try {
     const indexManager = databaseManager.getIndexManager();
     const indexAnalysis = await indexManager.analyzeIndexUsage();
-    
+
     res.json({
       success: true,
       data: indexAnalysis,
@@ -233,7 +234,7 @@ router.post('/indexes/create', requireAdmin, async (req: Request, res: Response)
   try {
     const indexManager = databaseManager.getIndexManager();
     await indexManager.createAllIndexes();
-    
+
     res.json({
       success: true,
       message: 'All indexes created successfully',
@@ -256,7 +257,7 @@ router.get('/queries/slow', requireAdmin, async (req: Request, res: Response) =>
     const limit = parseInt(req.query.limit as string) || 10;
     const queryOptimizer = databaseManager.getQueryOptimizer();
     const slowQueries = await queryOptimizer.getSlowQueries(limit);
-    
+
     res.json({
       success: true,
       data: slowQueries,
@@ -276,7 +277,7 @@ router.get('/queries/slow', requireAdmin, async (req: Request, res: Response) =>
 router.post('/optimize', requireAdmin, async (req: Request, res: Response) => {
   try {
     await databaseManager.optimizeDatabase();
-    
+
     res.json({
       success: true,
       message: 'Database optimization completed successfully',
@@ -298,7 +299,7 @@ router.get('/report', requireAdmin, async (req: Request, res: Response) => {
   try {
     const performanceMonitor = databaseManager.getPerformanceMonitor();
     const report = await performanceMonitor.generatePerformanceReport();
-    
+
     res.json({
       success: true,
       data: report,

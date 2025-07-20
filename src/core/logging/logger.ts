@@ -1,6 +1,7 @@
+import path from 'path';
+
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
-import path from 'path';
 
 // Define log levels
 const levels = {
@@ -8,7 +9,7 @@ const levels = {
   warn: 1,
   info: 2,
   http: 3,
-  debug: 4,
+  debug: 4
 };
 
 // Define log colors
@@ -17,7 +18,7 @@ const colors = {
   warn: 'yellow',
   info: 'green',
   http: 'magenta',
-  debug: 'white',
+  debug: 'white'
 };
 
 // Add colors to winston
@@ -36,7 +37,7 @@ const consoleFormat = winston.format.combine(
   winston.format.colorize({ all: true }),
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
   winston.format.printf(
-    (info) => `${info.timestamp} [${info.context || 'App'}] [${info.level}]: ${info.message}${info.stack ? '\n' + info.stack : ''}`
+    (info) => `${info.timestamp} [${info.context || 'App'}] [${info.level}]: ${info.message}${info.stack ? `\n${  info.stack}` : ''}`
   )
 );
 
@@ -46,7 +47,7 @@ const fileRotateTransport = new DailyRotateFile({
   datePattern: 'YYYY-MM-DD',
   maxSize: '20m',
   maxFiles: '14d',
-  format,
+  format
 });
 
 // Create error file transport
@@ -56,12 +57,12 @@ const errorFileTransport = new DailyRotateFile({
   maxSize: '20m',
   maxFiles: '30d',
   level: 'error',
-  format,
+  format
 });
 
 // Create console transport
 const consoleTransport = new winston.transports.Console({
-  format: consoleFormat,
+  format: consoleFormat
 });
 
 // Create the winston logger
@@ -72,14 +73,14 @@ const winstonLogger = winston.createLogger({
     fileRotateTransport,
     errorFileTransport,
     // Only log to console in development
-    ...(process.env.NODE_ENV !== 'production' ? [consoleTransport] : []),
-  ],
+    ...(process.env.NODE_ENV !== 'production' ? [consoleTransport] : [])
+  ]
 });
 
 // Create custom logger class
 export class Logger {
-  private context: string;
-  private metadata: Record<string, any>;
+  private readonly context: string;
+  private readonly metadata: Record<string, any>;
 
   constructor(context: string = 'App', metadata: Record<string, any> = {}) {
     this.context = context;
@@ -90,14 +91,14 @@ export class Logger {
     const logData = {
       context: this.context,
       ...this.metadata,
-      ...(meta || {}),
+      ...(meta || {})
     };
 
     if (meta instanceof Error) {
       logData.error = {
         message: meta.message,
         stack: meta.stack,
-        name: meta.name,
+        name: meta.name
       };
     }
 
@@ -137,7 +138,7 @@ export class Logger {
     this.info(`Performance: ${operation} completed in ${duration}ms`, {
       operation,
       duration,
-      ...meta,
+      ...meta
     });
   }
 
@@ -145,7 +146,7 @@ export class Logger {
   request(req: any, res: any, duration: number) {
     const { method, url, ip, headers } = req;
     const { statusCode } = res;
-    
+
     this.http(`${method} ${url} ${statusCode} - ${duration}ms`, {
       method,
       url,
@@ -153,7 +154,7 @@ export class Logger {
       duration,
       ip: ip || req.connection?.remoteAddress,
       userAgent: headers['user-agent'],
-      userId: req.user?.id,
+      userId: req.user?.id
     });
   }
 }

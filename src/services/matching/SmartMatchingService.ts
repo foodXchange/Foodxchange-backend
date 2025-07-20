@@ -1,7 +1,7 @@
-const User = require('../models/User');
+const Analytics = require('../models/analytics/Analytics');
 const Product = require('../models/Product');
 const RFQ = require('../models/RFQ');
-const Analytics = require('../models/analytics/Analytics');
+const User = require('../models/User');
 
 class SmartMatchingService {
   constructor() {
@@ -25,10 +25,10 @@ class SmartMatchingService {
       }
 
       // Get all active suppliers
-      const suppliers = await User.find({ 
-        role: 'supplier', 
+      const suppliers = await User.find({
+        role: 'supplier',
         verified: true,
-        active: true 
+        active: true
       }).populate('products');
 
       // Calculate match scores
@@ -79,22 +79,22 @@ class SmartMatchingService {
     // 1. Product Category Match
     if (requirements.categories && supplier.products) {
       const supplierCategories = [...new Set(supplier.products.map(p => p.category))];
-      const matchingCategories = requirements.categories.filter(c => 
+      const matchingCategories = requirements.categories.filter(c =>
         supplierCategories.includes(c)
       );
-      
+
       breakdown.productMatch = (matchingCategories.length / requirements.categories.length) * 100;
-      
+
       // Find specific matching products
-      matchedProducts = supplier.products.filter(p => 
+      matchedProducts = supplier.products.filter(p =>
         requirements.categories.includes(p.category)
       );
     }
 
     // 2. Price Range Match
     if (requirements.priceRange && matchedProducts.length > 0) {
-      const inRangeProducts = matchedProducts.filter(p => 
-        p.price >= requirements.priceRange.min && 
+      const inRangeProducts = matchedProducts.filter(p =>
+        p.price >= requirements.priceRange.min &&
         p.price <= requirements.priceRange.max
       );
       breakdown.priceMatch = (inRangeProducts.length / matchedProducts.length) * 100;
@@ -102,7 +102,7 @@ class SmartMatchingService {
 
     // 3. Certification Match
     if (requirements.certifications && supplier.certifications) {
-      const matchingCerts = requirements.certifications.filter(c => 
+      const matchingCerts = requirements.certifications.filter(c =>
         supplier.certifications.some(sc => sc.type === c && sc.status === 'active')
       );
       breakdown.certificationMatch = (matchingCerts.length / requirements.certifications.length) * 100;
@@ -120,7 +120,7 @@ class SmartMatchingService {
     }
 
     // 5. Performance Score
-    const analytics = await Analytics.findOne({ 
+    const analytics = await Analytics.findOne({
       user: supplier._id,
       'period.type': 'monthly'
     }).sort({ createdAt: -1 });
@@ -130,7 +130,7 @@ class SmartMatchingService {
       const responseScore = analytics.metrics.responseRate || 0;
       const meetingScore = analytics.metrics.meetingSuccessRate || 0;
       const ratingScore = (supplier.rating / 5) * 100;
-      
+
       breakdown.performanceScore = (responseScore + meetingScore + ratingScore) / 3;
     }
 
@@ -151,10 +151,10 @@ class SmartMatchingService {
    */
   async getMatchImprovementTips(supplierId, buyerRequirements) {
     const tips = [];
-    
+
     // Analyze gaps and provide recommendations
     // This would connect to an AI service in production
-    
+
     tips.push({
       area: 'certifications',
       tip: 'Adding organic certification could increase your match rate by 25%',

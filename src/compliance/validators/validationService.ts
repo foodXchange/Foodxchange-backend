@@ -1,6 +1,9 @@
 // File: C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\src\compliance\validators\validationService.ts
 
+import { ProductSpecification } from '../../services/marketplace/EnhancedRFQService';
+
 import { validateProductSpecification, validateFieldRealTime, ValidationHistory } from './specificationValidator';
+
 const Product = require('../../../models/Product');
 const RFQ = require('../../../models/RFQ');
 
@@ -22,15 +25,15 @@ export interface AuditEntry {
   timestamp: Date;
   action: string;
   field: string;
-  oldValue: any;
-  newValue: any;
+  oldValue: string | number | boolean | null;
+  newValue: string | number | boolean | null;
   userId: string;
   impact: 'low' | 'medium' | 'high' | 'critical';
 }
 
 export class ComplianceValidationService {
-  private validationHistory: ValidationHistory;
-  private auditLog: Map<string, AuditEntry[]>;
+  private readonly validationHistory: ValidationHistory;
+  private readonly auditLog: Map<string, AuditEntry[]>;
 
   constructor() {
     this.validationHistory = new ValidationHistory();
@@ -41,28 +44,28 @@ export class ComplianceValidationService {
   async validateRFQSpecifications(
     rfqId: string,
     productType: string,
-    specifications: any,
+    specifications: ProductSpecification,
     userId: string
   ): Promise<ComplianceValidationResult> {
     const startTime = Date.now();
-    
+
     // Log validation attempt
     this.addAuditEntry(rfqId, {
       timestamp: new Date(),
       action: 'VALIDATION_STARTED',
       field: 'full_specification',
       oldValue: null,
-      newValue: specifications,
+      newValue: JSON.stringify(specifications),
       userId,
       impact: 'medium'
     });
 
     // Run core validation
     const validationResult = await validateProductSpecification(productType, specifications);
-    
+
     // Calculate estimated fix time based on errors
     const estimatedFixTime = this.calculateFixTime(validationResult.errors);
-    
+
     // Determine required certifications
     const certificationsRequired = this.determineRequiredCertifications(
       productType,
@@ -72,7 +75,7 @@ export class ComplianceValidationService {
 
     // Build comprehensive result
     const result: ComplianceValidationResult = {
-      productId: specifications.productId,
+      productId: (specifications as any).productId || '',
       rfqId,
       timestamp: new Date(),
       validationScore: validationResult.score,
@@ -83,14 +86,14 @@ export class ComplianceValidationService {
       warnings: validationResult.warnings,
       suggestions: validationResult.errors
         .filter(e => e.suggestion)
-        .map(e => e.suggestion!),
+        .map(e => e.suggestion),
       certificationsRequired,
       estimatedFixTime,
       auditLog: this.getAuditLog(rfqId)
     };
 
     // Save to history
-    this.validationHistory.addValidation(specifications.productId, result);
+    this.validationHistory.addValidation((specifications as any).productId || '', result);
 
     // Log validation completion
     this.addAuditEntry(rfqId, {
@@ -98,11 +101,11 @@ export class ComplianceValidationService {
       action: 'VALIDATION_COMPLETED',
       field: 'validation_result',
       oldValue: null,
-      newValue: {
+      newValue: JSON.stringify({
         passed: result.passed,
         score: result.validationScore,
         errorCount: result.criticalErrors.length
-      },
+      }),
       userId,
       impact: result.passed ? 'low' : 'high'
     });
@@ -126,10 +129,10 @@ export class ComplianceValidationService {
   }> {
     // Validate the field
     const validation = await validateFieldRealTime(fieldPath, newValue, productType);
-    
+
     // Determine impact
     const impact = this.assessFieldImpact(fieldPath, oldValue, newValue);
-    
+
     // Log the change
     this.addAuditEntry(rfqId, {
       timestamp: new Date(),
@@ -174,10 +177,10 @@ export class ComplianceValidationService {
         product.specifications,
         userId
       );
-      
+
       results.push(result);
       totalScore += result.validationScore;
-      
+
       result.criticalErrors.forEach(error => criticalIssues.add(error));
     }
 
@@ -193,7 +196,7 @@ export class ComplianceValidationService {
 
   // Market-specific compliance check
   async validateForMarket(
-    specifications: any,
+    specifications: ProductSpecification,
     targetMarket: string,
     productType: string
   ): Promise<{
@@ -214,12 +217,12 @@ export class ComplianceValidationService {
     }
 
     // Market-specific warnings
-    if (targetMarket === 'EU' && !specifications.complianceRequirements?.allergenLabeling) {
+    if (targetMarket === 'EU' && !(specifications as any).complianceRequirements?.allergenLabeling) {
       warnings.push('EU requires comprehensive allergen labeling');
     }
 
     if (targetMarket === 'US' && productType === 'organic') {
-      if (!specifications.complianceRequirements?.certifications?.includes('USDA Organic')) {
+      if (!(specifications as any).complianceRequirements?.certifications?.includes('USDA Organic')) {
         warnings.push('USDA Organic certification required for organic claims in US');
       }
     }
@@ -236,7 +239,7 @@ export class ComplianceValidationService {
   private calculateFixTime(errors: any[]): string {
     const errorCount = errors.length;
     const criticalCount = errors.filter(e => e.severity === 'error').length;
-    
+
     if (criticalCount === 0) return 'No fixes required';
     if (criticalCount <= 2) return '1-2 hours';
     if (criticalCount <= 5) return '2-4 hours';
@@ -246,7 +249,7 @@ export class ComplianceValidationService {
 
   private determineRequiredCertifications(
     productType: string,
-    specifications: any,
+    specifications: ProductSpecification,
     validationResult: any
   ): string[] {
     const certs = new Set<string>();
@@ -256,20 +259,20 @@ export class ComplianceValidationService {
     certs.add('HACCP');
 
     // Product-specific
-    if (productType === 'organic' || specifications.organic) {
+    if (productType === 'organic' || (specifications as any).organic) {
       certs.add('USDA Organic');
       certs.add('EU Organic');
     }
 
-    if (specifications.kosher) {
+    if ((specifications as any).kosher) {
       certs.add('Kosher Certification');
     }
 
-    if (specifications.halal) {
+    if ((specifications as any).halal) {
       certs.add('Halal Certification');
     }
 
-    if (specifications.glutenFree) {
+    if ((specifications as any).glutenFree) {
       certs.add('Gluten-Free Certification');
     }
 
@@ -292,17 +295,17 @@ export class ComplianceValidationService {
     if (fieldPath.includes('color') || fieldPath.includes('allergen')) {
       return 'critical';
     }
-    
+
     // High impact fields
     if (fieldPath.includes('ingredient') || fieldPath.includes('certification')) {
       return 'high';
     }
-    
+
     // Medium impact fields
     if (fieldPath.includes('dimension') || fieldPath.includes('weight')) {
       return 'medium';
     }
-    
+
     return 'low';
   }
 
@@ -310,7 +313,7 @@ export class ComplianceValidationService {
     if (!this.auditLog.has(id)) {
       this.auditLog.set(id, []);
     }
-    this.auditLog.get(id)!.push(entry);
+    this.auditLog.get(id).push(entry);
   }
 
   private getAuditLog(id: string): AuditEntry[] {
@@ -320,7 +323,7 @@ export class ComplianceValidationService {
   private getMarketRequirements(market: string, productType: string): any[] {
     // This would connect to a comprehensive market requirements database
     const requirements = [];
-    
+
     if (market === 'US') {
       requirements.push(
         { id: 'fda_registration', description: 'FDA Facility Registration' },
@@ -328,7 +331,7 @@ export class ComplianceValidationService {
         { id: 'gras', description: 'GRAS Status for Ingredients' }
       );
     }
-    
+
     if (market === 'EU') {
       requirements.push(
         { id: 'ce_marking', description: 'CE Marking Compliance' },
@@ -336,7 +339,7 @@ export class ComplianceValidationService {
         { id: 'eu_nutrition', description: 'EU Nutrition Declaration' }
       );
     }
-    
+
     return requirements;
   }
 

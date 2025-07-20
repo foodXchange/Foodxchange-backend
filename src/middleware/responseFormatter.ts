@@ -52,21 +52,21 @@ export class ResponseFormatter {
         version: req.apiVersion || '1.0',
         timestamp: new Date().toISOString(),
         requestId: req.id || uuidv4(),
-        duration: req.startTime ? Date.now() - req.startTime : undefined,
-      },
+        duration: req.startTime ? Date.now() - req.startTime : undefined
+      }
     };
 
     if (options?.pagination) {
       const { page, limit, total } = options.pagination;
       const totalPages = Math.ceil(total / limit);
-      
-      response.meta!.pagination = {
+
+      response.meta.pagination = {
         page,
         limit,
         total,
         totalPages,
         hasNext: page < totalPages,
-        hasPrev: page > 1,
+        hasPrev: page > 1
       };
     }
 
@@ -93,8 +93,8 @@ export class ResponseFormatter {
         version: req.apiVersion || '1.0',
         timestamp: new Date().toISOString(),
         requestId: req.id || uuidv4(),
-        duration: req.startTime ? Date.now() - req.startTime : undefined,
-      },
+        duration: req.startTime ? Date.now() - req.startTime : undefined
+      }
     };
   }
 
@@ -115,7 +115,7 @@ export const responseFormatterMiddleware = (
 ): void => {
   // Add startTime for duration calculation
   req.startTime = Date.now();
-  
+
   // Add request ID if not already present
   if (!req.id) {
     req.id = uuidv4();
@@ -164,7 +164,7 @@ export const responseFormatterMiddleware = (
       {
         code: 'VAL_001',
         message,
-        validationErrors,
+        validationErrors
       },
       req
     );
@@ -176,11 +176,11 @@ export const responseFormatterMiddleware = (
     const message = identifier
       ? `${resource} with identifier '${identifier}' not found`
       : `${resource} not found`;
-    
+
     const response = ResponseFormatter.error(
       {
         code: 'BUS_001',
-        message,
+        message
       },
       req
     );
@@ -192,7 +192,7 @@ export const responseFormatterMiddleware = (
     const response = ResponseFormatter.error(
       {
         code: 'AUTH_001',
-        message,
+        message
       },
       req
     );
@@ -204,7 +204,7 @@ export const responseFormatterMiddleware = (
     const response = ResponseFormatter.error(
       {
         code: 'AUTH_005',
-        message,
+        message
       },
       req
     );
@@ -216,7 +216,7 @@ export const responseFormatterMiddleware = (
     const response = ResponseFormatter.error(
       {
         code: 'BUS_002',
-        message,
+        message
       },
       req
     );
@@ -228,7 +228,7 @@ export const responseFormatterMiddleware = (
     const response = ResponseFormatter.error(
       {
         code: 'SYS_005',
-        message,
+        message
       },
       req
     );
@@ -240,7 +240,7 @@ export const responseFormatterMiddleware = (
     const response = ResponseFormatter.error(
       {
         code: 'SYS_001',
-        message,
+        message
       },
       req
     );

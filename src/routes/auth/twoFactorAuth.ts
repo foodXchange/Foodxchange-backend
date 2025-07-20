@@ -1,11 +1,12 @@
 import express from 'express';
 import { Request, Response } from 'express';
-import { twoFactorAuthService } from '../../services/auth/TwoFactorAuthService';
+import { body, query } from 'express-validator';
+
+import { Logger } from '../../core/logging/logger';
+import { validateRequest } from '../../middleware/advancedValidation';
 import { protect } from '../../middleware/auth';
 import { require2FAFor } from '../../middleware/twoFactorAuth';
-import { validateRequest } from '../../middleware/advancedValidation';
-import { body, query } from 'express-validator';
-import { Logger } from '../../core/logging/logger';
+import { twoFactorAuthService } from '../../services/auth/TwoFactorAuthService';
 
 const router = express.Router();
 const logger = new Logger('TwoFactorAuthRoutes');
@@ -62,9 +63,9 @@ const verifyBackupCodeValidation = [
  */
 router.get('/status', protect, async (req: Request, res: Response) => {
   try {
-    const userId = req.userId!;
+    const {userId} = req;
     const isEnabled = await twoFactorAuthService.is2FAEnabled(userId);
-    
+
     res.json({
       success: true,
       data: {
@@ -89,8 +90,8 @@ router.get('/status', protect, async (req: Request, res: Response) => {
  */
 router.post('/setup', protect, async (req: Request, res: Response) => {
   try {
-    const userId = req.userId!;
-    
+    const {userId} = req;
+
     // Check if 2FA is already enabled
     const isEnabled = await twoFactorAuthService.is2FAEnabled(userId);
     if (isEnabled) {
@@ -99,9 +100,9 @@ router.post('/setup', protect, async (req: Request, res: Response) => {
         error: 'Two-factor authentication is already enabled'
       });
     }
-    
+
     const secret = await twoFactorAuthService.generateTOTPSecret(userId);
-    
+
     res.json({
       success: true,
       data: {
@@ -127,11 +128,11 @@ router.post('/setup', protect, async (req: Request, res: Response) => {
  */
 router.post('/verify-setup', protect, setupTOTPValidation, validateRequest, async (req: Request, res: Response) => {
   try {
-    const userId = req.userId!;
+    const {userId} = req;
     const { token } = req.body;
-    
+
     const isValid = await twoFactorAuthService.verifyAndEnable2FA(userId, token);
-    
+
     if (isValid) {
       res.json({
         success: true,
@@ -163,9 +164,9 @@ router.post('/verify-setup', protect, setupTOTPValidation, validateRequest, asyn
  */
 router.post('/verify', protect, verifyTOTPValidation, validateRequest, async (req: Request, res: Response) => {
   try {
-    const userId = req.userId!;
+    const {userId} = req;
     const { token } = req.body;
-    
+
     // Get user's secret
     const user = await twoFactorAuthService.getUserById(userId);
     if (!user?.twoFactor?.secret) {
@@ -174,10 +175,10 @@ router.post('/verify', protect, verifyTOTPValidation, validateRequest, async (re
         error: '2FA not enabled for this user'
       });
     }
-    
+
     const secret = twoFactorAuthService.decryptSecret(user.twoFactor.secret);
     const isValid = await twoFactorAuthService.verifyTOTPToken(secret, token);
-    
+
     if (isValid) {
       res.json({
         success: true,
@@ -206,11 +207,11 @@ router.post('/verify', protect, verifyTOTPValidation, validateRequest, async (re
  */
 router.post('/challenge/sms', protect, sendSMSValidation, validateRequest, async (req: Request, res: Response) => {
   try {
-    const userId = req.userId!;
+    const {userId} = req;
     const { phoneNumber } = req.body;
-    
+
     const challengeId = await twoFactorAuthService.sendSMSChallenge(userId, phoneNumber);
-    
+
     res.json({
       success: true,
       data: {
@@ -235,11 +236,11 @@ router.post('/challenge/sms', protect, sendSMSValidation, validateRequest, async
  */
 router.post('/challenge/email', protect, sendEmailValidation, validateRequest, async (req: Request, res: Response) => {
   try {
-    const userId = req.userId!;
+    const {userId} = req;
     const { email } = req.body;
-    
+
     const challengeId = await twoFactorAuthService.sendEmailChallenge(userId, email);
-    
+
     res.json({
       success: true,
       data: {
@@ -265,9 +266,9 @@ router.post('/challenge/email', protect, sendEmailValidation, validateRequest, a
 router.post('/challenge/verify', protect, verifyChallengeValidation, validateRequest, async (req: Request, res: Response) => {
   try {
     const { challengeId, code } = req.body;
-    
+
     const isValid = await twoFactorAuthService.verifyChallengeCode(challengeId, code);
-    
+
     if (isValid) {
       res.json({
         success: true,
@@ -296,11 +297,11 @@ router.post('/challenge/verify', protect, verifyChallengeValidation, validateReq
  */
 router.post('/backup-code/verify', protect, verifyBackupCodeValidation, validateRequest, async (req: Request, res: Response) => {
   try {
-    const userId = req.userId!;
+    const {userId} = req;
     const { backupCode } = req.body;
-    
+
     const isValid = await twoFactorAuthService.verifyBackupCode(userId, backupCode);
-    
+
     if (isValid) {
       res.json({
         success: true,
@@ -329,10 +330,10 @@ router.post('/backup-code/verify', protect, verifyBackupCodeValidation, validate
  */
 router.post('/backup-codes/regenerate', protect, require2FAFor.twoFactorDisable, async (req: Request, res: Response) => {
   try {
-    const userId = req.userId!;
-    
+    const {userId} = req;
+
     const backupCodes = await twoFactorAuthService.regenerateBackupCodes(userId);
-    
+
     res.json({
       success: true,
       data: {
@@ -356,10 +357,10 @@ router.post('/backup-codes/regenerate', protect, require2FAFor.twoFactorDisable,
  */
 router.delete('/disable', protect, require2FAFor.twoFactorDisable, async (req: Request, res: Response) => {
   try {
-    const userId = req.userId!;
-    
+    const {userId} = req;
+
     await twoFactorAuthService.disable2FA(userId);
-    
+
     res.json({
       success: true,
       message: 'Two-factor authentication disabled successfully'
@@ -380,9 +381,9 @@ router.delete('/disable', protect, require2FAFor.twoFactorDisable, async (req: R
  */
 router.get('/methods', protect, async (req: Request, res: Response) => {
   try {
-    const userId = req.userId!;
+    const {userId} = req;
     const isEnabled = await twoFactorAuthService.is2FAEnabled(userId);
-    
+
     res.json({
       success: true,
       data: {

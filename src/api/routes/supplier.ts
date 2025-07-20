@@ -1,10 +1,12 @@
 // File: src/api/routes/supplier.ts
 import { Router } from 'express';
-import { asyncHandler } from '../../core/errors';
+import { body, param, query } from 'express-validator';
+
 import { supplierController } from '../../controllers/marketplace/supplierController';
+import { asyncHandler } from '../../core/errors';
 import { authenticate } from '../../middleware/auth';
 import { validateRequest } from '../../middleware/validation';
-import { body, param, query } from 'express-validator';
+
 
 const router = Router();
 
@@ -13,7 +15,7 @@ const router = Router();
 // @route   GET /api/suppliers
 // @desc    Get all suppliers with filtering
 // @access  Public
-router.get('/', 
+router.get('/',
   validateRequest([
     query('page').optional().isInt({ min: 1 }),
     query('limit').optional().isInt({ min: 1, max: 100 }),

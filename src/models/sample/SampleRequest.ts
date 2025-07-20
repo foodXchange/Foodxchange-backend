@@ -148,12 +148,12 @@ sampleRequestSchema.pre('save', function(next) {
       timestamp: new Date()
     });
   }
-  
+
   // Calculate total cost
   if (this.isModified('cost.sampleCost') || this.isModified('cost.shippingCost')) {
     this.cost.totalCost = this.cost.sampleCost + this.cost.shippingCost;
   }
-  
+
   next();
 });
 

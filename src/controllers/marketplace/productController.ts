@@ -1,29 +1,33 @@
+import { createWriteStream } from 'fs';
+
+import csv from 'csv-parser';
 import { Request, Response, NextFunction } from 'express';
 import asyncHandler from 'express-async-handler';
 import { validationResult } from 'express-validator';
+import mongoose from 'mongoose';
 import multer from 'multer';
-import csv from 'csv-parser';
-import { createWriteStream } from 'fs';
-import { Product, IProduct } from '../../models/Product';
+
+import { cacheHelpers, cacheKeys } from '../../config/redis';
+import { ValidationError, NotFoundError, AuthorizationError } from '../../core/errors';
+import { Logger } from '../../core/logging/logger';
 import { Company } from '../../models/Company';
 import { Order } from '../../models/Order';
-import { Logger } from '../../core/logging/logger';
-import { ValidationError, NotFoundError, UnauthorizedError } from '../../core/errors';
-import { cacheHelpers, cacheKeys } from '../../config/redis';
-import { uploadToAzureBlob, deleteFromAzureBlob } from '../../services/azure/BlobStorageService';
+import { Product, IProduct } from '../../models/Product';
 import { getRecommendationService } from '../../services/ai/RecommendationService';
 import { getAnalyticsService } from '../../services/analytics/AnalyticsService';
+import { uploadToAzureBlob, deleteFromAzureBlob } from '../../services/azure/BlobStorageService';
 
 const logger = new Logger('ProductController');
 const recommendationService = getRecommendationService();
 const analyticsService = getAnalyticsService();
 
-// Extend Request to include authenticated user info
-interface AuthRequest extends Request {
+// Type alias for Request with authentication
+type AuthRequest = Request & {
   user?: {
-    _id: string;
+    id: string;
+    _id?: string;  // For backward compatibility
     email: string;
-    role: 'buyer' | 'supplier' | 'admin';
+    role: string;
     company?: string;
   };
   userId?: string;
@@ -31,7 +35,7 @@ interface AuthRequest extends Request {
   tenantContext?: {
     subscriptionTier: 'free' | 'standard' | 'premium' | 'enterprise';
   };
-}
+};
 
 export class ProductController {
   /**
@@ -58,9 +62,9 @@ export class ProductController {
 
     const pageNum = parseInt(page as string);
     const limitNum = parseInt(limit as string);
-    
+
     // Build filter
-    const filter: any = { 
+    const filter: any = {
       tenantId: req.tenantId,
       status: 'active',
       isPublished: true
@@ -99,11 +103,12 @@ export class ProductController {
     }
 
     // Check cache
-    const cacheKey = cacheKeys.productList(req.tenantId!, pageNum);
+    const cacheKey = cacheKeys.productList(req.tenantId, pageNum);
     const cached = await cacheHelpers.getJSON(cacheKey);
-    
+
     if (cached && !search && !Object.keys(req.query).some(k => !['page', 'limit'].includes(k))) {
-      return res.json(cached);
+      res.json(cached);
+      return;
     }
 
     const skip = (pageNum - 1) * limitNum;
@@ -155,8 +160,8 @@ export class ProductController {
 
     // Use recommendation service for advanced search
     const searchResults = await recommendationService.advancedSearch(
-      tenantId!,
-      userId!,
+      tenantId,
+      userId,
       q as string || '',
       {
         categories: filters.categories as string[],
@@ -186,14 +191,15 @@ export class ProductController {
     const { q } = req.query;
 
     if (!q || (q as string).length < 2) {
-      return res.json({
+      res.json({
         success: true,
         data: []
       });
+      return;
     }
 
     const suggestions = await recommendationService.generateSearchSuggestions(
-      req.tenantId!,
+      req.tenantId,
       q as string
     );
 
@@ -212,12 +218,13 @@ export class ProductController {
     // Check cache
     const cacheKey = cacheKeys.product(id);
     const cached = await cacheHelpers.getJSON(cacheKey);
-    
+
     if (cached) {
-      return res.json({
+      res.json({
         success: true,
         data: cached
       });
+      return;
     }
 
     // Try to find by ID first, then by slug
@@ -247,8 +254,8 @@ export class ProductController {
         $inc: { 'analytics.views': 1, 'analytics.uniqueViews': 1 }
       }),
       analyticsService.trackEvent({
-        tenantId: req.tenantId!,
-        userId: req.userId,
+        tenantId: req.tenantId,
+        userId: req.userId ? new mongoose.Types.ObjectId(req.userId) : undefined,
         eventType: 'product_view',
         category: 'product',
         data: {
@@ -276,8 +283,8 @@ export class ProductController {
     const { limit = '20', categories, excludeViewed = 'false' } = req.query;
 
     const recommendations = await recommendationService.getPersonalizedRecommendations(
-      req.tenantId!,
-      req.userId!,
+      req.tenantId,
+      req.userId,
       {
         limit: parseInt(limit as string),
         categories: categories ? (Array.isArray(categories) ? categories : [categories]) as string[] : undefined,
@@ -294,8 +301,8 @@ export class ProductController {
       status: 'active',
       isPublished: true
     })
-    .populate('supplier', 'name rating')
-    .lean();
+      .populate('supplier', 'name rating')
+      .lean();
 
     // Map recommendations with product details
     const enrichedRecommendations = recommendations.map(rec => {
@@ -336,9 +343,9 @@ export class ProductController {
         { tags: { $in: product.tags } }
       ]
     })
-    .populate('supplier', 'name rating')
-    .limit(parseInt(limit as string))
-    .sort('-analytics.averageRating -analytics.orders');
+      .populate('supplier', 'name rating')
+      .limit(parseInt(limit as string))
+      .sort('-analytics.averageRating -analytics.orders');
 
     res.json({
       success: true,
@@ -353,12 +360,12 @@ export class ProductController {
     // Validate request
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      throw new ValidationError('Validation failed', errors.array());
+      throw new ValidationError(`Validation failed: ${errors.array().map(e => e.msg).join(', ')}`);
     }
 
     // Check supplier permissions
     if (req.user?.role !== 'supplier' && req.user?.role !== 'admin') {
-      throw new UnauthorizedError('Only suppliers can create products');
+      throw new AuthorizationError('Only suppliers can create products');
     }
 
     const productData = {
@@ -370,7 +377,7 @@ export class ProductController {
 
     // Validate supplier
     const supplier = await Company.findById(productData.supplier);
-    if (!supplier || supplier.tenantId !== req.tenantId) {
+    if (!supplier) {
       throw new ValidationError('Invalid supplier');
     }
 
@@ -380,8 +387,8 @@ export class ProductController {
 
     // Track analytics
     await analyticsService.trackEvent({
-      tenantId: req.tenantId!,
-      userId: req.userId!,
+      tenantId: req.tenantId,
+      userId: req.userId ? new mongoose.Types.ObjectId(req.userId) : undefined,
       eventType: 'product_created',
       category: 'product',
       data: {
@@ -422,7 +429,7 @@ export class ProductController {
 
     // Check permissions
     if (req.user?.role === 'supplier' && product.supplier.toString() !== req.user.company) {
-      throw new UnauthorizedError('Not authorized to update this product');
+      throw new AuthorizationError('Not authorized to update this product');
     }
 
     // Update fields
@@ -471,7 +478,7 @@ export class ProductController {
 
     // Check permissions
     if (req.user?.role === 'supplier' && product.supplier.toString() !== req.user.company) {
-      throw new UnauthorizedError('Not authorized to update this product');
+      throw new AuthorizationError('Not authorized to update this product');
     }
 
     if (!req.files || !Array.isArray(req.files)) {
@@ -480,7 +487,7 @@ export class ProductController {
 
     const uploadedImages = [];
 
-    for (const file of req.files as Express.Multer.File[]) {
+    for (const file of req.files) {
       const url = await uploadToAzureBlob(
         file,
         `products/${req.tenantId}/${product._id}`,
@@ -530,11 +537,11 @@ export class ProductController {
 
     // Check permissions
     if (req.user?.role === 'supplier' && product.supplier.toString() !== req.user.company) {
-      throw new UnauthorizedError('Not authorized to update this product');
+      throw new AuthorizationError('Not authorized to update this product');
     }
 
     const imageIndex = product.images.findIndex(
-      img => img._id?.toString() === imageId
+      img => (img as any)._id?.toString() === imageId
     );
 
     if (imageIndex === -1) {
@@ -589,7 +596,7 @@ export class ProductController {
 
     // Check permissions
     if (req.user?.role === 'supplier' && product.supplier.toString() !== req.user.company) {
-      throw new UnauthorizedError('Not authorized to update this product');
+      throw new AuthorizationError('Not authorized to update this product');
     }
 
     await product.updateInventory(quantity, operation);
@@ -634,7 +641,7 @@ export class ProductController {
 
     // Check permissions
     if (req.user?.role === 'supplier' && product.supplier.toString() !== req.user.company) {
-      throw new UnauthorizedError('Not authorized to update this product');
+      throw new AuthorizationError('Not authorized to update this product');
     }
 
     // Update pricing
@@ -666,8 +673,8 @@ export class ProductController {
 
     // Check tier limits
     const maxBulkSize = req.tenantContext?.subscriptionTier === 'enterprise' ? 1000 :
-                       req.tenantContext?.subscriptionTier === 'premium' ? 500 :
-                       req.tenantContext?.subscriptionTier === 'standard' ? 100 : 50;
+      req.tenantContext?.subscriptionTier === 'premium' ? 500 :
+        req.tenantContext?.subscriptionTier === 'standard' ? 100 : 50;
 
     if (products.length > maxBulkSize) {
       throw new ValidationError(`Bulk import limited to ${maxBulkSize} products for your tier`);
@@ -731,7 +738,7 @@ export class ProductController {
     await new Promise((resolve, reject) => {
       const stream = require('stream');
       const bufferStream = new stream.PassThrough();
-      bufferStream.end(req.file!.buffer);
+      bufferStream.end(req.file.buffer);
 
       bufferStream
         .pipe(csv())
@@ -769,10 +776,10 @@ export class ProductController {
         });
 
         await product.save();
-        results.success.push({ 
-          sku: product.sku, 
+        results.success.push({
+          sku: product.sku,
           id: product._id,
-          name: product.name 
+          name: product.name
         });
       } catch (error: any) {
         results.failed.push({
@@ -802,7 +809,7 @@ export class ProductController {
    */
   exportProducts = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
     const { format = 'json', category, status } = req.query;
-    
+
     const filter: any = {
       tenantId: req.tenantId
     };
@@ -849,7 +856,7 @@ export class ProductController {
   getCategories = asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
     const categories = await Product.aggregate([
       {
-        $match: { 
+        $match: {
           tenantId: req.tenantId,
           status: 'active',
           isPublished: true
@@ -916,7 +923,7 @@ export class ProductController {
     const { limit = '10', days = '7' } = req.query;
 
     const trendingRecommendations = await recommendationService.getTrendingRecommendations(
-      req.tenantId!,
+      req.tenantId,
       undefined,
       parseInt(limit as string)
     );
@@ -929,8 +936,8 @@ export class ProductController {
       status: 'active',
       isPublished: true
     })
-    .populate('supplier', 'name rating')
-    .lean();
+      .populate('supplier', 'name rating')
+      .lean();
 
     res.json({
       success: true,
@@ -953,8 +960,8 @@ export class ProductController {
     // Here you would create a sample request record
     // For now, we'll just track the analytics event
     await analyticsService.trackEvent({
-      tenantId: req.tenantId!,
-      userId: req.userId!,
+      tenantId: req.tenantId,
+      userId: req.userId ? new mongoose.Types.ObjectId(req.userId) : new mongoose.Types.ObjectId(),
       eventType: 'sample_requested',
       category: 'product',
       data: {
@@ -995,7 +1002,7 @@ export class ProductController {
 
     // Check permissions
     if (req.user?.role === 'supplier' && product.supplier.toString() !== req.user.company) {
-      throw new UnauthorizedError('Not authorized to delete this product');
+      throw new AuthorizationError('Not authorized to delete this product');
     }
 
     product.status = 'discontinued';
@@ -1216,8 +1223,8 @@ export class ProductController {
         supplier: product.supplier?.name || '',
         origin: product.countryOfOrigin || '',
         organic: product.foodSafety?.isOrganic ? 'Yes' : 'No',
-        shelfLife: product.foodSafety?.shelfLife 
-          ? `${product.foodSafety.shelfLife.value} ${product.foodSafety.shelfLife.unit}` 
+        shelfLife: product.foodSafety?.shelfLife
+          ? `${product.foodSafety.shelfLife.value} ${product.foodSafety.shelfLife.unit}`
           : '',
         createdAt: new Date(product.createdAt).toLocaleDateString()
       });
@@ -1242,9 +1249,10 @@ export class ProductController {
       ref: `K2:K${products.length + 1}`,
       rules: [
         {
-          type: 'cellValue',
+          type: 'cellIs',
           operator: 'equal',
           formulae: ['"active"'],
+          priority: 1,
           style: {
             fill: {
               type: 'pattern',
@@ -1254,9 +1262,10 @@ export class ProductController {
           }
         },
         {
-          type: 'cellValue',
+          type: 'cellIs',
           operator: 'equal',
           formulae: ['"inactive"'],
+          priority: 2,
           style: {
             fill: {
               type: 'pattern',

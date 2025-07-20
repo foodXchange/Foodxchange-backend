@@ -1,7 +1,8 @@
 import { ComputerVisionClient } from '@azure/cognitiveservices-computervision';
 import { ApiKeyCredentials } from '@azure/ms-rest-js';
-import { Logger } from '../../core/logging/logger';
+
 import { trackAzureServiceCall } from '../../config/applicationInsights';
+import { Logger } from '../../core/logging/logger';
 
 const logger = new Logger('ComputerVisionService');
 
@@ -147,7 +148,7 @@ class ComputerVisionService {
 
       const features = [
         'Categories',
-        'Tags', 
+        'Tags',
         'Description',
         'Color',
         'Objects',
@@ -231,12 +232,12 @@ class ComputerVisionService {
 
   public async assessFoodQuality(imageUrl: string, productType?: string): Promise<FoodQualityAssessment> {
     const analysis = await this.analyzeProductImage(imageUrl);
-    
+
     return this.generateFoodQualityAssessment(analysis, productType);
   }
 
   private generateFoodQualityAssessment(
-    analysis: ProductImageAnalysis, 
+    analysis: ProductImageAnalysis,
     productType?: string
   ): FoodQualityAssessment {
     let qualityScore = 10;
@@ -246,7 +247,7 @@ class ComputerVisionService {
 
     // Analyze tags for quality indicators
     const qualityTags = analysis.tags.filter(tag => tag.confidence > 0.7);
-    
+
     // Negative quality indicators
     const negativeIndicators = ['rotten', 'spoiled', 'moldy', 'bruised', 'damaged', 'old', 'stale'];
     const positiveIndicators = ['fresh', 'ripe', 'organic', 'healthy', 'crisp', 'bright', 'clean'];
@@ -329,7 +330,7 @@ class ComputerVisionService {
 
   private extractTextureInfo(tags: ImageTag[]): string {
     const textureWords = ['smooth', 'rough', 'soft', 'hard', 'crisp', 'tender', 'firm', 'juicy'];
-    const textureTag = tags.find(tag => 
+    const textureTag = tags.find(tag =>
       textureWords.some(word => tag.name.toLowerCase().includes(word))
     );
     return textureTag?.name || 'unknown';
@@ -380,11 +381,11 @@ class ComputerVisionService {
 
       // Start OCR operation
       const operation = await this.client.readInStream(
-        () => fetch(imageUrl).then(res => res.body as any)
+        async () => fetch(imageUrl).then(res => res.body as any)
       );
 
       const operationId = operation.operationLocation.split('/').pop();
-      
+
       // Poll for results
       let result;
       let attempts = 0;
@@ -392,7 +393,7 @@ class ComputerVisionService {
 
       do {
         await new Promise(resolve => setTimeout(resolve, 1000));
-        result = await this.client.getReadResult(operationId!);
+        result = await this.client.getReadResult(operationId);
         attempts++;
       } while (result.status === 'running' && attempts < maxAttempts);
 
@@ -428,8 +429,8 @@ class ComputerVisionService {
   }
 
   public async generateThumbnail(
-    imageUrl: string, 
-    width: number = 200, 
+    imageUrl: string,
+    width: number = 200,
     height: number = 200,
     smartCropping: boolean = true
   ): Promise<Buffer> {
@@ -446,7 +447,7 @@ class ComputerVisionService {
       const thumbnail = await this.client.generateThumbnailInStream(
         width,
         height,
-        () => fetch(imageUrl).then(res => res.body as any),
+        async () => fetch(imageUrl).then(res => res.body as any),
         { smartCropping }
       );
 
@@ -489,7 +490,7 @@ class ComputerVisionService {
   // Helper methods for FoodXchange-specific use cases
   public async analyzeSampleImages(imageUrls: string[]): Promise<ProductImageAnalysis[]> {
     const analyses = await Promise.all(
-      imageUrls.map(url => this.analyzeProductImage(url))
+      imageUrls.map(async url => this.analyzeProductImage(url))
     );
 
     logger.info('Sample images analyzed', {
@@ -501,7 +502,7 @@ class ComputerVisionService {
   }
 
   public async assessProductPhotos(
-    imageUrls: string[], 
+    imageUrls: string[],
     productType: string
   ): Promise<{
     overallQuality: number;

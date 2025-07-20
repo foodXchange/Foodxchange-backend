@@ -4,13 +4,13 @@ import { Router, Request, Response } from 'express';
 const router = Router();
 
 // Import route modules
-import authRoutes from './auth';
-import rfqRoutes from './rfq';
-import complianceRoutes from './compliance';
-import supplierRoutes from './supplier';
-import orderRoutes from './order';
 import aiRoutes from './ai';
+import authRoutes from './auth';
+import complianceRoutes from './compliance';
+import orderRoutes from './order';
 import recommendationRoutes from './recommendations';
+import rfqRoutes from './rfq';
+import supplierRoutes from './supplier';
 
 // API version and info
 router.get('/', (req: Request, res: Response) => {

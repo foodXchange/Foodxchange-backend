@@ -1,6 +1,7 @@
-import { ServiceBusClient, ServiceBusSender, ServiceBusReceiver, ServiceBusMessage } from "@azure/service-bus";
-import { Logger } from '../../core/logging/logger';
+import { ServiceBusClient, ServiceBusSender, ServiceBusReceiver, ServiceBusMessage } from '@azure/service-bus';
+
 import { trackAzureServiceCall } from '../../config/applicationInsights';
+import { Logger } from '../../core/logging/logger';
 
 const logger = new Logger('ServiceBusService');
 
@@ -23,8 +24,8 @@ export interface MessageHandler {
 
 class ServiceBusService {
   private client: ServiceBusClient | null = null;
-  private senders: Map<string, ServiceBusSender> = new Map();
-  private receivers: Map<string, ServiceBusReceiver> = new Map();
+  private readonly senders: Map<string, ServiceBusSender> = new Map();
+  private readonly receivers: Map<string, ServiceBusReceiver> = new Map();
   private isInitialized = false;
 
   constructor() {
@@ -34,7 +35,7 @@ class ServiceBusService {
   private initialize(): void {
     try {
       const connectionString = process.env.AZURE_SERVICE_BUS_CONNECTION_STRING;
-      
+
       if (!connectionString) {
         logger.warn('Azure Service Bus not configured - missing connection string');
         return;
@@ -42,7 +43,7 @@ class ServiceBusService {
 
       this.client = new ServiceBusClient(connectionString);
       this.isInitialized = true;
-      
+
       logger.info('✅ Azure Service Bus client initialized');
     } catch (error) {
       logger.error('❌ Failed to initialize Azure Service Bus', error);
@@ -50,8 +51,8 @@ class ServiceBusService {
   }
 
   public async sendMessage(
-    topicName: string, 
-    message: FoodXchangeMessage, 
+    topicName: string,
+    message: FoodXchangeMessage,
     subject?: string
   ): Promise<void> {
     if (!this.isInitialized || !this.client) {
@@ -85,10 +86,10 @@ class ServiceBusService {
         },
         timeToLive: 7 * 24 * 60 * 60 * 1000 // 7 days
       };
-      
+
       await sender.sendMessages(sbMessage);
       success = true;
-      
+
       logger.debug(`Message sent to topic ${topicName}`, {
         eventType: message.eventType,
         entityId: message.entityId,
@@ -108,7 +109,7 @@ class ServiceBusService {
   }
 
   public async sendBatchMessages(
-    topicName: string, 
+    topicName: string,
     messages: FoodXchangeMessage[]
   ): Promise<void> {
     if (!this.isInitialized || !this.client || messages.length === 0) {
@@ -126,7 +127,7 @@ class ServiceBusService {
       }
 
       const batch = await sender.createMessageBatch();
-      
+
       for (const message of messages) {
         const sbMessage: ServiceBusMessage = {
           body: message,
@@ -147,7 +148,7 @@ class ServiceBusService {
           if (batch.count > 0) {
             await sender.sendMessages(batch);
           }
-          
+
           // Create new batch and add the message
           const newBatch = await sender.createMessageBatch();
           if (!newBatch.tryAddMessage(sbMessage)) {
@@ -177,7 +178,7 @@ class ServiceBusService {
   }
 
   public async createReceiver(
-    topicName: string, 
+    topicName: string,
     subscriptionName: string,
     messageHandler: MessageHandler,
     options?: {
@@ -191,7 +192,7 @@ class ServiceBusService {
     }
 
     const receiverKey = `${topicName}/${subscriptionName}`;
-    
+
     try {
       if (this.receivers.has(receiverKey)) {
         logger.warn(`Receiver already exists for ${receiverKey}`);
@@ -211,7 +212,7 @@ class ServiceBusService {
 
           try {
             const message = brokeredMessage.body as FoodXchangeMessage;
-            
+
             logger.debug('Processing message', {
               messageId: brokeredMessage.messageId,
               eventType: message.eventType,
@@ -343,8 +344,8 @@ class ServiceBusService {
 
   // Helper methods for common FoodXchange events
   public async publishSampleEvent(
-    sampleId: string, 
-    eventType: string, 
+    sampleId: string,
+    eventType: string,
     data: Record<string, any>,
     correlationId?: string
   ): Promise<void> {
@@ -365,8 +366,8 @@ class ServiceBusService {
   }
 
   public async publishOrderEvent(
-    orderId: string, 
-    eventType: string, 
+    orderId: string,
+    eventType: string,
     data: Record<string, any>,
     correlationId?: string
   ): Promise<void> {
@@ -387,8 +388,8 @@ class ServiceBusService {
   }
 
   public async publishShipmentEvent(
-    shipmentId: string, 
-    eventType: string, 
+    shipmentId: string,
+    eventType: string,
     data: Record<string, any>,
     correlationId?: string
   ): Promise<void> {
@@ -409,8 +410,8 @@ class ServiceBusService {
   }
 
   public async publishComplianceEvent(
-    complianceId: string, 
-    eventType: string, 
+    complianceId: string,
+    eventType: string,
     data: Record<string, any>,
     correlationId?: string
   ): Promise<void> {

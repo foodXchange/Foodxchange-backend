@@ -1,53 +1,53 @@
 const mongoose = require('mongoose');
 
 const reviewSchema = new mongoose.Schema({
-  order: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Order', 
-    required: true 
+  order: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Order',
+    required: true
   },
-  reviewer: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'User', 
-    required: true 
+  reviewer: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
   },
-  reviewee: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Company', 
-    required: true 
+  reviewee: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Company',
+    required: true
   },
-  reviewerType: { 
-    type: String, 
-    enum: ['buyer', 'supplier'], 
-    required: true 
+  reviewerType: {
+    type: String,
+    enum: ['buyer', 'supplier'],
+    required: true
   },
-  
+
   rating: {
-    overall: { 
-      type: Number, 
-      min: 1, 
-      max: 5, 
-      required: true 
+    overall: {
+      type: Number,
+      min: 1,
+      max: 5,
+      required: true
     },
-    quality: { 
-      type: Number, 
-      min: 1, 
-      max: 5 
+    quality: {
+      type: Number,
+      min: 1,
+      max: 5
     },
-    delivery: { 
-      type: Number, 
-      min: 1, 
-      max: 5 
+    delivery: {
+      type: Number,
+      min: 1,
+      max: 5
     },
-    communication: { 
-      type: Number, 
-      min: 1, 
-      max: 5 
+    communication: {
+      type: Number,
+      min: 1,
+      max: 5
     },
-    value: { 
-      type: Number, 
-      min: 1, 
-      max: 5 
+    value: {
+      type: Number,
+      min: 1,
+      max: 5
     },
     compliance: {
       type: Number,
@@ -55,7 +55,7 @@ const reviewSchema = new mongoose.Schema({
       max: 5
     }
   },
-  
+
   title: {
     type: String,
     maxlength: 100
@@ -64,28 +64,28 @@ const reviewSchema = new mongoose.Schema({
     type: String,
     maxlength: 1000
   },
-  
+
   pros: [String],
   cons: [String],
-  
+
   wouldRecommend: Boolean,
   wouldOrderAgain: Boolean,
-  
+
   images: [{
     url: String,
     caption: String,
     uploadedAt: { type: Date, default: Date.now }
   }],
-  
+
   response: {
     comment: String,
     respondedAt: Date,
-    respondedBy: { 
-      type: mongoose.Schema.Types.ObjectId, 
-      ref: 'User' 
+    respondedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
     }
   },
-  
+
   moderation: {
     status: {
       type: String,
@@ -96,34 +96,34 @@ const reviewSchema = new mongoose.Schema({
     moderatedAt: Date,
     reason: String
   },
-  
-  helpfulVotes: { 
-    type: Number, 
-    default: 0 
+
+  helpfulVotes: {
+    type: Number,
+    default: 0
   },
-  
-  votedHelpfulBy: [{ 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'User' 
+
+  votedHelpfulBy: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
   }],
-  
-  isVerified: { 
-    type: Boolean, 
-    default: true 
+
+  isVerified: {
+    type: Boolean,
+    default: true
   }, // Since it's from actual order
-  
-  isVisible: { 
-    type: Boolean, 
-    default: true 
+
+  isVisible: {
+    type: Boolean,
+    default: true
   },
-  
+
   tags: [String], // For categorization
-  
+
   language: {
     type: String,
     default: 'en'
   }
-}, { 
+}, {
   timestamps: true,
   toJSON: { virtuals: true },
   toObject: { virtuals: true }

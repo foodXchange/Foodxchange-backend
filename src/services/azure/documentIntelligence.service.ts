@@ -1,6 +1,7 @@
-import { DocumentAnalysisClient, AzureKeyCredential, AnalyzeResult } from "@azure/ai-form-recognizer";
-import { Logger } from '../../core/logging/logger';
+import { DocumentAnalysisClient, AzureKeyCredential, AnalyzeResult } from '@azure/ai-form-recognizer';
+
 import { trackAzureServiceCall } from '../../config/applicationInsights';
+import { Logger } from '../../core/logging/logger';
 
 const logger = new Logger('DocumentIntelligenceService');
 
@@ -103,7 +104,7 @@ class DocumentIntelligenceService {
       logger.info('Starting invoice analysis', { documentUrl });
 
       const poller = await this.client.beginAnalyzeDocumentFromUrl(
-        "prebuilt-invoice",
+        'prebuilt-invoice',
         documentUrl
       );
 
@@ -166,7 +167,7 @@ class DocumentIntelligenceService {
 
     try {
       const model = modelId || 'prebuilt-document'; // Use custom model if available
-      
+
       logger.info('Starting certificate analysis', { documentUrl, model });
 
       const poller = await this.client.beginAnalyzeDocumentFromUrl(model, documentUrl);
@@ -267,7 +268,7 @@ class DocumentIntelligenceService {
       // Extract violations from tables if present
       if (result.tables) {
         for (const table of result.tables) {
-          const violationColumns = table.cells.filter(cell => 
+          const violationColumns = table.cells.filter(cell =>
             cell.content.toLowerCase().includes('violation') ||
             cell.content.toLowerCase().includes('deficiency')
           );
@@ -367,7 +368,7 @@ class DocumentIntelligenceService {
   // Helper methods for extracting field values
   private extractFieldValue(field: any): any {
     if (!field) return undefined;
-    
+
     if (field.kind === 'currency') {
       return field.value?.amount;
     } else if (field.kind === 'date') {
@@ -385,7 +386,7 @@ class DocumentIntelligenceService {
       }
       return obj;
     }
-    
+
     return field.value || field.content;
   }
 
@@ -414,7 +415,7 @@ class DocumentIntelligenceService {
 
   private parseDate(dateString: string): Date | undefined {
     if (!dateString) return undefined;
-    
+
     const date = new Date(dateString);
     return isNaN(date.getTime()) ? undefined : date;
   }
@@ -442,6 +443,29 @@ class DocumentIntelligenceService {
       'food-safety',
       'customs-declaration'
     ];
+  }
+
+  // Additional methods for AI controller compatibility
+  public async extractComplianceCertificate(documentUrl: string): Promise<any> {
+    return this.analyzeCertificate(documentUrl);
+  }
+
+  public async analyzeDocument(documentUrl: string): Promise<any> {
+    // Determine document type and analyze accordingly
+    try {
+      // Try certificate first
+      const result = await this.analyzeCertificate(documentUrl);
+      if (result.success) return result;
+    } catch (error) {
+      // Try food safety document
+      try {
+        const result = await this.analyzeFoodSafetyDocument(documentUrl);
+        if (result.success) return result;
+      } catch (error2) {
+        // Fall back to generic document analysis
+        return this.analyzeInvoice(documentUrl);
+      }
+    }
   }
 }
 

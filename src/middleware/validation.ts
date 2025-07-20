@@ -4,9 +4,11 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { z, ZodError, ZodSchema } from 'zod';
-import { ValidationError } from '../core/errors';
 import rateLimit from 'express-rate-limit';
+import { validationResult, ValidationChain } from 'express-validator';
+import { z, ZodError, ZodSchema } from 'zod';
+
+import { ValidationError } from '../core/errors';
 import { User } from '../models/User';
 
 interface ValidationSchemas {
@@ -23,30 +25,30 @@ export const validate = (schemas: ValidationSchemas) => {
       if (schemas.body) {
         req.body = await schemas.body.parseAsync(req.body);
       }
-      
+
       if (schemas.query) {
         req.query = await schemas.query.parseAsync(req.query);
       }
-      
+
       if (schemas.params) {
         req.params = await schemas.params.parseAsync(req.params);
       }
-      
+
       if (schemas.headers) {
         const validatedHeaders = await schemas.headers.parseAsync(req.headers);
         // Don't override all headers, just validated ones
         Object.assign(req.headers, validatedHeaders);
       }
-      
+
       next();
     } catch (error) {
       if (error instanceof ZodError) {
         const validationErrors = error.errors.map(err => ({
           field: err.path.join('.'),
           message: err.message,
-          value: err.path.reduce((obj, key) => obj?.[key], req.body ?? req.query ?? req.params),
+          value: err.path.reduce((obj, key) => obj?.[key], req.body ?? req.query ?? req.params)
         }));
-        
+
         next(new ValidationError('Validation failed', validationErrors));
       } else {
         next(error);
@@ -62,12 +64,12 @@ export const commonSchemas = {
     page: z.coerce.number().int().positive().default(1),
     limit: z.coerce.number().int().positive().max(100).default(20),
     sort: z.string().optional(),
-    order: z.enum(['asc', 'desc']).default('desc'),
+    order: z.enum(['asc', 'desc']).default('desc')
   }),
-  
+
   // MongoDB ObjectId
   objectId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid ObjectId'),
-  
+
   // Enhanced Email validation
   email: z.string()
     .email('Please enter a valid email address')
@@ -77,13 +79,13 @@ export const commonSchemas = {
       const forbiddenDomains = ['tempmail.com', '10minutemail.com', 'guerrillamail.com'];
       return !forbiddenDomains.includes(domain);
     }, 'Temporary email addresses are not allowed'),
-  
+
   // Enhanced Phone validation
   phone: z.string()
     .regex(/^\+?[1-9]\d{1,14}$/, 'Please enter a valid phone number in international format')
     .min(10, 'Phone number must be at least 10 digits')
     .max(15, 'Phone number cannot exceed 15 digits'),
-  
+
   // Password validation with strength requirements
   password: z.string()
     .min(8, 'Password must be at least 8 characters long')
@@ -95,53 +97,53 @@ export const commonSchemas = {
       const commonPasswords = ['password', '123456', 'qwerty', 'abc123', 'password123'];
       return !commonPasswords.includes(password.toLowerCase());
     }, 'Password is too common, please choose a stronger password'),
-  
+
   // Company name validation
   companyName: z.string()
     .min(2, 'Company name must be at least 2 characters long')
     .max(100, 'Company name cannot exceed 100 characters')
     .regex(/^[a-zA-Z0-9\s\-&.,()]+$/, 'Company name contains invalid characters'),
-  
+
   // Company size validation
   companySize: z.enum(['1-10', '11-50', '50-200', '200+'], {
     errorMap: () => ({ message: 'Company size must be one of: 1-10, 11-50, 50-200, 200+' })
   }),
-  
+
   // Industry validation
   industry: z.string()
     .min(2, 'Industry must be at least 2 characters long')
     .max(50, 'Industry cannot exceed 50 characters'),
-  
+
   // Business type validation
   businessType: z.enum(['restaurant', 'distributor', 'manufacturer', 'retailer', 'other'], {
     errorMap: () => ({ message: 'Business type must be one of: restaurant, distributor, manufacturer, retailer, other' })
   }),
-  
+
   // URL
   url: z.string().url(),
-  
+
   // Date range
   dateRange: z.object({
     startDate: z.coerce.date(),
-    endDate: z.coerce.date(),
+    endDate: z.coerce.date()
   }).refine(data => data.startDate <= data.endDate, {
-    message: 'Start date must be before end date',
+    message: 'Start date must be before end date'
   }),
-  
+
   // Price
   price: z.object({
     amount: z.number().positive(),
-    currency: z.string().length(3).toUpperCase(),
+    currency: z.string().length(3).toUpperCase()
   }),
-  
+
   // Address
   address: z.object({
     street: z.string().min(1),
     city: z.string().min(1),
     state: z.string().optional(),
     country: z.string().min(2),
-    postalCode: z.string().min(1),
-  }),
+    postalCode: z.string().min(1)
+  })
 };
 
 // Validation middleware factory
@@ -149,7 +151,7 @@ export const validationMiddleware = {
   body: (schema: ZodSchema) => validate({ body: schema }),
   query: (schema: ZodSchema) => validate({ query: schema }),
   params: (schema: ZodSchema) => validate({ params: schema }),
-  headers: (schema: ZodSchema) => validate({ headers: schema }),
+  headers: (schema: ZodSchema) => validate({ headers: schema })
 };
 
 // Enhanced validation middleware with specific requirements
@@ -162,7 +164,7 @@ export const enhancedValidate = {
       rememberMe: z.boolean().optional().default(false)
     })
   }),
-  
+
   // User registration validation
   userRegister: validate({
     body: z.object({
@@ -188,7 +190,7 @@ export const enhancedValidate = {
       acceptTerms: z.boolean().refine(val => val === true, 'You must accept the terms and conditions')
     })
   }),
-  
+
   // User profile update validation
   userUpdate: validate({
     body: z.object({
@@ -210,7 +212,7 @@ export const enhancedValidate = {
       website: commonSchemas.url.optional()
     })
   }),
-  
+
   // Company update validation
   companyUpdate: validate({
     body: z.object({
@@ -231,7 +233,7 @@ export const enhancedValidate = {
       }).optional()
     })
   }),
-  
+
   // Password change validation
   userChangePassword: validate({
     body: z.object({
@@ -270,7 +272,7 @@ export const rateLimiters = {
       return trustedIPs.includes(req.ip);
     }
   }),
-  
+
   // General API endpoints
   general: rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -286,7 +288,7 @@ export const rateLimiters = {
     standardHeaders: true,
     legacyHeaders: false
   }),
-  
+
   // Password reset (very strict)
   passwordReset: rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour
@@ -304,16 +306,14 @@ export const rateLimiters = {
   })
 };
 
-// Backward compatibility - export enhanced validate as main validate
-export { enhancedValidate as validate };
+// Enhanced validate is already exported above
 
 // Express-validator middleware
-import { validationResult, ValidationChain } from 'express-validator';
 
 export const validateRequest = (validations: ValidationChain[]) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     // Run all validations
-    await Promise.all(validations.map(validation => validation.run(req)));
+    await Promise.all(validations.map(async validation => validation.run(req)));
 
     // Check for errors
     const errors = validationResult(req);
@@ -323,10 +323,10 @@ export const validateRequest = (validations: ValidationChain[]) => {
         message: err.msg,
         value: err.type === 'field' ? err.value : undefined
       }));
-      
+
       return next(new ValidationError('Validation failed', validationErrors));
     }
-    
+
     next();
   };
 };

@@ -2,10 +2,11 @@ import { DefaultAzureCredential } from '@azure/identity';
 import { SecretClient } from '@azure/keyvault-secrets';
 import axios from 'axios';
 import jwt from 'jsonwebtoken';
-import { Logger } from '../../core/logging/logger';
-import { User } from '../../models/User';
-import { Company } from '../../models/Company';
+
 import { AuthenticationError, AuthorizationError } from '../../core/errors';
+import { Logger } from '../../core/logging/logger';
+import { Company } from '../../models/Company';
+import { User } from '../../models/User';
 
 const logger = new Logger('AzureB2CService');
 
@@ -34,7 +35,7 @@ export class AzureB2CService {
   private readonly clientSecret: string;
   private readonly policyName: string;
   private readonly keyVaultUrl: string;
-  private secretClient: SecretClient;
+  private readonly secretClient: SecretClient;
 
   constructor() {
     this.tenantId = process.env.AZURE_B2C_TENANT_ID || '';
@@ -42,7 +43,7 @@ export class AzureB2CService {
     this.clientSecret = process.env.AZURE_B2C_CLIENT_SECRET || '';
     this.policyName = process.env.AZURE_B2C_POLICY_NAME || 'B2C_1_SignUpSignIn';
     this.keyVaultUrl = process.env.AZURE_KEYVAULT_URL || '';
-    
+
     if (this.keyVaultUrl) {
       const credential = new DefaultAzureCredential();
       this.secretClient = new SecretClient(this.keyVaultUrl, credential);
@@ -94,7 +95,7 @@ export class AzureB2CService {
         return { isValid: false, error: 'Invalid token format' };
       }
 
-      const kid = decodedHeader.header.kid;
+      const {kid} = decodedHeader.header;
       const key = jwks.keys.find((k: any) => k.kid === kid);
 
       if (!key) {
@@ -165,7 +166,7 @@ export class AzureB2CService {
         user.azureB2CTenantId = userInfo.tenantId;
         user.displayName = userInfo.displayName;
         user.lastLoginAt = new Date();
-        
+
         if (companyId && !user.company) {
           user.company = companyId;
         }
@@ -206,12 +207,12 @@ export class AzureB2CService {
   async exchangeCodeForToken(code: string, redirectUri: string): Promise<any> {
     try {
       const tokenUrl = `https://${this.tenantId}.b2clogin.com/${this.tenantId}.onmicrosoft.com/${this.policyName}/oauth2/v2.0/token`;
-      
+
       const params = new URLSearchParams({
         grant_type: 'authorization_code',
         client_id: this.clientId,
         client_secret: this.clientSecret,
-        code: code,
+        code,
         redirect_uri: redirectUri,
         scope: 'openid profile email'
       });
@@ -235,7 +236,7 @@ export class AzureB2CService {
   async refreshToken(refreshToken: string): Promise<any> {
     try {
       const tokenUrl = `https://${this.tenantId}.b2clogin.com/${this.tenantId}.onmicrosoft.com/${this.policyName}/oauth2/v2.0/token`;
-      
+
       const params = new URLSearchParams({
         grant_type: 'refresh_token',
         client_id: this.clientId,
@@ -285,7 +286,7 @@ export class AzureB2CService {
    */
   async getUserProfile(accessToken: string): Promise<any> {
     try {
-      const response = await axios.get(`https://graph.microsoft.com/v1.0/me`, {
+      const response = await axios.get('https://graph.microsoft.com/v1.0/me', {
         headers: {
           Authorization: `Bearer ${accessToken}`
         }
@@ -306,11 +307,11 @@ export class AzureB2CService {
       // This requires Microsoft Graph API with appropriate permissions
       // Implementation depends on your specific B2C setup and requirements
       logger.info('User invitation initiated', { email, displayName, companyId });
-      
+
       // For now, return a placeholder response
       return {
         invitationId: `inv_${Date.now()}`,
-        invitationUrl: this.getAuthUrl(process.env.FRONTEND_URL + '/auth/callback'),
+        invitationUrl: this.getAuthUrl(`${process.env.FRONTEND_URL  }/auth/callback`),
         email,
         displayName,
         companyId
@@ -327,7 +328,7 @@ export class AzureB2CService {
   private jwkToPem(jwk: any): string {
     const { Buffer } = require('buffer');
     const keyType = jwk.kty;
-    
+
     if (keyType !== 'RSA') {
       throw new Error('Only RSA keys are supported');
     }

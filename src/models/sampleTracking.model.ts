@@ -68,14 +68,14 @@ export interface IDocumentAnalysis {
 
 export interface ISampleTracking extends Document {
   sampleId: string;
-  
+
   // References
   rfqId?: Types.ObjectId;
   buyerId: Types.ObjectId;
   buyerName: string;
   supplierId: Types.ObjectId;
   supplierName: string;
-  
+
   // Product details
   product: {
     name: string;
@@ -85,7 +85,7 @@ export interface ISampleTracking extends Document {
     images: string[];
     estimatedValue?: number;
   };
-  
+
   // Workflow management
   workflow: {
     currentStage: SampleWorkflowStage;
@@ -93,7 +93,7 @@ export interface ISampleTracking extends Document {
     completedStages: string[];
     nextExpectedStage?: SampleWorkflowStage;
   };
-  
+
   // Tracking information
   tracking: {
     carrier?: string;
@@ -110,10 +110,10 @@ export interface ISampleTracking extends Document {
       }>;
     };
   };
-  
+
   // AI-powered insights
   aiInsights: IAIInsights;
-  
+
   // Quality assessment
   qualityAssessment?: {
     overallScore: number;
@@ -137,7 +137,7 @@ export interface ISampleTracking extends Document {
       notes?: string;
     }>;
   };
-  
+
   // Documents and compliance
   documents: Array<{
     type: string;
@@ -147,7 +147,7 @@ export interface ISampleTracking extends Document {
     uploadedBy: Types.ObjectId;
     analysis?: IDocumentAnalysis;
   }>;
-  
+
   // Communication and negotiation
   communications: Array<{
     timestamp: Date;
@@ -160,7 +160,7 @@ export interface ISampleTracking extends Document {
     content: string;
     attachments?: string[];
   }>;
-  
+
   negotiation?: {
     priceOffered?: number;
     priceRequested?: number;
@@ -174,10 +174,10 @@ export interface ISampleTracking extends Document {
       details: Record<string, any>;
     }>;
   };
-  
+
   // Timeline for audit trail
   timeline: ITimelineEvent[];
-  
+
   // Conversion tracking
   conversionData?: {
     convertedAt: Date;
@@ -186,7 +186,7 @@ export interface ISampleTracking extends Document {
     conversionProbabilityAtStart: number;
     actualFactors: string[];
   };
-  
+
   // Sample specifications
   sampleSpecs: {
     quantity: number;
@@ -196,11 +196,11 @@ export interface ISampleTracking extends Document {
     productionDate?: Date;
     specialRequirements?: string[];
   };
-  
+
   // Status tracking
   status: SampleStatus;
   priority: 'low' | 'medium' | 'high' | 'urgent';
-  
+
   // Timestamps
   requestedAt: Date;
   approvedAt?: Date;
@@ -208,11 +208,11 @@ export interface ISampleTracking extends Document {
   deliveredAt?: Date;
   completedAt?: Date;
   cancelledAt?: Date;
-  
+
   // Metadata
   tags?: string[];
   internalNotes?: string;
-  
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -270,13 +270,13 @@ const SampleTrackingSchema = new Schema<ISampleTracking>({
     required: true,
     index: true
   },
-  
+
   rfqId: { type: Schema.Types.ObjectId, ref: 'RFQ' },
   buyerId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   buyerName: { type: String, required: true },
   supplierId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   supplierName: { type: String, required: true },
-  
+
   product: {
     name: { type: String, required: true },
     sku: { type: String, required: true },
@@ -285,7 +285,7 @@ const SampleTrackingSchema = new Schema<ISampleTracking>({
     images: { type: [String], default: [] },
     estimatedValue: Number
   },
-  
+
   workflow: {
     currentStage: {
       type: String,
@@ -304,7 +304,7 @@ const SampleTrackingSchema = new Schema<ISampleTracking>({
       enum: Object.values(SampleWorkflowStage)
     }
   },
-  
+
   tracking: {
     carrier: String,
     trackingNumber: { type: String, index: true },
@@ -323,13 +323,13 @@ const SampleTrackingSchema = new Schema<ISampleTracking>({
       }]
     }
   },
-  
+
   aiInsights: {
     type: AIInsightsSchema,
     required: true,
     default: () => ({})
   },
-  
+
   qualityAssessment: {
     overallScore: { type: Number, min: 0, max: 10 },
     visualInspection: {
@@ -352,7 +352,7 @@ const SampleTrackingSchema = new Schema<ISampleTracking>({
       notes: String
     }]
   },
-  
+
   documents: [{
     type: { type: String, required: true },
     name: { type: String, required: true },
@@ -367,7 +367,7 @@ const SampleTrackingSchema = new Schema<ISampleTracking>({
       issues: [String]
     }
   }],
-  
+
   communications: [{
     timestamp: { type: Date, default: Date.now },
     fromUserId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
@@ -379,7 +379,7 @@ const SampleTrackingSchema = new Schema<ISampleTracking>({
     content: { type: String, required: true },
     attachments: [String]
   }],
-  
+
   negotiation: {
     priceOffered: Number,
     priceRequested: Number,
@@ -393,12 +393,12 @@ const SampleTrackingSchema = new Schema<ISampleTracking>({
       details: { type: Map, of: Schema.Types.Mixed, required: true }
     }]
   },
-  
+
   timeline: {
     type: [TimelineEventSchema],
     default: []
   },
-  
+
   conversionData: {
     convertedAt: Date,
     orderId: { type: Schema.Types.ObjectId, ref: 'Order' },
@@ -406,7 +406,7 @@ const SampleTrackingSchema = new Schema<ISampleTracking>({
     conversionProbabilityAtStart: Number,
     actualFactors: [String]
   },
-  
+
   sampleSpecs: {
     quantity: { type: Number, required: true, min: 0 },
     unit: { type: String, required: true },
@@ -415,27 +415,27 @@ const SampleTrackingSchema = new Schema<ISampleTracking>({
     productionDate: Date,
     specialRequirements: [String]
   },
-  
+
   status: {
     type: String,
     enum: Object.values(SampleStatus),
     default: SampleStatus.ACTIVE,
     index: true
   },
-  
+
   priority: {
     type: String,
     enum: ['low', 'medium', 'high', 'urgent'],
     default: 'medium'
   },
-  
+
   requestedAt: { type: Date, default: Date.now, required: true },
   approvedAt: Date,
   shippedAt: Date,
   deliveredAt: Date,
   completedAt: Date,
   cancelledAt: Date,
-  
+
   tags: [String],
   internalNotes: String
 }, {
@@ -454,7 +454,7 @@ SampleTrackingSchema.index({ tags: 1 });
 // Virtual properties
 SampleTrackingSchema.virtual('isOverdue').get(function() {
   if (!this.tracking.estimatedDelivery) return false;
-  return Date.now() > this.tracking.estimatedDelivery.getTime() && 
+  return Date.now() > this.tracking.estimatedDelivery.getTime() &&
          this.workflow.currentStage !== SampleWorkflowStage.CONVERTED &&
          this.status === SampleStatus.ACTIVE;
 });
@@ -470,7 +470,7 @@ SampleTrackingSchema.virtual('progressPercentage').get(function() {
 });
 
 // Methods
-SampleTrackingSchema.methods.addTimelineEvent = function(
+SampleTrackingSchema.methods.addTimelineEvent = async function(
   event: string,
   userId: Types.ObjectId,
   userName: string,
@@ -497,12 +497,12 @@ SampleTrackingSchema.methods.updateWorkflowStage = async function(
   // Update current stage
   const previousStage = this.workflow.currentStage;
   this.workflow.currentStage = stage;
-  
+
   // Mark previous stage as completed if not already
   if (previousStage && !this.workflow.completedStages.includes(previousStage)) {
     this.workflow.completedStages.push(previousStage);
   }
-  
+
   // Update stage details
   this.workflow.stages.set(stage, {
     status: 'in_progress',
@@ -511,7 +511,7 @@ SampleTrackingSchema.methods.updateWorkflowStage = async function(
     updatedBy: userId,
     notes
   });
-  
+
   // Add timeline event
   await this.addTimelineEvent(
     `Stage updated to ${stage}`,
@@ -520,7 +520,7 @@ SampleTrackingSchema.methods.updateWorkflowStage = async function(
     `Workflow stage changed from ${previousStage} to ${stage}`,
     { previousStage, newStage: stage, data }
   );
-  
+
   // Update stage-specific timestamps
   switch (stage) {
     case SampleWorkflowStage.APPROVED:
@@ -542,11 +542,11 @@ SampleTrackingSchema.methods.updateWorkflowStage = async function(
       this.status = SampleStatus.CANCELLED;
       break;
   }
-  
+
   return this.save();
 };
 
-SampleTrackingSchema.methods.addTemperatureReading = function(
+SampleTrackingSchema.methods.addTemperatureReading = async function(
   reading: ITemperatureReading
 ): Promise<ISampleTracking> {
   if (!this.tracking.temperature) {
@@ -556,16 +556,16 @@ SampleTrackingSchema.methods.addTemperatureReading = function(
       alerts: []
     };
   }
-  
+
   this.tracking.temperature.readings.push(reading);
-  
+
   // Check for temperature violations (example thresholds)
   const thresholds = {
     refrigerated: { min: 2, max: 8 },
     frozen: { min: -25, max: -15 },
     ambient: { min: 15, max: 25 }
   };
-  
+
   const threshold = thresholds[reading.zone];
   if (threshold && (reading.value < threshold.min || reading.value > threshold.max)) {
     this.tracking.temperature.alerts = this.tracking.temperature.alerts || [];
@@ -575,11 +575,11 @@ SampleTrackingSchema.methods.addTemperatureReading = function(
       severity: Math.abs(reading.value - ((threshold.min + threshold.max) / 2)) > 5 ? 'high' : 'medium'
     });
   }
-  
+
   return this.save();
 };
 
-SampleTrackingSchema.methods.updateAIInsights = function(insights: Partial<IAIInsights>): Promise<ISampleTracking> {
+SampleTrackingSchema.methods.updateAIInsights = async function(insights: Partial<IAIInsights>): Promise<ISampleTracking> {
   this.aiInsights = {
     ...this.aiInsights,
     ...insights,
@@ -598,7 +598,7 @@ SampleTrackingSchema.pre('save', function(next) {
     const random = Math.random().toString(36).substr(2, 6).toUpperCase();
     this.sampleId = `SMPL-${year}${month}-${random}`;
   }
-  
+
   // Initialize workflow stages if new
   if (this.isNew && this.workflow.stages.size === 0) {
     this.workflow.stages.set(SampleWorkflowStage.REQUEST, {
@@ -609,7 +609,7 @@ SampleTrackingSchema.pre('save', function(next) {
     });
     this.workflow.completedStages = [SampleWorkflowStage.REQUEST];
   }
-  
+
   // Add initial timeline event if new
   if (this.isNew && this.timeline.length === 0) {
     this.timeline.push({
@@ -620,7 +620,7 @@ SampleTrackingSchema.pre('save', function(next) {
       details: `Sample request created for ${this.product.name}`
     });
   }
-  
+
   next();
 });
 
@@ -634,8 +634,8 @@ SampleTrackingSchema.statics.findOverdue = function() {
   return this.find({
     'tracking.estimatedDelivery': { $lt: new Date() },
     status: SampleStatus.ACTIVE,
-    'workflow.currentStage': { 
-      $nin: [SampleWorkflowStage.CONVERTED, SampleWorkflowStage.REJECTED, SampleWorkflowStage.CANCELLED] 
+    'workflow.currentStage': {
+      $nin: [SampleWorkflowStage.CONVERTED, SampleWorkflowStage.REJECTED, SampleWorkflowStage.CANCELLED]
     }
   });
 };

@@ -1,5 +1,5 @@
-import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
+import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IUser extends Document {
   email: string;
@@ -10,17 +10,17 @@ export interface IUser extends Document {
   role: 'buyer' | 'seller' | 'admin' | 'contractor' | 'agent';
   avatar?: string;
   bio?: string;
-  
+
   // Company and verification
   company?: mongoose.Types.ObjectId;
   companyVerified: boolean;
   isEmailVerified: boolean;
   emailVerifiedAt?: Date;
-  
+
   // Progressive profiling
   onboardingStep: 'email-verification' | 'company-details' | 'profile-completion' | 'completed';
   profileCompletionPercentage: number;
-  
+
   // Security and authentication
   accountStatus: 'active' | 'inactive' | 'locked' | 'suspended';
   failedLoginAttempts: number;
@@ -30,18 +30,18 @@ export interface IUser extends Document {
   loginCount: number;
   refreshToken?: string;
   tokenVersion?: number;
-  
+
   // Multi-tenant and Azure B2C fields
   azureB2CId?: string;
   azureB2CTenantId?: string;
   displayName?: string;
   authProvider?: 'local' | 'azure-b2c' | 'google' | 'microsoft';
   emailVerified?: boolean;
-  
+
   // Password reset
   passwordResetToken?: string;
   passwordResetExpires?: Date;
-  
+
   // Verification documents
   verificationDocuments: Array<{
     type: string;
@@ -49,7 +49,7 @@ export interface IUser extends Document {
     uploadedAt: Date;
     verified: boolean;
   }>;
-  
+
   // Preferences
   preferences: {
     notifications: {
@@ -60,15 +60,15 @@ export interface IUser extends Document {
     language: string;
     timezone: string;
   };
-  
+
   // Terms acceptance
   acceptedTermsAt?: Date;
   termsVersion?: string;
-  
+
   // Timestamps
   createdAt: Date;
   updatedAt: Date;
-  
+
   // Methods
   comparePassword(candidatePassword: string): Promise<boolean>;
   calculateProfileCompletion(): number;
@@ -125,7 +125,7 @@ const userSchema = new Schema<IUser>({
     type: String,
     maxlength: [500, 'Bio cannot exceed 500 characters']
   },
-  
+
   // Company and verification
   company: {
     type: mongoose.Schema.Types.ObjectId,
@@ -140,7 +140,7 @@ const userSchema = new Schema<IUser>({
     default: false
   },
   emailVerifiedAt: Date,
-  
+
   // Progressive profiling
   onboardingStep: {
     type: String,
@@ -153,7 +153,7 @@ const userSchema = new Schema<IUser>({
     min: 0,
     max: 100
   },
-  
+
   // Security and authentication
   accountStatus: {
     type: String,
@@ -178,7 +178,7 @@ const userSchema = new Schema<IUser>({
     type: Number,
     default: 0
   },
-  
+
   // Multi-tenant and Azure B2C fields
   azureB2CId: String,
   azureB2CTenantId: String,
@@ -192,11 +192,11 @@ const userSchema = new Schema<IUser>({
     type: Boolean,
     default: false
   },
-  
+
   // Password reset
   passwordResetToken: String,
   passwordResetExpires: Date,
-  
+
   // Verification documents
   verificationDocuments: [{
     type: {
@@ -217,7 +217,7 @@ const userSchema = new Schema<IUser>({
       default: false
     }
   }],
-  
+
   // Preferences
   preferences: {
     notifications: {
@@ -228,7 +228,7 @@ const userSchema = new Schema<IUser>({
     language: { type: String, default: 'en' },
     timezone: { type: String, default: 'UTC' }
   },
-  
+
   // Terms acceptance
   acceptedTermsAt: Date,
   termsVersion: String
@@ -239,7 +239,7 @@ const userSchema = new Schema<IUser>({
 });
 
 // Indexes for performance
-userSchema.index({ email: 1 });
+// userSchema.index({ email: 1 }); // Removed - already created by unique: true
 userSchema.index({ role: 1 });
 userSchema.index({ accountStatus: 1 });
 userSchema.index({ company: 1 });
@@ -274,16 +274,16 @@ userSchema.methods.calculateProfileCompletion = function(): number {
     'firstName', 'lastName', 'email', 'phone', 'bio', 'avatar',
     'company', 'isEmailVerified', 'companyVerified'
   ];
-  
+
   let completed = 0;
   const total = fields.length;
-  
+
   fields.forEach(field => {
     if (this[field]) {
       completed++;
     }
   });
-  
+
   return Math.round((completed / total) * 100);
 };
 
@@ -297,7 +297,7 @@ userSchema.methods.getNextOnboardingStep = function(): string {
 
 // Check if account is locked
 userSchema.methods.isAccountLocked = function(): boolean {
-  return this.accountStatus === 'locked' || 
+  return this.accountStatus === 'locked' ||
          (this.accountLockedAt && this.accountLockedAt > new Date());
 };
 

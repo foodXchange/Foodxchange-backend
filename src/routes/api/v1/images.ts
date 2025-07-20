@@ -1,4 +1,12 @@
+import { promises as fs } from 'fs';
+import path from 'path';
+
 import { Router } from 'express';
+
+import { Logger } from '../../../core/logging/logger';
+import { asyncHandler } from '../../../middleware/asyncHandler';
+import { authenticate } from '../../../middleware/auth';
+import { authorize } from '../../../middleware/authorize';
 import {
   optimizeSingleImage,
   optimizeMultipleImages,
@@ -7,12 +15,6 @@ import {
   cleanupImageCache,
   getImageStats
 } from '../../../middleware/imageOptimization';
-import { authenticate } from '../../../middleware/auth';
-import { authorize } from '../../../middleware/authorize';
-import { asyncHandler } from '../../../middleware/asyncHandler';
-import { Logger } from '../../../core/logging/logger';
-import { promises as fs } from 'fs';
-import path from 'path';
 
 const router = Router();
 const logger = new Logger('ImageRoutes');
@@ -26,24 +28,24 @@ router.post('/upload',
   authenticate,
   optimizeSingleImage('image'),
   asyncHandler(async (req, res) => {
-    const optimizedImage = (req as any).optimizedImage;
-    
+    const {optimizedImage} = (req);
+
     if (!optimizedImage) {
       return res.status(400).json({
         success: false,
         error: 'No image provided'
       });
     }
-    
+
     // Save optimized image to disk
     const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
     const filePath = path.join(uploadDir, optimizedImage.filename);
-    
+
     await fs.writeFile(filePath, optimizedImage.buffer);
-    
+
     // Remove buffer from response
     const { buffer, ...imageData } = optimizedImage;
-    
+
     res.json({
       success: true,
       data: {
@@ -69,26 +71,26 @@ router.post('/upload-multiple',
   authenticate,
   optimizeMultipleImages('images', 10),
   asyncHandler(async (req, res) => {
-    const optimizedImages = (req as any).optimizedImages;
-    
+    const {optimizedImages} = (req);
+
     if (!optimizedImages || optimizedImages.length === 0) {
       return res.status(400).json({
         success: false,
         error: 'No images provided'
       });
     }
-    
+
     // Save all optimized images
     const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
-    
+
     const savedImages = await Promise.all(
       optimizedImages.map(async (image: any) => {
         const filePath = path.join(uploadDir, image.filename);
         await fs.writeFile(filePath, image.buffer);
-        
+
         // Remove buffer from response
         const { buffer, ...imageData } = image;
-        
+
         return {
           ...imageData,
           url: `/images/${image.filename}`,
@@ -101,7 +103,7 @@ router.post('/upload-multiple',
         };
       })
     );
-    
+
     res.json({
       success: true,
       data: savedImages
@@ -115,7 +117,7 @@ router.post('/upload-multiple',
  * @access  Public
  * @query   w (width), h (height), q (quality), f (format), fit, blur, sharpen
  */
-router.get('/:filename', 
+router.get('/:filename',
   asyncHandler(serveOptimizedImage)
 );
 
@@ -138,18 +140,18 @@ router.delete('/:filename',
   asyncHandler(async (req, res) => {
     const { filename } = req.params;
     const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
-    
+
     try {
       // Delete original image
       const originalPath = path.join(uploadDir, filename);
       await fs.unlink(originalPath);
-      
+
       // Delete cached variants
       const cacheDir = path.join(uploadDir, 'cache');
-      const variants = ['thumbnail', 'small', 'medium', 'large', 'xlarge', 
-                       'webp_small', 'webp_medium', 'webp_large',
-                       'avif_small', 'avif_medium', 'avif_large'];
-      
+      const variants = ['thumbnail', 'small', 'medium', 'large', 'xlarge',
+        'webp_small', 'webp_medium', 'webp_large',
+        'avif_small', 'avif_medium', 'avif_large'];
+
       await Promise.all(
         variants.map(async (variant) => {
           try {
@@ -160,7 +162,7 @@ router.delete('/:filename',
           }
         })
       );
-      
+
       res.json({
         success: true,
         message: 'Image deleted successfully'
@@ -207,17 +209,17 @@ router.post('/generate-variants/:filename',
   asyncHandler(async (req, res) => {
     const { filename } = req.params;
     const { imageOptimizationService } = await import('../../../services/optimization/ImageOptimizationService');
-    
+
     try {
       const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
       const imagePath = path.join(uploadDir, filename);
       const imageBuffer = await fs.readFile(imagePath);
-      
+
       const variants = await imageOptimizationService.generateResponsiveVariants(
         imageBuffer,
         filename
       );
-      
+
       res.json({
         success: true,
         data: {

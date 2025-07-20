@@ -6,14 +6,14 @@ export interface IOrder extends Document {
   purchaseOrderNumber?: string;
   rfqId?: mongoose.Types.ObjectId;
   quoteId?: mongoose.Types.ObjectId;
-  
+
   // Parties
   buyer: mongoose.Types.ObjectId;
   buyerCompany: mongoose.Types.ObjectId;
   supplier: mongoose.Types.ObjectId;
   supplierCompany: mongoose.Types.ObjectId;
   tenantId: string;
-  
+
   // Order Items
   items: Array<{
     _id?: mongoose.Types.ObjectId;
@@ -26,7 +26,7 @@ export interface IOrder extends Document {
     totalPrice: number;
     unit: string;
     specifications?: string;
-    
+
     // Food-specific
     batchNumber?: string;
     expiryDate?: Date;
@@ -35,19 +35,19 @@ export interface IOrder extends Document {
       max: number;
       unit: 'C' | 'F';
     };
-    
+
     // Fulfillment
     quantityOrdered: number;
     quantityShipped: number;
     quantityDelivered: number;
     quantityReturned: number;
     quantityRejected: number;
-    
+
     // Status
     status: 'pending' | 'confirmed' | 'preparing' | 'shipped' | 'delivered' | 'cancelled' | 'returned';
     notes?: string;
   }>;
-  
+
   // Financial Information
   subtotal: number;
   taxAmount: number;
@@ -55,16 +55,16 @@ export interface IOrder extends Document {
   discountAmount: number;
   totalAmount: number;
   currency: string;
-  
+
   // Payment Information
   paymentTerms: {
     method: 'net30' | 'net60' | 'net90' | 'cod' | 'prepaid' | 'custom';
     customTerms?: string;
     dueDate?: Date;
   };
-  
+
   paymentStatus: 'pending' | 'partial' | 'paid' | 'overdue' | 'refunded';
-  
+
   payments: Array<{
     _id?: mongoose.Types.ObjectId;
     amount: number;
@@ -75,7 +75,7 @@ export interface IOrder extends Document {
     status: 'pending' | 'completed' | 'failed' | 'refunded';
     gatewayResponse?: any;
   }>;
-  
+
   // Delivery Information
   deliveryAddress: {
     name: string;
@@ -93,7 +93,7 @@ export interface IOrder extends Document {
       lng: number;
     };
   };
-  
+
   deliveryTerms: {
     incoterm: string;
     shippingMethod: string;
@@ -103,7 +103,7 @@ export interface IOrder extends Document {
     signatureRequired: boolean;
     specialHandling?: string[];
   };
-  
+
   deliverySchedule: {
     requestedDate?: Date;
     confirmedDate?: Date;
@@ -114,7 +114,7 @@ export interface IOrder extends Document {
       end: string;
     };
   };
-  
+
   // Shipment Information
   shipments: Array<{
     _id?: mongoose.Types.ObjectId;
@@ -126,15 +126,15 @@ export interface IOrder extends Document {
       itemId: mongoose.Types.ObjectId;
       quantity: number;
     }>;
-    
+
     // Dates
     shippedDate: Date;
     estimatedDeliveryDate?: Date;
     actualDeliveryDate?: Date;
-    
+
     // Status
     status: 'created' | 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'returned' | 'lost';
-    
+
     // Tracking
     trackingEvents: Array<{
       timestamp: Date;
@@ -143,11 +143,11 @@ export interface IOrder extends Document {
       description: string;
       eventCode?: string;
     }>;
-    
+
     // Costs
     shippingCost: number;
     insuranceCost?: number;
-    
+
     // Documentation
     documents: Array<{
       type: 'bill_of_lading' | 'packing_list' | 'commercial_invoice' | 'insurance' | 'other';
@@ -156,10 +156,10 @@ export interface IOrder extends Document {
       uploadedAt: Date;
     }>;
   }>;
-  
+
   // Order Status and Workflow
   status: 'draft' | 'pending_approval' | 'approved' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'completed' | 'cancelled' | 'returned';
-  
+
   // Approval Workflow
   approvalRequired: boolean;
   approvalChain: Array<{
@@ -173,10 +173,10 @@ export interface IOrder extends Document {
     approvedAmount?: number;
     conditions?: string[];
   }>;
-  
+
   currentApprovalLevel: number;
   finalApprovalDate?: Date;
-  
+
   // Compliance & Quality
   compliance: {
     requiredCertifications: string[];
@@ -188,7 +188,7 @@ export interface IOrder extends Document {
       validUntil: Date;
       documentUrl?: string;
     }>;
-    
+
     temperatureLog: Array<{
       timestamp: Date;
       temperature: number;
@@ -196,7 +196,7 @@ export interface IOrder extends Document {
       location: string;
       recordedBy: string;
     }>;
-    
+
     qualityChecks: Array<{
       type: 'incoming' | 'outgoing' | 'storage';
       performedBy: mongoose.Types.ObjectId;
@@ -206,7 +206,7 @@ export interface IOrder extends Document {
       photos?: string[];
     }>;
   };
-  
+
   // Contract Terms
   contractTerms: {
     warrantyPeriod?: number;
@@ -222,7 +222,7 @@ export interface IOrder extends Document {
       responseTime: number;
     };
   };
-  
+
   // Notifications
   notifications: Array<{
     type: string;
@@ -231,7 +231,7 @@ export interface IOrder extends Document {
     status: 'sent' | 'delivered' | 'read' | 'failed';
     message: string;
   }>;
-  
+
   // Integration
   externalReferences: {
     erpOrderId?: string;
@@ -240,7 +240,7 @@ export interface IOrder extends Document {
     carrierReference?: string;
     customerReference?: string;
   };
-  
+
   // Analytics
   analytics: {
     orderValue: number;
@@ -250,7 +250,7 @@ export interface IOrder extends Document {
     customerSatisfaction?: number;
     returnRate?: number;
   };
-  
+
   // Activity Log
   activityLog: Array<{
     action: string;
@@ -260,20 +260,20 @@ export interface IOrder extends Document {
     ipAddress?: string;
     userAgent?: string;
   }>;
-  
+
   // Metadata
   createdAt: Date;
   updatedAt: Date;
   createdBy: mongoose.Types.ObjectId;
   updatedBy?: mongoose.Types.ObjectId;
   version: number;
-  
+
   // Virtual fields
   isApprovalPending: boolean;
   canBeCancelled: boolean;
   estimatedDeliveryDate: Date;
   fulfillmentProgress: number;
-  
+
   // Methods
   addToApprovalChain(approver: string, role: string, order: number): Promise<void>;
   processApproval(approverId: string, decision: 'approved' | 'rejected', comments?: string): Promise<void>;
@@ -306,7 +306,7 @@ const orderSchema = new Schema<IOrder>({
   quoteId: {
     type: mongoose.Schema.Types.ObjectId
   },
-  
+
   // Parties
   buyer: {
     type: mongoose.Schema.Types.ObjectId,
@@ -333,7 +333,7 @@ const orderSchema = new Schema<IOrder>({
     required: true,
     index: true
   },
-  
+
   // Order Items
   items: [{
     productId: {
@@ -369,7 +369,7 @@ const orderSchema = new Schema<IOrder>({
       required: true
     },
     specifications: String,
-    
+
     // Food-specific
     batchNumber: String,
     expiryDate: Date,
@@ -381,7 +381,7 @@ const orderSchema = new Schema<IOrder>({
         enum: ['C', 'F']
       }
     },
-    
+
     // Fulfillment
     quantityOrdered: {
       type: Number,
@@ -408,7 +408,7 @@ const orderSchema = new Schema<IOrder>({
       default: 0,
       min: 0
     },
-    
+
     // Status
     status: {
       type: String,
@@ -417,7 +417,7 @@ const orderSchema = new Schema<IOrder>({
     },
     notes: String
   }],
-  
+
   // Financial Information
   subtotal: {
     type: Number,
@@ -450,7 +450,7 @@ const orderSchema = new Schema<IOrder>({
     uppercase: true,
     default: 'USD'
   },
-  
+
   // Payment Information
   paymentTerms: {
     method: {
@@ -461,13 +461,13 @@ const orderSchema = new Schema<IOrder>({
     customTerms: String,
     dueDate: Date
   },
-  
+
   paymentStatus: {
     type: String,
     enum: ['pending', 'partial', 'paid', 'overdue', 'refunded'],
     default: 'pending'
   },
-  
+
   payments: [{
     amount: {
       type: Number,
@@ -499,7 +499,7 @@ const orderSchema = new Schema<IOrder>({
     },
     gatewayResponse: mongoose.Schema.Types.Mixed
   }],
-  
+
   // Delivery Information
   deliveryAddress: {
     name: {
@@ -532,7 +532,7 @@ const orderSchema = new Schema<IOrder>({
       lng: Number
     }
   },
-  
+
   deliveryTerms: {
     incoterm: {
       type: String,
@@ -555,7 +555,7 @@ const orderSchema = new Schema<IOrder>({
     },
     specialHandling: [String]
   },
-  
+
   deliverySchedule: {
     requestedDate: Date,
     confirmedDate: Date,
@@ -566,7 +566,7 @@ const orderSchema = new Schema<IOrder>({
       end: String
     }
   },
-  
+
   // Shipment Information
   shipments: [{
     shipmentNumber: {
@@ -596,7 +596,7 @@ const orderSchema = new Schema<IOrder>({
         min: 1
       }
     }],
-    
+
     // Dates
     shippedDate: {
       type: Date,
@@ -604,14 +604,14 @@ const orderSchema = new Schema<IOrder>({
     },
     estimatedDeliveryDate: Date,
     actualDeliveryDate: Date,
-    
+
     // Status
     status: {
       type: String,
       enum: ['created', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered', 'returned', 'lost'],
       default: 'created'
     },
-    
+
     // Tracking
     trackingEvents: [{
       timestamp: {
@@ -629,7 +629,7 @@ const orderSchema = new Schema<IOrder>({
       },
       eventCode: String
     }],
-    
+
     // Costs
     shippingCost: {
       type: Number,
@@ -640,7 +640,7 @@ const orderSchema = new Schema<IOrder>({
       type: Number,
       min: 0
     },
-    
+
     // Documentation
     documents: [{
       type: {
@@ -662,14 +662,14 @@ const orderSchema = new Schema<IOrder>({
       }
     }]
   }],
-  
+
   // Order Status and Workflow
   status: {
     type: String,
     enum: ['draft', 'pending_approval', 'approved', 'confirmed', 'processing', 'shipped', 'delivered', 'completed', 'cancelled', 'returned'],
     default: 'draft'
   },
-  
+
   // Approval Workflow
   approvalRequired: {
     type: Boolean,
@@ -699,13 +699,13 @@ const orderSchema = new Schema<IOrder>({
     approvedAmount: Number,
     conditions: [String]
   }],
-  
+
   currentApprovalLevel: {
     type: Number,
     default: 0
   },
   finalApprovalDate: Date,
-  
+
   // Compliance & Quality
   compliance: {
     requiredCertifications: [String],
@@ -732,7 +732,7 @@ const orderSchema = new Schema<IOrder>({
       },
       documentUrl: String
     }],
-    
+
     temperatureLog: [{
       timestamp: {
         type: Date,
@@ -756,7 +756,7 @@ const orderSchema = new Schema<IOrder>({
         required: true
       }
     }],
-    
+
     qualityChecks: [{
       type: {
         type: String,
@@ -781,7 +781,7 @@ const orderSchema = new Schema<IOrder>({
       photos: [String]
     }]
   },
-  
+
   // Contract Terms
   contractTerms: {
     warrantyPeriod: Number,
@@ -797,7 +797,7 @@ const orderSchema = new Schema<IOrder>({
       responseTime: Number
     }
   },
-  
+
   // Notifications
   notifications: [{
     type: {
@@ -823,7 +823,7 @@ const orderSchema = new Schema<IOrder>({
       required: true
     }
   }],
-  
+
   // Integration
   externalReferences: {
     erpOrderId: String,
@@ -832,7 +832,7 @@ const orderSchema = new Schema<IOrder>({
     carrierReference: String,
     customerReference: String
   },
-  
+
   // Analytics
   analytics: {
     orderValue: {
@@ -856,7 +856,7 @@ const orderSchema = new Schema<IOrder>({
       max: 100
     }
   },
-  
+
   // Activity Log
   activityLog: [{
     action: {
@@ -876,7 +876,7 @@ const orderSchema = new Schema<IOrder>({
     ipAddress: String,
     userAgent: String
   }],
-  
+
   // Metadata
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -936,21 +936,21 @@ orderSchema.pre('save', async function(next) {
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     this.orderNumber = `ORD-${year}${month}-${(count + 1).toString().padStart(6, '0')}`;
   }
-  
+
   // Calculate totals
   this.calculateTotals();
-  
+
   // Set payment due date
   if (this.paymentTerms.method !== 'prepaid' && !this.paymentTerms.dueDate) {
-    const daysToAdd = this.paymentTerms.method === 'net30' ? 30 : 
-                      this.paymentTerms.method === 'net60' ? 60 : 
-                      this.paymentTerms.method === 'net90' ? 90 : 0;
-    
+    const daysToAdd = this.paymentTerms.method === 'net30' ? 30 :
+      this.paymentTerms.method === 'net60' ? 60 :
+        this.paymentTerms.method === 'net90' ? 90 : 0;
+
     if (daysToAdd > 0) {
       this.paymentTerms.dueDate = new Date(Date.now() + daysToAdd * 24 * 60 * 60 * 1000);
     }
   }
-  
+
   next();
 });
 
@@ -966,10 +966,10 @@ orderSchema.methods.addToApprovalChain = async function(
     order,
     status: 'pending'
   });
-  
+
   // Sort by order
   this.approvalChain.sort((a, b) => a.order - b.order);
-  
+
   await this.save();
 };
 
@@ -978,18 +978,18 @@ orderSchema.methods.processApproval = async function(
   decision: 'approved' | 'rejected',
   comments?: string
 ): Promise<void> {
-  const approval = this.approvalChain.find(a => 
+  const approval = this.approvalChain.find(a =>
     a.approver.toString() === approverId && a.status === 'pending'
   );
-  
+
   if (!approval) {
     throw new Error('Approval not found or already processed');
   }
-  
+
   approval.status = decision;
   approval.comments = comments;
   approval.processedAt = new Date();
-  
+
   if (decision === 'rejected') {
     this.status = 'cancelled';
   } else {
@@ -1000,7 +1000,7 @@ orderSchema.methods.processApproval = async function(
       this.finalApprovalDate = new Date();
     }
   }
-  
+
   await this.addActivityLog(`order_${decision}`, approverId, { comments });
   await this.save();
 };
@@ -1012,18 +1012,18 @@ orderSchema.methods.updateStatus = async function(
   const oldStatus = this.status;
   this.status = newStatus;
   this.updatedBy = userId;
-  
-  await this.addActivityLog('status_changed', userId, { 
-    from: oldStatus, 
-    to: newStatus 
+
+  await this.addActivityLog('status_changed', userId, {
+    from: oldStatus,
+    to: newStatus
   });
-  
+
   await this.save();
 };
 
 orderSchema.methods.addShipment = async function(shipmentData: any): Promise<void> {
   this.shipments.push(shipmentData);
-  
+
   // Update item quantities
   shipmentData.items.forEach((shipItem: any) => {
     const orderItem = this.items.id(shipItem.itemId);
@@ -1032,16 +1032,16 @@ orderSchema.methods.addShipment = async function(shipmentData: any): Promise<voi
       orderItem.status = 'shipped';
     }
   });
-  
+
   // Update order status if fully shipped
-  const allShipped = this.items.every(item => 
+  const allShipped = this.items.every(item =>
     item.quantityShipped >= item.quantityOrdered
   );
-  
+
   if (allShipped) {
     this.status = 'shipped';
   }
-  
+
   await this.save();
 };
 
@@ -1053,17 +1053,17 @@ orderSchema.methods.updateShipmentTracking = async function(
   if (!shipment) {
     throw new Error('Shipment not found');
   }
-  
+
   shipment.trackingEvents.push({
     timestamp: new Date(),
     ...trackingData
   });
-  
+
   // Update shipment status
   if (trackingData.status) {
     shipment.status = trackingData.status;
   }
-  
+
   await this.save();
 };
 
@@ -1094,7 +1094,7 @@ orderSchema.methods.getNextApprover = function(): any {
   const pendingApproval = this.approvalChain
     .filter(a => a.status === 'pending')
     .sort((a, b) => a.order - b.order)[0];
-  
+
   return pendingApproval;
 };
 

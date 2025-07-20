@@ -8,13 +8,13 @@ export const validateOrderData = (data: any) => {
     purchaseOrderNumber: Joi.string().optional(),
     rfqId: Joi.string().optional(),
     quoteId: Joi.string().optional(),
-    
+
     // Parties
     buyer: Joi.string().required(),
     buyerCompany: Joi.string().required(),
     supplier: Joi.string().required(),
     supplierCompany: Joi.string().required(),
-    
+
     // Order Items
     items: Joi.array().items(
       Joi.object({
@@ -26,7 +26,7 @@ export const validateOrderData = (data: any) => {
         unitPrice: Joi.number().min(0).required(),
         unit: Joi.string().required(),
         specifications: Joi.string().optional(),
-        
+
         // Food-specific
         batchNumber: Joi.string().optional(),
         expiryDate: Joi.date().optional(),
@@ -35,20 +35,20 @@ export const validateOrderData = (data: any) => {
           max: Joi.number().required(),
           unit: Joi.string().valid('C', 'F').required()
         }).optional(),
-        
+
         // Fulfillment
         quantityOrdered: Joi.number().min(0).required(),
         quantityShipped: Joi.number().min(0).default(0),
         quantityDelivered: Joi.number().min(0).default(0),
         quantityReturned: Joi.number().min(0).default(0),
         quantityRejected: Joi.number().min(0).default(0),
-        
+
         // Status
         status: Joi.string().valid('pending', 'confirmed', 'preparing', 'shipped', 'delivered', 'cancelled', 'returned').default('pending'),
         notes: Joi.string().optional()
       })
     ).min(1).required(),
-    
+
     // Financial Information
     subtotal: Joi.number().min(0).required(),
     taxAmount: Joi.number().min(0).default(0),
@@ -56,14 +56,14 @@ export const validateOrderData = (data: any) => {
     discountAmount: Joi.number().min(0).default(0),
     totalAmount: Joi.number().min(0).required(),
     currency: Joi.string().uppercase().default('USD'),
-    
+
     // Payment Information
     paymentTerms: Joi.object({
       method: Joi.string().valid('net30', 'net60', 'net90', 'cod', 'prepaid', 'custom').default('net30'),
       customTerms: Joi.string().optional(),
       dueDate: Joi.date().optional()
     }).required(),
-    
+
     // Delivery Information
     deliveryAddress: Joi.object({
       name: Joi.string().required(),
@@ -81,7 +81,7 @@ export const validateOrderData = (data: any) => {
         lng: Joi.number().required()
       }).optional()
     }).required(),
-    
+
     deliveryTerms: Joi.object({
       incoterm: Joi.string().valid('EXW', 'FCA', 'CPT', 'CIP', 'DAP', 'DPU', 'DDP', 'FAS', 'FOB', 'CFR', 'CIF').required(),
       shippingMethod: Joi.string().required(),
@@ -91,7 +91,7 @@ export const validateOrderData = (data: any) => {
       signatureRequired: Joi.boolean().default(true),
       specialHandling: Joi.array().items(Joi.string()).optional()
     }).required(),
-    
+
     deliverySchedule: Joi.object({
       requestedDate: Joi.date().optional(),
       confirmedDate: Joi.date().optional(),
@@ -102,7 +102,7 @@ export const validateOrderData = (data: any) => {
         end: Joi.string().required()
       }).optional()
     }).optional(),
-    
+
     // Compliance & Quality
     compliance: Joi.object({
       requiredCertifications: Joi.array().items(Joi.string()).optional(),
@@ -117,7 +117,7 @@ export const validateOrderData = (data: any) => {
         })
       ).optional()
     }).optional(),
-    
+
     // Contract Terms
     contractTerms: Joi.object({
       warrantyPeriod: Joi.number().optional(),
@@ -135,7 +135,7 @@ export const validateOrderData = (data: any) => {
         responseTime: Joi.number().required()
       }).optional()
     }).optional(),
-    
+
     // Integration
     externalReferences: Joi.object({
       erpOrderId: Joi.string().optional(),
@@ -155,7 +155,7 @@ export const validateOrderData = (data: any) => {
 export const validateOrderUpdateData = (data: any) => {
   const schema = Joi.object({
     purchaseOrderNumber: Joi.string().optional(),
-    
+
     // Order Items
     items: Joi.array().items(
       Joi.object({
@@ -168,7 +168,7 @@ export const validateOrderUpdateData = (data: any) => {
         unitPrice: Joi.number().min(0).required(),
         unit: Joi.string().required(),
         specifications: Joi.string().optional(),
-        
+
         // Food-specific
         batchNumber: Joi.string().optional(),
         expiryDate: Joi.date().optional(),
@@ -177,20 +177,20 @@ export const validateOrderUpdateData = (data: any) => {
           max: Joi.number().required(),
           unit: Joi.string().valid('C', 'F').required()
         }).optional(),
-        
+
         // Fulfillment
         quantityOrdered: Joi.number().min(0).required(),
         quantityShipped: Joi.number().min(0).default(0),
         quantityDelivered: Joi.number().min(0).default(0),
         quantityReturned: Joi.number().min(0).default(0),
         quantityRejected: Joi.number().min(0).default(0),
-        
+
         // Status
         status: Joi.string().valid('pending', 'confirmed', 'preparing', 'shipped', 'delivered', 'cancelled', 'returned').default('pending'),
         notes: Joi.string().optional()
       })
     ).optional(),
-    
+
     // Financial Information
     subtotal: Joi.number().min(0).optional(),
     taxAmount: Joi.number().min(0).optional(),
@@ -198,14 +198,14 @@ export const validateOrderUpdateData = (data: any) => {
     discountAmount: Joi.number().min(0).optional(),
     totalAmount: Joi.number().min(0).optional(),
     currency: Joi.string().uppercase().optional(),
-    
+
     // Payment Information
     paymentTerms: Joi.object({
       method: Joi.string().valid('net30', 'net60', 'net90', 'cod', 'prepaid', 'custom').optional(),
       customTerms: Joi.string().optional(),
       dueDate: Joi.date().optional()
     }).optional(),
-    
+
     // Delivery Information
     deliveryAddress: Joi.object({
       name: Joi.string().required(),
@@ -223,7 +223,7 @@ export const validateOrderUpdateData = (data: any) => {
         lng: Joi.number().required()
       }).optional()
     }).optional(),
-    
+
     deliveryTerms: Joi.object({
       incoterm: Joi.string().valid('EXW', 'FCA', 'CPT', 'CIP', 'DAP', 'DPU', 'DDP', 'FAS', 'FOB', 'CFR', 'CIF').required(),
       shippingMethod: Joi.string().required(),
@@ -233,7 +233,7 @@ export const validateOrderUpdateData = (data: any) => {
       signatureRequired: Joi.boolean().optional(),
       specialHandling: Joi.array().items(Joi.string()).optional()
     }).optional(),
-    
+
     deliverySchedule: Joi.object({
       requestedDate: Joi.date().optional(),
       confirmedDate: Joi.date().optional(),
@@ -244,7 +244,7 @@ export const validateOrderUpdateData = (data: any) => {
         end: Joi.string().required()
       }).optional()
     }).optional(),
-    
+
     // Compliance & Quality
     compliance: Joi.object({
       requiredCertifications: Joi.array().items(Joi.string()).optional(),
@@ -259,7 +259,7 @@ export const validateOrderUpdateData = (data: any) => {
         })
       ).optional()
     }).optional(),
-    
+
     // Contract Terms
     contractTerms: Joi.object({
       warrantyPeriod: Joi.number().optional(),
@@ -277,7 +277,7 @@ export const validateOrderUpdateData = (data: any) => {
         responseTime: Joi.number().required()
       }).optional()
     }).optional(),
-    
+
     // Integration
     externalReferences: Joi.object({
       erpOrderId: Joi.string().optional(),
@@ -298,11 +298,11 @@ export const validateRFQData = (data: any) => {
   const schema = Joi.object({
     title: Joi.string().required(),
     description: Joi.string().required(),
-    
+
     // Buyer Information
     buyer: Joi.string().required(),
     buyerCompany: Joi.string().required(),
-    
+
     // Items
     items: Joi.array().items(
       Joi.object({
@@ -311,26 +311,26 @@ export const validateRFQData = (data: any) => {
         quantity: Joi.number().min(1).required(),
         unit: Joi.string().required(),
         specifications: Joi.string().optional(),
-        
+
         // Food-specific
         category: Joi.string().optional(),
         subCategory: Joi.string().optional(),
         targetPrice: Joi.number().min(0).optional(),
-        
+
         // Quality requirements
         qualityStandards: Joi.array().items(Joi.string()).optional(),
         certifications: Joi.array().items(Joi.string()).optional(),
-        
+
         // Packaging
         packagingType: Joi.string().optional(),
         packagingSize: Joi.string().optional(),
-        
+
         // Delivery
         deliveryLocation: Joi.string().optional(),
         deliveryDate: Joi.date().optional()
       })
     ).min(1).required(),
-    
+
     // Delivery Information
     deliveryAddress: Joi.object({
       name: Joi.string().required(),
@@ -344,7 +344,7 @@ export const validateRFQData = (data: any) => {
       email: Joi.string().email().optional(),
       specialInstructions: Joi.string().optional()
     }).required(),
-    
+
     // Terms
     terms: Joi.object({
       paymentTerms: Joi.string().required(),
@@ -353,18 +353,18 @@ export const validateRFQData = (data: any) => {
       returnPolicy: Joi.string().optional(),
       specialRequirements: Joi.string().optional()
     }).required(),
-    
+
     // Timeline
     submissionDeadline: Joi.date().required(),
     validUntil: Joi.date().required(),
-    
+
     // Budget
     budgetRange: Joi.object({
       min: Joi.number().min(0).optional(),
       max: Joi.number().min(0).optional(),
       currency: Joi.string().uppercase().default('USD')
     }).optional(),
-    
+
     // Selection Criteria
     selectionCriteria: Joi.object({
       priceWeight: Joi.number().min(0).max(100).default(40),
@@ -372,7 +372,7 @@ export const validateRFQData = (data: any) => {
       deliveryWeight: Joi.number().min(0).max(100).default(20),
       serviceWeight: Joi.number().min(0).max(100).default(10)
     }).optional(),
-    
+
     // Attachments
     attachments: Joi.array().items(
       Joi.object({
@@ -397,12 +397,12 @@ export const validateProductData = (data: any) => {
     sku: Joi.string().required(),
     category: Joi.string().required(),
     subCategory: Joi.string().optional(),
-    
+
     // Pricing
     price: Joi.number().min(0).required(),
     currency: Joi.string().uppercase().default('USD'),
     priceUnit: Joi.string().required(),
-    
+
     // Inventory
     inventory: Joi.object({
       quantity: Joi.number().min(0).required(),
@@ -412,7 +412,7 @@ export const validateProductData = (data: any) => {
       reorderPoint: Joi.number().min(0).optional(),
       stockStatus: Joi.string().valid('in_stock', 'low_stock', 'out_of_stock').default('in_stock')
     }).required(),
-    
+
     // Food Safety
     foodSafety: Joi.object({
       allergens: Joi.array().items(Joi.string()).optional(),
@@ -426,7 +426,7 @@ export const validateProductData = (data: any) => {
         unit: Joi.string().valid('days', 'weeks', 'months', 'years').required()
       }).optional()
     }).optional(),
-    
+
     // Nutritional Information
     nutritionalInfo: Joi.object({
       servingSize: Joi.string().optional(),
@@ -438,7 +438,7 @@ export const validateProductData = (data: any) => {
       sugar: Joi.number().min(0).optional(),
       sodium: Joi.number().min(0).optional()
     }).optional(),
-    
+
     // Packaging
     packaging: Joi.object({
       type: Joi.string().required(),
@@ -452,20 +452,20 @@ export const validateProductData = (data: any) => {
         unit: Joi.string().required()
       }).optional()
     }).required(),
-    
+
     // Certifications
     certifications: Joi.array().items(Joi.string()).optional(),
-    
+
     // Supplier Information
     supplier: Joi.string().required(),
     supplierCompany: Joi.string().required(),
-    
+
     // Images
     images: Joi.array().items(Joi.string()).optional(),
-    
+
     // Status
     status: Joi.string().valid('active', 'inactive', 'discontinued').default('active'),
-    
+
     // Traceability
     traceability: Joi.object({
       lotTracking: Joi.boolean().default(false),

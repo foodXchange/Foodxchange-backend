@@ -1,9 +1,10 @@
 import { EventEmitter } from 'events';
-import { getSignalRService, SignalRService } from '../azure/SignalRService';
+
 import { Logger } from '../../core/logging/logger';
 import { Order } from '../../models/Order';
 import { RFQ } from '../../models/RFQ';
 import { User } from '../../models/User';
+import { getSignalRService, SignalRService } from '../azure/SignalRService';
 
 const logger = new Logger('RealtimeEventService');
 
@@ -16,7 +17,7 @@ export interface RealtimeEvent {
 }
 
 export class RealtimeEventService extends EventEmitter {
-  private signalRService: SignalRService;
+  private readonly signalRService: SignalRService;
   private isInitialized = false;
 
   constructor() {
@@ -35,10 +36,10 @@ export class RealtimeEventService extends EventEmitter {
     try {
       // Set up event listeners
       this.setupEventListeners();
-      
+
       // Test SignalR connection
       await this.signalRService.healthCheck();
-      
+
       this.isInitialized = true;
       logger.info('RealtimeEventService initialized successfully');
     } catch (error) {
@@ -238,7 +239,7 @@ export class RealtimeEventService extends EventEmitter {
   private async handleOrderCreated(event: RealtimeEvent): Promise<void> {
     try {
       const { orderId, buyerId, supplierId, orderNumber, totalAmount, currency } = event.data;
-      
+
       // Send notification to buyer
       await this.signalRService.sendOrderUpdate(orderId, 'created', buyerId, event.tenantId, {
         message: `Order ${orderNumber} created successfully`,
@@ -270,7 +271,7 @@ export class RealtimeEventService extends EventEmitter {
   private async handleOrderUpdated(event: RealtimeEvent): Promise<void> {
     try {
       const { orderId, oldStatus, newStatus, updatedBy } = event.data;
-      
+
       // Get order details
       const order = await Order.findById(orderId).populate('buyer supplier');
       if (!order) return;
@@ -294,7 +295,7 @@ export class RealtimeEventService extends EventEmitter {
   private async handleOrderApproved(event: RealtimeEvent): Promise<void> {
     try {
       const { orderId, approver, comments } = event.data;
-      
+
       const order = await Order.findById(orderId).populate('buyer supplier');
       if (!order) return;
 
@@ -317,7 +318,7 @@ export class RealtimeEventService extends EventEmitter {
   private async handleOrderRejected(event: RealtimeEvent): Promise<void> {
     try {
       const { orderId, rejector, comments } = event.data;
-      
+
       const order = await Order.findById(orderId).populate('buyer supplier');
       if (!order) return;
 
@@ -340,7 +341,7 @@ export class RealtimeEventService extends EventEmitter {
   private async handleOrderShipped(event: RealtimeEvent): Promise<void> {
     try {
       const { orderId, shipmentId, carrier, trackingNumber } = event.data;
-      
+
       const order = await Order.findById(orderId).populate('buyer supplier');
       if (!order) return;
 
@@ -361,7 +362,7 @@ export class RealtimeEventService extends EventEmitter {
   private async handleOrderDelivered(event: RealtimeEvent): Promise<void> {
     try {
       const { orderId, deliveryDate } = event.data;
-      
+
       const order = await Order.findById(orderId).populate('buyer supplier');
       if (!order) return;
 
@@ -383,7 +384,7 @@ export class RealtimeEventService extends EventEmitter {
   private async handleOrderCancelled(event: RealtimeEvent): Promise<void> {
     try {
       const { orderId, reason } = event.data;
-      
+
       const order = await Order.findById(orderId).populate('buyer supplier');
       if (!order) return;
 
@@ -405,7 +406,7 @@ export class RealtimeEventService extends EventEmitter {
   private async handleRFQCreated(event: RealtimeEvent): Promise<void> {
     try {
       const { rfqId, title, submissionDeadline } = event.data;
-      
+
       // Broadcast to all suppliers in tenant
       await this.signalRService.sendToGroup(`tenant_${event.tenantId}`, 'rfq_created', {
         rfqId,
@@ -423,7 +424,7 @@ export class RealtimeEventService extends EventEmitter {
   private async handleRFQUpdated(event: RealtimeEvent): Promise<void> {
     try {
       const { rfqId, status } = event.data;
-      
+
       const rfq = await RFQ.findById(rfqId);
       if (!rfq) return;
 
@@ -441,7 +442,7 @@ export class RealtimeEventService extends EventEmitter {
   private async handleRFQQuoteReceived(event: RealtimeEvent): Promise<void> {
     try {
       const { rfqId, supplierId, quoteAmount, currency } = event.data;
-      
+
       const rfq = await RFQ.findById(rfqId);
       if (!rfq) return;
 
@@ -462,7 +463,7 @@ export class RealtimeEventService extends EventEmitter {
   private async handleRFQClosed(event: RealtimeEvent): Promise<void> {
     try {
       const { rfqId } = event.data;
-      
+
       const rfq = await RFQ.findById(rfqId);
       if (!rfq) return;
 
@@ -482,7 +483,7 @@ export class RealtimeEventService extends EventEmitter {
   private async handleRFQAwarded(event: RealtimeEvent): Promise<void> {
     try {
       const { rfqId, winningSupplierId } = event.data;
-      
+
       const rfq = await RFQ.findById(rfqId);
       if (!rfq) return;
 
@@ -511,7 +512,7 @@ export class RealtimeEventService extends EventEmitter {
   private async handleShipmentCreated(event: RealtimeEvent): Promise<void> {
     try {
       const { orderId, shipmentId, carrier, trackingNumber } = event.data;
-      
+
       const order = await Order.findById(orderId);
       if (!order) return;
 
@@ -531,7 +532,7 @@ export class RealtimeEventService extends EventEmitter {
   private async handleShipmentUpdated(event: RealtimeEvent): Promise<void> {
     try {
       const { orderId, shipmentId, status, location, description } = event.data;
-      
+
       const order = await Order.findById(orderId);
       if (!order) return;
 
@@ -550,7 +551,7 @@ export class RealtimeEventService extends EventEmitter {
   private async handleShipmentDelivered(event: RealtimeEvent): Promise<void> {
     try {
       const { orderId, shipmentId, deliveryDate } = event.data;
-      
+
       const order = await Order.findById(orderId);
       if (!order) return;
 
@@ -569,7 +570,7 @@ export class RealtimeEventService extends EventEmitter {
   private async handleChatMessage(event: RealtimeEvent): Promise<void> {
     try {
       const { fromUserId, toUserId, message, metadata } = event.data;
-      
+
       await this.signalRService.sendChatMessage(fromUserId, toUserId, event.tenantId, message, metadata);
 
       logger.info('Chat message event handled', { fromUserId, toUserId });
@@ -581,7 +582,7 @@ export class RealtimeEventService extends EventEmitter {
   private async handleChatTyping(event: RealtimeEvent): Promise<void> {
     try {
       const { fromUserId, toUserId, isTyping } = event.data;
-      
+
       await this.signalRService.sendToUser(toUserId, 'typing_indicator', {
         fromUserId,
         isTyping
@@ -596,8 +597,8 @@ export class RealtimeEventService extends EventEmitter {
   private async handleComplianceAlert(event: RealtimeEvent): Promise<void> {
     try {
       const { alertType, severity, ...data } = event.data;
-      
-      await this.signalRService.sendComplianceAlert(alertType, severity, event.userId!, event.tenantId, data);
+
+      await this.signalRService.sendComplianceAlert(alertType, severity, event.userId, event.tenantId, data);
 
       logger.info('Compliance alert event handled', { alertType, severity });
     } catch (error) {
@@ -608,8 +609,8 @@ export class RealtimeEventService extends EventEmitter {
   private async handleComplianceCheckFailed(event: RealtimeEvent): Promise<void> {
     try {
       const { checkType, failureReason, orderId } = event.data;
-      
-      await this.signalRService.sendComplianceAlert('check_failed', 'high', event.userId!, event.tenantId, {
+
+      await this.signalRService.sendComplianceAlert('check_failed', 'high', event.userId, event.tenantId, {
         checkType,
         failureReason,
         orderId,
@@ -625,7 +626,7 @@ export class RealtimeEventService extends EventEmitter {
   private async handleSystemNotification(event: RealtimeEvent): Promise<void> {
     try {
       const { title, message } = event.data;
-      
+
       await this.signalRService.sendSystemNotification(title, message, event.tenantId, event.userId);
 
       logger.info('System notification event handled', { title });
@@ -637,7 +638,7 @@ export class RealtimeEventService extends EventEmitter {
   private async handleSystemMaintenance(event: RealtimeEvent): Promise<void> {
     try {
       const { maintenanceType, startTime, endTime, message } = event.data;
-      
+
       await this.signalRService.sendToGroup(`tenant_${event.tenantId}`, 'system_maintenance', {
         maintenanceType,
         startTime,

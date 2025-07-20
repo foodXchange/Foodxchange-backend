@@ -1,10 +1,13 @@
-import sharp from 'sharp';
+import { createHash } from 'crypto';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { Readable } from 'stream';
+
+import sharp from 'sharp';
+
 import { Logger } from '../../core/logging/logger';
 import { optimizedCache } from '../cache/OptimizedCacheService';
-import { createHash } from 'crypto';
-import { Readable } from 'stream';
+
 
 const logger = new Logger('ImageOptimizationService');
 
@@ -40,10 +43,10 @@ interface ImageVariant {
 
 export class ImageOptimizationService {
   private static instance: ImageOptimizationService;
-  private uploadDir: string;
-  private cacheDir: string;
-  private cdnBaseUrl: string;
-  
+  private readonly uploadDir: string;
+  private readonly cacheDir: string;
+  private readonly cdnBaseUrl: string;
+
   // Default variants for responsive images
   private readonly defaultVariants: ImageVariant[] = [
     { name: 'thumbnail', width: 150, height: 150, quality: 80 },
@@ -63,7 +66,7 @@ export class ImageOptimizationService {
     this.uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
     this.cacheDir = path.join(this.uploadDir, 'cache');
     this.cdnBaseUrl = process.env.CDN_BASE_URL || '';
-    
+
     // Ensure directories exist
     this.ensureDirectories();
   }
@@ -82,7 +85,7 @@ export class ImageOptimizationService {
     try {
       await fs.mkdir(this.uploadDir, { recursive: true });
       await fs.mkdir(this.cacheDir, { recursive: true });
-      
+
       // Create variant subdirectories
       for (const variant of this.defaultVariants) {
         await fs.mkdir(path.join(this.cacheDir, variant.name), { recursive: true });
@@ -102,16 +105,16 @@ export class ImageOptimizationService {
   ): Promise<ProcessedImage> {
     try {
       const startTime = Date.now();
-      
+
       // Get image metadata
       const metadata = await sharp(inputBuffer).metadata();
-      
+
       // Apply optimizations
       let pipeline = sharp(inputBuffer);
-      
+
       // Auto-rotate based on EXIF data
       pipeline = pipeline.rotate();
-      
+
       // Resize if needed
       if (options?.width || options?.height) {
         pipeline = pipeline.resize({
@@ -122,62 +125,62 @@ export class ImageOptimizationService {
           background: options.background || { r: 255, g: 255, b: 255, alpha: 0 }
         });
       }
-      
+
       // Apply effects
       if (options?.blur) {
         pipeline = pipeline.blur(options.blur);
       }
-      
+
       if (options?.sharpen) {
         pipeline = pipeline.sharpen();
       }
-      
+
       // Convert format
       const format = options?.format || this.getOptimalFormat(metadata.format);
       const quality = options?.quality || this.getOptimalQuality(format);
-      
+
       switch (format) {
         case 'webp':
-          pipeline = pipeline.webp({ 
-            quality, 
+          pipeline = pipeline.webp({
+            quality,
             effort: 4,
             smartSubsample: true
           });
           break;
         case 'avif':
-          pipeline = pipeline.avif({ 
-            quality, 
+          pipeline = pipeline.avif({
+            quality,
             effort: 4,
             chromaSubsampling: '4:2:0'
           });
           break;
         case 'jpeg':
-          pipeline = pipeline.jpeg({ 
-            quality, 
+          pipeline = pipeline.jpeg({
+            quality,
             progressive: options?.progressive !== false,
             mozjpeg: true
           });
           break;
         case 'png':
-          pipeline = pipeline.png({ 
+          pipeline = pipeline.png({
             quality,
             compressionLevel: 9,
             progressive: options?.progressive !== false
           });
           break;
       }
-      
+
       // Process image
       const processedBuffer = await pipeline.toBuffer();
       const processedMetadata = await sharp(processedBuffer).metadata();
-      
+
       // Generate hash
       const hash = createHash('md5').update(processedBuffer).digest('hex');
-      
+
       const duration = Date.now() - startTime;
       logger.info(`Image processed in ${duration}ms`, {
-        original: { 
-          format: metadata.format, 
+        original: {
+          format: metadata.format,
           size: inputBuffer.length,
           width: metadata.width,
           height: metadata.height
@@ -187,15 +190,15 @@ export class ImageOptimizationService {
           size: processedBuffer.length,
           width: processedMetadata.width,
           height: processedMetadata.height,
-          compression: ((1 - processedBuffer.length / inputBuffer.length) * 100).toFixed(2) + '%'
+          compression: `${((1 - processedBuffer.length / inputBuffer.length) * 100).toFixed(2)  }%`
         }
       });
-      
+
       return {
         buffer: processedBuffer,
         format,
-        width: processedMetadata.width!,
-        height: processedMetadata.height!,
+        width: processedMetadata.width,
+        height: processedMetadata.height,
         size: processedBuffer.length,
         hash
       };
@@ -215,7 +218,7 @@ export class ImageOptimizationService {
   ): Promise<Record<string, ProcessedImage>> {
     const variants = customVariants || this.defaultVariants;
     const results: Record<string, ProcessedImage> = {};
-    
+
     // Process variants in parallel
     await Promise.all(
       variants.map(async (variant) => {
@@ -227,9 +230,9 @@ export class ImageOptimizationService {
             quality: variant.quality,
             fit: variant.height ? 'cover' : 'inside'
           });
-          
+
           results[variant.name] = processed;
-          
+
           // Cache the variant
           const cacheKey = `image:${baseFilename}:${variant.name}`;
           await optimizedCache.set(cacheKey, {
@@ -241,7 +244,7 @@ export class ImageOptimizationService {
         }
       })
     );
-    
+
     return results;
   }
 
@@ -255,7 +258,7 @@ export class ImageOptimizationService {
     try {
       // Generate cache key
       const cacheKey = `image:${filename}:${ImageOptimizationService.generateOptionsHash(options)}`;
-      
+
       // Check cache
       const cached = await optimizedCache.get<any>(cacheKey);
       if (cached) {
@@ -264,20 +267,20 @@ export class ImageOptimizationService {
           buffer: Buffer.from(cached.buffer, 'base64')
         };
       }
-      
+
       // Read original image
       const originalPath = path.join(this.uploadDir, filename);
       const originalBuffer = await fs.readFile(originalPath);
-      
+
       // Process image
       const processed = await this.processUploadedImage(originalBuffer, filename, options);
-      
+
       // Cache result
       await optimizedCache.set(cacheKey, {
         ...processed,
         buffer: processed.buffer.toString('base64')
       }, { ttl: 86400 });
-      
+
       return processed;
     } catch (error) {
       logger.error('Failed to get optimized image:', error);
@@ -295,12 +298,12 @@ export class ImageOptimizationService {
     try {
       const processed = await this.getOptimizedImage(filename, options);
       if (!processed) return null;
-      
+
       // Convert buffer to stream
       const stream = new Readable();
       stream.push(processed.buffer);
       stream.push(null);
-      
+
       return stream;
     } catch (error) {
       logger.error('Failed to stream optimized image:', error);
@@ -317,15 +320,15 @@ export class ImageOptimizationService {
   ): Promise<string> {
     const variantNames = variants || ['small', 'medium', 'large', 'xlarge'];
     const srcsetParts: string[] = [];
-    
+
     for (const variantName of variantNames) {
       const variant = this.defaultVariants.find(v => v.name === variantName);
       if (!variant) continue;
-      
+
       const url = this.getImageUrl(filename, variant.name);
       srcsetParts.push(`${url} ${variant.width}w`);
     }
-    
+
     return srcsetParts.join(', ');
   }
 
@@ -344,12 +347,12 @@ export class ImageOptimizationService {
     const sizes = options?.sizes || '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw';
     const loading = options?.lazyLoad ? 'lazy' : 'eager';
     const className = options?.className || '';
-    
+
     // Generate URLs for different formats
     const avifSrcset = await this.generateSrcSet(filename, ['avif_small', 'avif_medium', 'avif_large']);
     const webpSrcset = await this.generateSrcSet(filename, ['webp_small', 'webp_medium', 'webp_large']);
     const jpegSrcset = await this.generateSrcSet(filename, ['small', 'medium', 'large', 'xlarge']);
-    
+
     return `
       <picture>
         <source type="image/avif" srcset="${avifSrcset}" sizes="${sizes}">
@@ -373,21 +376,21 @@ export class ImageOptimizationService {
     try {
       let deletedCount = 0;
       const now = Date.now();
-      
+
       // Scan cache directory
       const variants = await fs.readdir(this.cacheDir);
-      
+
       for (const variant of variants) {
         const variantDir = path.join(this.cacheDir, variant);
         const stat = await fs.stat(variantDir);
-        
+
         if (stat.isDirectory()) {
           const files = await fs.readdir(variantDir);
-          
+
           for (const file of files) {
             const filePath = path.join(variantDir, file);
             const fileStat = await fs.stat(filePath);
-            
+
             if (now - fileStat.mtime.getTime() > maxAge) {
               await fs.unlink(filePath);
               deletedCount++;
@@ -395,7 +398,7 @@ export class ImageOptimizationService {
           }
         }
       }
-      
+
       logger.info(`Cleaned up ${deletedCount} cached images`);
       return deletedCount;
     } catch (error) {
@@ -420,44 +423,44 @@ export class ImageOptimizationService {
         cacheSize: 0,
         formats: {} as Record<string, number>
       };
-      
+
       // Scan upload directory
       const files = await fs.readdir(this.uploadDir);
-      
+
       for (const file of files) {
         const filePath = path.join(this.uploadDir, file);
         const stat = await fs.stat(filePath);
-        
+
         if (stat.isFile()) {
           stats.totalImages++;
           stats.totalSize += stat.size;
-          
+
           const ext = path.extname(file).toLowerCase();
           stats.formats[ext] = (stats.formats[ext] || 0) + 1;
         }
       }
-      
+
       // Calculate cache size
       const getCacheSize = async (dir: string): Promise<number> => {
         let size = 0;
         const files = await fs.readdir(dir);
-        
+
         for (const file of files) {
           const filePath = path.join(dir, file);
           const stat = await fs.stat(filePath);
-          
+
           if (stat.isDirectory()) {
             size += await getCacheSize(filePath);
           } else {
             size += stat.size;
           }
         }
-        
+
         return size;
       };
-      
+
       stats.cacheSize = await getCacheSize(this.cacheDir);
-      
+
       return stats;
     } catch (error) {
       logger.error('Failed to get image stats:', error);
@@ -473,19 +476,19 @@ export class ImageOptimizationService {
   /**
    * Helper methods
    */
-  
+
   private getOptimalFormat(originalFormat?: string): 'webp' | 'avif' | 'jpeg' | 'png' {
     // AVIF for best compression, WebP for wider support, JPEG as fallback
     if (process.env.IMAGE_FORMAT === 'avif') return 'avif';
     if (process.env.IMAGE_FORMAT === 'webp') return 'webp';
-    
+
     // Keep PNG for images with transparency
     if (originalFormat === 'png') return 'png';
-    
+
     // Default to JPEG
     return 'jpeg';
   }
-  
+
   private getOptimalQuality(format: string): number {
     switch (format) {
       case 'avif': return 75;
@@ -495,17 +498,17 @@ export class ImageOptimizationService {
       default: return 85;
     }
   }
-  
+
   private getImageUrl(filename: string, variant?: string): string {
     if (this.cdnBaseUrl) {
       return `${this.cdnBaseUrl}/images/${variant || 'original'}/${filename}`;
     }
     return `/uploads/${variant ? `cache/${variant}/` : ''}${filename}`;
   }
-  
+
   private static generateOptionsHash(options?: ImageOptimizationOptions): string {
     if (!options) return 'original';
-    
+
     const normalized = {
       w: options.width,
       h: options.height,
@@ -515,7 +518,7 @@ export class ImageOptimizationService {
       blur: options.blur,
       sharpen: options.sharpen
     };
-    
+
     return createHash('md5')
       .update(JSON.stringify(normalized))
       .digest('hex')

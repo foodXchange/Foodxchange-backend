@@ -1,5 +1,5 @@
-const supplierMatchingService = require('../services/ai/supplierMatchingService');
 const productAnalysisService = require('../services/ai/productAnalysisService');
+const supplierMatchingService = require('../services/ai/supplierMatchingService');
 
 class AIController {
   // Analyze RFQ and find matching suppliers
@@ -154,7 +154,7 @@ class AIController {
   async getAIStatus(req, res) {
     try {
       const aiService = require('../services/ai/azureAIService');
-      
+
       res.json({
         success: true,
         data: {
@@ -192,23 +192,23 @@ class AIController {
       // Import models dynamically to avoid circular dependencies
       const { User } = require('../../models/User');
       const { Product } = require('../../models/Product');
-      
+
       // Get all sellers (suppliers) with their products
-      const suppliers = await User.find({ 
+      const suppliers = await User.find({
         role: 'seller',
         accountStatus: 'active'
       })
-      .populate('company')
-      .select('-password -refreshToken')
-      .lean();
-      
+        .populate('company')
+        .select('-password -refreshToken')
+        .lean();
+
       // Get product counts for each supplier
       const suppliersWithStats = await Promise.all(suppliers.map(async (supplier) => {
-        const productCount = await Product.countDocuments({ 
+        const productCount = await Product.countDocuments({
           supplier: supplier._id,
           status: 'active'
         });
-        
+
         return {
           ...supplier,
           productCount,
@@ -223,7 +223,7 @@ class AIController {
           }
         };
       }));
-      
+
       return suppliersWithStats;
     } catch (error) {
       console.error('Error fetching suppliers:', error);
@@ -235,16 +235,16 @@ class AIController {
     try {
       // Import Product model dynamically
       const { Product } = require('../../models/Product');
-      
+
       const product = await Product.findById(productId)
         .populate('supplier', 'firstName lastName email company companyVerified')
         .populate('reviews.user', 'firstName lastName')
         .lean();
-        
+
       if (!product) {
         throw new Error('Product not found');
       }
-      
+
       return product;
     } catch (error) {
       console.error('Error fetching product:', error);

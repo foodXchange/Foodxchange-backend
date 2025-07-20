@@ -1,8 +1,9 @@
-const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const mongoose = require('mongoose');
 require('dotenv').config();
 
 // Import models
+const connectDB = require('../config/database');
 const {
   User,
   Company,
@@ -17,7 +18,6 @@ const {
   Notification
 } = require('../models');
 
-const connectDB = require('../config/database');
 
 // Sample data
 const sampleCategories = [
@@ -111,10 +111,16 @@ const sampleCompanies = [
   }
 ];
 
+// Generate secure default passwords for seeding (only for development)
+const generateSecurePassword = (role: string) => {
+  const prefix = role.charAt(0).toUpperCase() + role.slice(1);
+  return process.env.SEED_PASSWORD || `${prefix}@FoodX2024!`;
+};
+
 const sampleUsers = [
   {
     email: 'admin@foodxchange.com',
-    password: 'admin123',
+    password: generateSecurePassword('admin'),
     role: 'admin',
     profile: {
       firstName: 'Admin',
@@ -129,7 +135,7 @@ const sampleUsers = [
   },
   {
     email: 'buyer@foodxchange.com',
-    password: 'buyer123',
+    password: generateSecurePassword('buyer'),
     role: 'buyer',
     profile: {
       firstName: 'John',
@@ -144,7 +150,7 @@ const sampleUsers = [
   },
   {
     email: 'seller@foodxchange.com',
-    password: 'seller123',
+    password: generateSecurePassword('seller'),
     role: 'seller',
     profile: {
       firstName: 'Jane',
@@ -159,7 +165,7 @@ const sampleUsers = [
   },
   {
     email: 'agent@foodxchange.com',
-    password: 'agent123',
+    password: generateSecurePassword('agent'),
     role: 'agent',
     profile: {
       firstName: 'Mike',
@@ -174,7 +180,7 @@ const sampleUsers = [
   },
   {
     email: 'contractor@foodxchange.com',
-    password: 'contractor123',
+    password: generateSecurePassword('contractor'),
     role: 'contractor',
     profile: {
       firstName: 'Sarah',
@@ -192,9 +198,9 @@ const sampleUsers = [
 async function seedDatabase() {
   try {
     console.log('🌱 Starting database seeding...');
-    
+
     await connectDB();
-    
+
     // Clear existing data
     console.log('🧹 Clearing existing data...');
     await Promise.all([
@@ -210,36 +216,36 @@ async function seedDatabase() {
       AnalyticsEvent.deleteMany({}),
       Notification.deleteMany({})
     ]);
-    
+
     // Seed categories
     console.log('📂 Seeding categories...');
     const categories = await Category.insertMany(sampleCategories);
     console.log(`✅ Created ${categories.length} categories`);
-    
+
     // Seed companies
     console.log('🏢 Seeding companies...');
     const companies = await Company.insertMany(sampleCompanies);
     console.log(`✅ Created ${companies.length} companies`);
-    
+
     // Seed users and associate with companies
     console.log('👥 Seeding users...');
     const users = [];
     for (let i = 0; i < sampleUsers.length; i++) {
       const userData = sampleUsers[i];
-      
+
       // Associate buyers with distributor company, sellers with supplier company
       if (userData.role === 'buyer' && companies[0]) {
         userData.company = companies[0]._id;
       } else if (userData.role === 'seller' && companies[1]) {
         userData.company = companies[1]._id;
       }
-      
+
       const user = new User(userData);
       await user.save();
       users.push(user);
     }
     console.log(`✅ Created ${users.length} users`);
-    
+
     // Create sample products
     if (categories.length > 0 && companies.length > 1) {
       console.log('📦 Seeding products...');
@@ -274,20 +280,24 @@ async function seedDatabase() {
           isFeatured: true
         }
       ];
-      
+
       const products = await Product.insertMany(sampleProducts);
       console.log(`✅ Created ${products.length} products`);
     }
-    
+
     console.log('✅ Database seeding completed successfully!');
     console.log('');
     console.log('🔑 Default login credentials:');
-    console.log('Admin: admin@foodxchange.com / admin123');
-    console.log('Buyer: buyer@foodxchange.com / buyer123');
-    console.log('Seller: seller@foodxchange.com / seller123');
-    console.log('Agent: agent@foodxchange.com / agent123');
-    console.log('Contractor: contractor@foodxchange.com / contractor123');
-    
+    console.log('⚠️  Set SEED_PASSWORD environment variable for custom passwords');
+    console.log('Default password pattern: {Role}@FoodX2024! (e.g., Admin@FoodX2024!)');
+    console.log('');
+    console.log('Available users:');
+    console.log('- admin@foodxchange.com (Admin role)');
+    console.log('- buyer@foodxchange.com (Buyer role)');
+    console.log('- seller@foodxchange.com (Seller role)');
+    console.log('- agent@foodxchange.com (Agent role)');
+    console.log('- contractor@foodxchange.com (Contractor role)');
+
   } catch (error) {
     console.error('❌ Seeding failed:', error);
   } finally {

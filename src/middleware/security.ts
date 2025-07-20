@@ -1,13 +1,15 @@
-import { Request, Response, NextFunction } from 'express';
-import helmet from 'helmet';
-import cors from 'cors';
-import mongoSanitize from 'express-mongo-sanitize';
-import xss from 'xss';
 import crypto from 'crypto';
+
+import cors from 'cors';
+import { Request, Response, NextFunction } from 'express';
+import mongoSanitize from 'express-mongo-sanitize';
+import helmet from 'helmet';
+import xss from 'xss';
+
 
 // CORS configuration
 export const corsOptions = {
-  origin: function (origin: string | undefined, callback: Function) {
+  origin (origin: string | undefined, callback: Function) {
     // Define allowed origins based on environment
     const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
       'http://localhost:3000',
@@ -16,10 +18,10 @@ export const corsOptions = {
       'https://app.foodxchange.com',
       'https://admin.foodxchange.com'
     ];
-    
+
     // Allow requests with no origin (mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
-    
+
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -89,17 +91,17 @@ export const sanitizeInput = (req: Request, res: Response, next: NextFunction): 
     if (req.body && typeof req.body === 'object') {
       req.body = sanitizeObject(req.body);
     }
-    
+
     // Sanitize query parameters
     if (req.query && typeof req.query === 'object') {
       req.query = sanitizeObject(req.query);
     }
-    
+
     // Sanitize URL parameters
     if (req.params && typeof req.params === 'object') {
       req.params = sanitizeObject(req.params);
     }
-    
+
     next();
   } catch (error) {
     logger.error('Input sanitization error:', error);
@@ -110,7 +112,7 @@ export const sanitizeInput = (req: Request, res: Response, next: NextFunction): 
 // Recursive object sanitization
 function sanitizeObject(obj: any): any {
   if (obj === null || obj === undefined) return obj;
-  
+
   if (typeof obj === 'string') {
     return xss(obj, {
       whiteList: {}, // No HTML tags allowed
@@ -118,11 +120,11 @@ function sanitizeObject(obj: any): any {
       stripIgnoreTagBody: ['script']
     });
   }
-  
+
   if (Array.isArray(obj)) {
     return obj.map(item => sanitizeObject(item));
   }
-  
+
   if (typeof obj === 'object') {
     const sanitized: any = {};
     for (const key in obj) {
@@ -132,7 +134,7 @@ function sanitizeObject(obj: any): any {
     }
     return sanitized;
   }
-  
+
   return obj;
 }
 
@@ -142,17 +144,17 @@ export const securityHeaders = (req: Request, res: Response, next: NextFunction)
   res.setHeader('X-API-Version', '1.0.0');
   res.setHeader('X-Request-ID', req.headers['x-request-id'] || generateRequestId());
   res.setHeader('X-Response-Time', Date.now().toString());
-  
+
   // Remove potentially sensitive headers
   res.removeHeader('X-Powered-By');
   res.removeHeader('Server');
-  
+
   next();
 };
 
 // Request ID generator
 function generateRequestId(): string {
-  return Math.random().toString(36).substring(2, 15) + 
+  return Math.random().toString(36).substring(2, 15) +
          Math.random().toString(36).substring(2, 15);
 }
 
@@ -160,24 +162,24 @@ function generateRequestId(): string {
 export const ipWhitelist = (allowedIPs: string[] = []) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     const clientIP = req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
-    
+
     // Get IPs from environment or use default
-    const whitelist = allowedIPs.length > 0 ? allowedIPs : 
-                     (process.env.ADMIN_ALLOWED_IPS?.split(',') || []);
-    
+    const whitelist = allowedIPs.length > 0 ? allowedIPs :
+      (process.env.ADMIN_ALLOWED_IPS?.split(',') || []);
+
     if (whitelist.length === 0) {
       // No whitelist configured, allow all
       return next();
     }
-    
+
     if (whitelist.includes(clientIP)) {
       logger.info('IP whitelist: Access granted', { ip: clientIP });
       return next();
     }
-    
+
     logger.warn('IP whitelist: Access denied', { ip: clientIP });
     metricsService.incrementCounter('ip_whitelist_blocked_total', { ip: clientIP });
-    
+
     res.status(403).json({
       success: false,
       error: {
@@ -192,12 +194,12 @@ export const ipWhitelist = (allowedIPs: string[] = []) => {
 // User agent validation middleware
 export const validateUserAgent = (req: Request, res: Response, next: NextFunction): void => {
   const userAgent = req.get('User-Agent');
-  
+
   if (!userAgent) {
     logger.warn('Request without User-Agent header', { ip: req.ip });
     metricsService.incrementCounter('requests_without_user_agent_total');
   }
-  
+
   // Block known malicious user agents
   const blockedUserAgents = [
     'sqlmap',
@@ -207,12 +209,12 @@ export const validateUserAgent = (req: Request, res: Response, next: NextFunctio
     'curl', // Can be configured to allow curl if needed
     'wget'
   ];
-  
-  if (userAgent && blockedUserAgents.some(blocked => 
-      userAgent.toLowerCase().includes(blocked))) {
+
+  if (userAgent && blockedUserAgents.some(blocked =>
+    userAgent.toLowerCase().includes(blocked))) {
     logger.warn('Blocked malicious user agent', { userAgent, ip: req.ip });
     metricsService.incrementCounter('malicious_user_agent_blocked_total', { userAgent });
-    
+
     return res.status(403).json({
       success: false,
       error: {
@@ -222,7 +224,7 @@ export const validateUserAgent = (req: Request, res: Response, next: NextFunctio
       }
     });
   }
-  
+
   next();
 };
 
@@ -230,22 +232,22 @@ export const validateUserAgent = (req: Request, res: Response, next: NextFunctio
 export const requestSizeLimit = (maxSize: string = '10mb') => {
   return (req: Request, res: Response, next: NextFunction): void => {
     const contentLength = req.get('content-length');
-    
+
     if (contentLength) {
       const sizeInBytes = parseInt(contentLength);
       const maxSizeInBytes = parseSize(maxSize);
-      
+
       if (sizeInBytes > maxSizeInBytes) {
-        logger.warn('Request size limit exceeded', { 
-          size: sizeInBytes, 
-          maxSize: maxSizeInBytes, 
-          ip: req.ip 
+        logger.warn('Request size limit exceeded', {
+          size: sizeInBytes,
+          maxSize: maxSizeInBytes,
+          ip: req.ip
         });
-        
+
         metricsService.incrementCounter('request_size_limit_exceeded_total', {
           size: sizeInBytes.toString()
         });
-        
+
         return res.status(413).json({
           success: false,
           error: {
@@ -256,7 +258,7 @@ export const requestSizeLimit = (maxSize: string = '10mb') => {
         });
       }
     }
-    
+
     next();
   };
 };
@@ -269,13 +271,13 @@ function parseSize(size: string): number {
     mb: 1024 * 1024,
     gb: 1024 * 1024 * 1024
   };
-  
+
   const match = size.toLowerCase().match(/^(\d+(?:\.\d+)?)(b|kb|mb|gb)$/);
   if (!match) return 0;
-  
+
   const value = parseFloat(match[1]);
   const unit = match[2];
-  
+
   return value * units[unit];
 }
 
@@ -313,9 +315,9 @@ export const sqlInjectionPrevention = (req: Request, res: Response, next: NextFu
       path: req.path,
       method: req.method
     });
-    
+
     metricsService.incrementCounter('sql_injection_attempts_total');
-    
+
     return res.status(400).json({
       success: false,
       error: {
@@ -335,7 +337,7 @@ export const apiAbuseDetection = (req: Request, res: Response, next: NextFunctio
     /%2e%2e%2f/gi, // Encoded directory traversal
     /\0/g, // Null byte injection
     /exec\s*\(/gi, // Command injection
-    /eval\s*\(/gi, // Code injection
+    /eval\s*\(/gi // Code injection
   ];
 
   const checkForAbuse = (value: string): boolean => {
@@ -349,9 +351,9 @@ export const apiAbuseDetection = (req: Request, res: Response, next: NextFunctio
       path: req.path,
       originalUrl: req.originalUrl
     });
-    
+
     metricsService.incrementCounter('api_abuse_attempts_total');
-    
+
     return res.status(400).json({
       success: false,
       error: {
@@ -416,7 +418,7 @@ export const fileUploadSecurity = (req: Request, res: Response, next: NextFuncti
     const maxFileSize = 10 * 1024 * 1024; // 10MB
 
     const files = req.files ? (Array.isArray(req.files) ? req.files : [req.files]) : [req.file];
-    
+
     for (const file of files.filter(Boolean)) {
       // Check MIME type
       if (!allowedMimeTypes.includes(file.mimetype)) {
@@ -425,7 +427,7 @@ export const fileUploadSecurity = (req: Request, res: Response, next: NextFuncti
           filename: file.originalname,
           mimetype: file.mimetype
         });
-        
+
         return res.status(400).json({
           success: false,
           error: {
@@ -444,7 +446,7 @@ export const fileUploadSecurity = (req: Request, res: Response, next: NextFuncti
           size: file.size,
           maxSize: maxFileSize
         });
-        
+
         return res.status(400).json({
           success: false,
           error: {

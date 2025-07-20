@@ -1,13 +1,16 @@
+import { EventEmitter } from 'events';
+
+import mongoose from 'mongoose';
+
+import { NotFoundError, ValidationError, ForbiddenError } from '../../core/errors';
+import { Logger } from '../../core/logging/logger';
+import { MetricsService } from '../../core/monitoring/metrics';
+import { CacheService } from '../../infrastructure/cache/CacheService';
+import { Company } from '../../models/auth/Company';
+import { User } from '../../models/auth/User';
 import { Order, IOrder } from '../../models/marketplace/Order';
 import { Product } from '../../models/marketplace/Product';
-import { User } from '../../models/auth/User';
-import { Company } from '../../models/auth/Company';
-import { Logger } from '../../core/logging/logger';
-import { NotFoundError, ValidationError, ForbiddenError } from '../../core/errors';
-import { CacheService } from '../../infrastructure/cache/CacheService';
-import { MetricsService } from '../../core/monitoring/metrics';
-import { EventEmitter } from 'events';
-import mongoose from 'mongoose';
+
 
 const logger = new Logger('OrderService');
 const metrics = metricsService;
@@ -60,7 +63,7 @@ export interface OrderFilters {
 }
 
 export class OrderService extends EventEmitter {
-  private cache: CacheService;
+  private readonly cache: CacheService;
 
   constructor() {
     super();
@@ -69,7 +72,7 @@ export class OrderService extends EventEmitter {
 
   async createOrder(buyerId: string, data: OrderCreateData): Promise<IOrder> {
     const timer = metrics.startTimer('order_create_duration');
-    
+
     try {
       logger.info('Creating new order', { buyerId, supplier: data.supplier });
 
@@ -118,7 +121,7 @@ export class OrderService extends EventEmitter {
           productName: product.name,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
-          totalPrice: itemTotal,
+          totalPrice: itemTotal
         });
       }
 
@@ -148,22 +151,22 @@ export class OrderService extends EventEmitter {
           status: 'pending',
           changedAt: new Date(),
           changedBy: buyerId,
-          notes: 'Order created',
-        }],
+          notes: 'Order created'
+        }]
       });
 
       await order.save();
-      
+
       // Clear caches
       await this.clearOrderCaches();
-      
+
       // Emit event
       this.emit('order:created', order);
-      
+
       metrics.increment('orders_created');
       metrics.recordValue('order_value', total);
       timer();
-      
+
       logger.info('Order created successfully', { orderId: order._id });
       return order;
     } catch (error) {
@@ -178,7 +181,7 @@ export class OrderService extends EventEmitter {
     updates: OrderUpdateData
   ): Promise<IOrder> {
     const timer = metrics.startTimer('order_update_duration');
-    
+
     try {
       logger.info('Updating order status', { orderId, status: updates.status });
 
@@ -189,7 +192,7 @@ export class OrderService extends EventEmitter {
 
       // Check permissions
       const user = await User.findById(userId);
-      const canUpdate = 
+      const canUpdate =
         order.buyer.toString() === userId ||
         (user?.company && order.supplier.toString() === user.company.toString());
 
@@ -213,7 +216,7 @@ export class OrderService extends EventEmitter {
           previousStatus,
           changedAt: new Date(),
           changedBy: userId,
-          notes: updates.notes,
+          notes: updates.notes
         });
 
         // Set dates based on status
@@ -231,17 +234,17 @@ export class OrderService extends EventEmitter {
 
       order.updatedAt = new Date();
       await order.save();
-      
+
       // Clear caches
       await this.cache.delete(`order:${orderId}`);
       await this.clearOrderCaches();
-      
+
       // Emit event
       this.emit('order:updated', { order, previousStatus });
-      
+
       metrics.increment(`orders_${updates.status || 'updated'}`);
       timer();
-      
+
       return order;
     } catch (error) {
       timer();
@@ -251,7 +254,7 @@ export class OrderService extends EventEmitter {
 
   async getOrder(orderId: string, userId: string): Promise<IOrder> {
     const cacheKey = `order:${orderId}`;
-    
+
     // Check cache
     const cached = await this.cache.get<IOrder>(cacheKey);
     if (cached) {
@@ -270,7 +273,7 @@ export class OrderService extends EventEmitter {
 
     // Check access permissions
     const user = await User.findById(userId);
-    const canAccess = 
+    const canAccess =
       order.buyer.toString() === userId ||
       (user?.company && order.supplier.toString() === user.company.toString());
 
@@ -303,7 +306,7 @@ export class OrderService extends EventEmitter {
     };
   }> {
     const timer = metrics.startTimer('order_list_duration');
-    
+
     try {
       // Determine user role and build base query
       const user = await User.findById(userId).populate('company');
@@ -321,7 +324,7 @@ export class OrderService extends EventEmitter {
       if (filters.status) {
         query.status = filters.status;
       }
-      
+
       if (filters.dateFrom || filters.dateTo) {
         query.createdAt = {};
         if (filters.dateFrom) {
@@ -331,7 +334,7 @@ export class OrderService extends EventEmitter {
           query.createdAt.$lte = filters.dateTo;
         }
       }
-      
+
       if (filters.minAmount !== undefined || filters.maxAmount !== undefined) {
         query.total = {};
         if (filters.minAmount !== undefined) {
@@ -344,7 +347,7 @@ export class OrderService extends EventEmitter {
 
       // Execute query
       const skip = (page - 1) * limit;
-      
+
       const [orders, total, summary] = await Promise.all([
         Order.find(query)
           .populate('buyer', 'email profile')
@@ -354,7 +357,7 @@ export class OrderService extends EventEmitter {
           .skip(skip)
           .limit(limit),
         Order.countDocuments(query),
-        this.getOrdersSummary(query),
+        this.getOrdersSummary(query)
       ]);
 
       const result = {
@@ -362,7 +365,7 @@ export class OrderService extends EventEmitter {
         total,
         page,
         pages: Math.ceil(total / limit),
-        summary,
+        summary
       };
 
       timer();
@@ -392,19 +395,19 @@ export class OrderService extends EventEmitter {
 
     return this.updateOrderStatus(orderId, userId, {
       status: 'cancelled',
-      cancellationReason: reason,
+      cancellationReason: reason
     });
   }
 
   async getOrderInvoice(orderId: string, userId: string): Promise<any> {
     const order = await this.getOrder(orderId, userId);
-    
+
     // Generate invoice data
     const invoice = {
       invoiceNumber: `INV-${order.orderNumber}`,
       invoiceDate: new Date(),
-      order: order,
-      dueDate: this.calculateDueDate(order),
+      order,
+      dueDate: this.calculateDueDate(order)
       // Add more invoice fields as needed
     };
 
@@ -427,7 +430,7 @@ export class OrderService extends EventEmitter {
     // Set date range based on period
     const now = new Date();
     const startDate = new Date();
-    
+
     switch (period) {
       case 'day':
         startDate.setDate(now.getDate() - 1);
@@ -455,8 +458,8 @@ export class OrderService extends EventEmitter {
           totalRevenue: { $sum: '$total' },
           averageOrderValue: { $avg: '$total' },
           maxOrderValue: { $max: '$total' },
-          minOrderValue: { $min: '$total' },
-        },
+          minOrderValue: { $min: '$total' }
+        }
       },
       {
         $project: {
@@ -465,9 +468,9 @@ export class OrderService extends EventEmitter {
           totalRevenue: { $round: ['$totalRevenue', 2] },
           averageOrderValue: { $round: ['$averageOrderValue', 2] },
           maxOrderValue: { $round: ['$maxOrderValue', 2] },
-          minOrderValue: { $round: ['$minOrderValue', 2] },
-        },
-      },
+          minOrderValue: { $round: ['$minOrderValue', 2] }
+        }
+      }
     ]);
 
     // Orders by status
@@ -476,9 +479,9 @@ export class OrderService extends EventEmitter {
       {
         $group: {
           _id: '$status',
-          count: { $sum: 1 },
-        },
-      },
+          count: { $sum: 1 }
+        }
+      }
     ]);
 
     // Orders over time
@@ -489,14 +492,14 @@ export class OrderService extends EventEmitter {
           _id: {
             $dateToString: {
               format: period === 'day' ? '%Y-%m-%d %H:00' : '%Y-%m-%d',
-              date: '$createdAt',
-            },
+              date: '$createdAt'
+            }
           },
           count: { $sum: 1 },
-          revenue: { $sum: '$total' },
-        },
+          revenue: { $sum: '$total' }
+        }
       },
-      { $sort: { _id: 1 } },
+      { $sort: { _id: 1 } }
     ]);
 
     return {
@@ -507,13 +510,13 @@ export class OrderService extends EventEmitter {
         totalRevenue: 0,
         averageOrderValue: 0,
         maxOrderValue: 0,
-        minOrderValue: 0,
+        minOrderValue: 0
       },
       ordersByStatus: ordersByStatus.reduce((acc, item) => {
         acc[item._id] = item.count;
         return acc;
       }, {}),
-      ordersOverTime,
+      ordersOverTime
     };
   }
 
@@ -522,15 +525,15 @@ export class OrderService extends EventEmitter {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
-    
+
     // Get today's order count
     const startOfDay = new Date(date.setHours(0, 0, 0, 0));
     const endOfDay = new Date(date.setHours(23, 59, 59, 999));
-    
+
     const count = await Order.countDocuments({
-      createdAt: { $gte: startOfDay, $lte: endOfDay },
+      createdAt: { $gte: startOfDay, $lte: endOfDay }
     });
-    
+
     const sequence = String(count + 1).padStart(4, '0');
     return `ORD-${year}${month}${day}-${sequence}`;
   }
@@ -545,7 +548,7 @@ export class OrderService extends EventEmitter {
       processing: ['shipped', 'cancelled'],
       shipped: ['delivered'],
       delivered: [],
-      cancelled: [],
+      cancelled: []
     };
 
     const allowed = validTransitions[currentStatus] || [];
@@ -558,17 +561,17 @@ export class OrderService extends EventEmitter {
 
   private calculateDueDate(order: IOrder): Date {
     const dueDate = new Date(order.createdAt);
-    
+
     // Default 30 days payment terms
     let daysToAdd = 30;
-    
+
     if (order.paymentTerms) {
       const match = order.paymentTerms.match(/(\d+)\s*days?/i);
       if (match) {
         daysToAdd = parseInt(match[1]);
       }
     }
-    
+
     dueDate.setDate(dueDate.getDate() + daysToAdd);
     return dueDate;
   }
@@ -580,9 +583,9 @@ export class OrderService extends EventEmitter {
         $group: {
           _id: null,
           totalAmount: { $sum: '$total' },
-          count: { $sum: 1 },
-        },
-      },
+          count: { $sum: 1 }
+        }
+      }
     ]);
 
     const statusCounts = await Order.aggregate([
@@ -590,20 +593,20 @@ export class OrderService extends EventEmitter {
       {
         $group: {
           _id: '$status',
-          count: { $sum: 1 },
-        },
-      },
+          count: { $sum: 1 }
+        }
+      }
     ]);
 
     const summary = aggregation[0] || { totalAmount: 0, count: 0 };
-    
+
     return {
       totalAmount: summary.totalAmount,
       averageOrderValue: summary.count > 0 ? summary.totalAmount / summary.count : 0,
       ordersByStatus: statusCounts.reduce((acc, item) => {
         acc[item._id] = item.count;
         return acc;
-      }, {}),
+      }, {})
     };
   }
 

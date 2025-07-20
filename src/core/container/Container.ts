@@ -18,9 +18,9 @@ export interface ServiceInstance {
 
 export class Container {
   private static instance: Container;
-  private services: Map<string, ServiceDefinition> = new Map();
-  private instances: Map<string, ServiceInstance> = new Map();
-  private circularDependencyCheck: Set<string> = new Set();
+  private readonly services: Map<string, ServiceDefinition> = new Map();
+  private readonly instances: Map<string, ServiceInstance> = new Map();
+  private readonly circularDependencyCheck: Set<string> = new Set();
   private readonly maxCircularDepth = 10;
 
   private constructor() {}
@@ -116,7 +116,7 @@ export class Container {
 
     // Check if singleton and already instantiated
     if (definition.singleton && this.instances.has(name)) {
-      const serviceInstance = this.instances.get(name)!;
+      const serviceInstance = this.instances.get(name);
       serviceInstance.accessCount++;
       return serviceInstance.instance;
     }
@@ -126,11 +126,11 @@ export class Container {
 
     try {
       // Resolve dependencies
-      const dependencies = definition.dependencies!.map(dep => this.resolve(dep));
-      
+      const dependencies = definition.dependencies.map(dep => this.resolve(dep));
+
       // Create instance
       const instance = definition.factory(...dependencies);
-      
+
       // Store instance if singleton
       if (definition.singleton) {
         this.instances.set(name, {
@@ -218,13 +218,13 @@ export class Container {
     singletons: number;
     transients: number;
     mostUsedServices: { name: string; accessCount: number }[];
-  } {
+    } {
     const totalServices = this.services.size;
     const totalInstances = this.instances.size;
-    
+
     let singletons = 0;
     let transients = 0;
-    
+
     for (const definition of this.services.values()) {
       if (definition.singleton) {
         singletons++;
@@ -254,7 +254,7 @@ export class Container {
     isValid: boolean;
     errors: string[];
     warnings: string[];
-  } {
+    } {
     const errors: string[] = [];
     const warnings: string[] = [];
 
@@ -317,8 +317,8 @@ export class Container {
  * Service scope for request-level service isolation
  */
 export class ServiceScope {
-  private scopedInstances: Map<string, any> = new Map();
-  private parentContainer: Container;
+  private readonly scopedInstances: Map<string, any> = new Map();
+  private readonly parentContainer: Container;
 
   constructor(parent: Container) {
     this.parentContainer = parent;
@@ -332,10 +332,10 @@ export class ServiceScope {
 
     // Resolve from parent container
     const instance = this.parentContainer.resolve<T>(name);
-    
+
     // Store in scope for reuse within this scope
     this.scopedInstances.set(name, instance);
-    
+
     return instance;
   }
 
@@ -368,7 +368,7 @@ export function Inject(serviceName: string) {
   return function(target: any, propertyKey: string | symbol | undefined, parameterIndex: number) {
     const existingTokens = Reflect.getMetadata('design:paramtypes', target) || [];
     const existingInjectTokens = Reflect.getMetadata('inject:tokens', target) || [];
-    
+
     existingInjectTokens[parameterIndex] = serviceName;
     Reflect.defineMetadata('inject:tokens', existingInjectTokens, target);
   };

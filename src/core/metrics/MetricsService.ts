@@ -1,14 +1,15 @@
 import * as promClient from 'prom-client';
+
 import { Logger } from '../logging/logger';
 
 const logger = new Logger('MetricsService');
 
 export class MetricsService {
-  private register: promClient.Registry;
-  private counters: Map<string, promClient.Counter>;
-  private gauges: Map<string, promClient.Gauge>;
-  private histograms: Map<string, promClient.Histogram>;
-  private summaries: Map<string, promClient.Summary>;
+  private readonly register: promClient.Registry;
+  private readonly counters: Map<string, promClient.Counter>;
+  private readonly gauges: Map<string, promClient.Gauge>;
+  private readonly histograms: Map<string, promClient.Histogram>;
+  private readonly summaries: Map<string, promClient.Summary>;
 
   constructor() {
     this.register = new promClient.Registry();
@@ -34,11 +35,11 @@ export class MetricsService {
     this.createCounter('login_attempts_total', 'Total number of login attempts', ['status']);
     this.createCounter('orders_total', 'Total number of orders', ['status', 'payment_method']);
     this.createGauge('active_users', 'Number of active users', ['user_type']);
-    
+
     // Performance metrics
     this.createHistogram('database_query_duration_seconds', 'Duration of database queries', ['operation', 'collection']);
     this.createHistogram('external_api_duration_seconds', 'Duration of external API calls', ['service', 'endpoint']);
-    
+
     // Error metrics
     this.createCounter('errors_total', 'Total number of errors', ['error_type', 'service']);
     this.createCounter('unhandled_rejections_total', 'Total number of unhandled promise rejections');
@@ -155,6 +156,12 @@ export class MetricsService {
       const duration = (Date.now() - start) / 1000;
       this.recordHistogram(histogramName, duration);
     };
+  }
+
+  // Record timer duration in milliseconds
+  recordTimer(name: string, duration: number, labels?: Record<string, string | number>) {
+    // Convert milliseconds to seconds for Prometheus
+    this.recordHistogram(name, duration / 1000, labels);
   }
 
   // Get metrics for Prometheus

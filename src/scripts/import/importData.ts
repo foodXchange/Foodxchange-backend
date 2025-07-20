@@ -1,17 +1,18 @@
-﻿const mongoose = require('mongoose');
-const csv = require('csv-parser');
-const fs = require('fs');
+﻿const fs = require('fs');
 const path = require('path');
+
+const csv = require('csv-parser');
+const mongoose = require('mongoose');
 require('dotenv').config();
 
 // Import models
+const BuyerContact = require('../models/BuyerContact');
 const Company = require('../models/Company');
-const User = require('../models/User');
-const Request = require('../models/Request');
-const RequestLineItem = require('../models/RequestLineItem');
 const Product = require('../models/Product');
 const Proposal = require('../models/Proposal');
-const BuyerContact = require('../models/BuyerContact');
+const Request = require('../models/Request');
+const RequestLineItem = require('../models/RequestLineItem');
+const User = require('../models/User');
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/foodxchange', {
@@ -39,7 +40,7 @@ function parseDate(str) {
 async function importBuyers() {
   console.log('Importing Buyers...');
   const buyers = [];
-  
+
   return new Promise((resolve, reject) => {
     fs.createReadStream(path.join(__dirname, '../../data/csv/Buyers 23_6_2025.csv'))
       .pipe(csv())
@@ -64,14 +65,14 @@ async function importBuyers() {
           createdAt: parseDate(row['First Created']) || new Date(),
           updatedAt: parseDate(row['Last Updated']) || new Date()
         };
-        
+
         if (buyer.name) {
           buyers.push(buyer);
         }
       })
       .on('end', async () => {
         console.log(`Found ${buyers.length} buyers to import`);
-        
+
         for (const buyer of buyers) {
           try {
             await Company.findOneAndUpdate(
@@ -83,7 +84,7 @@ async function importBuyers() {
             console.error(`Error importing buyer ${buyer.name}:`, error.message);
           }
         }
-        
+
         console.log('Buyers import completed');
         resolve();
       })
@@ -95,7 +96,7 @@ async function importBuyers() {
 async function importBuyerContacts() {
   console.log('Importing Buyer Contacts...');
   const contacts = [];
-  
+
   return new Promise((resolve, reject) => {
     fs.createReadStream(path.join(__dirname, '../../data/csv/Buyer Contacts 23_6_2025.csv'))
       .pipe(csv())
@@ -110,14 +111,14 @@ async function importBuyerContacts() {
           isActive: row['Active?'] === 'Yes',
           buyerCompanyName: cleanData(row['Buyer Company'])
         };
-        
+
         if (contact.email && contact.fullName) {
           contacts.push(contact);
         }
       })
       .on('end', async () => {
         console.log(`Found ${contacts.length} contacts to import`);
-        
+
         for (const contact of contacts) {
           try {
             // Find the buyer company
@@ -125,7 +126,7 @@ async function importBuyerContacts() {
             if (company) {
               contact.buyerCompany = company._id;
               delete contact.buyerCompanyName;
-              
+
               await BuyerContact.findOneAndUpdate(
                 { email: contact.email },
                 contact,
@@ -136,7 +137,7 @@ async function importBuyerContacts() {
             console.error(`Error importing contact ${contact.email}:`, error.message);
           }
         }
-        
+
         console.log('Buyer contacts import completed');
         resolve();
       })
@@ -148,7 +149,7 @@ async function importBuyerContacts() {
 async function importRequests() {
   console.log('Importing Requests...');
   const requests = [];
-  
+
   return new Promise((resolve, reject) => {
     fs.createReadStream(path.join(__dirname, '../../data/csv/Requests 23_6_2025.csv'))
       .pipe(csv())
@@ -175,14 +176,14 @@ async function importRequests() {
           updatedAt: parseDate(row['Last Updated']) || new Date(),
           openComments: parseInt(row['Open Comments']) || 0
         };
-        
+
         if (request.requestName) {
           requests.push(request);
         }
       })
       .on('end', async () => {
         console.log(`Found ${requests.length} requests to import`);
-        
+
         for (const request of requests) {
           try {
             // Find the buyer company
@@ -191,7 +192,7 @@ async function importRequests() {
               request.buyer = buyer._id;
               delete request.buyerName;
               delete request.buyerDescription;
-              
+
               await Request.findOneAndUpdate(
                 { requestId: request.requestId },
                 request,
@@ -202,7 +203,7 @@ async function importRequests() {
             console.error(`Error importing request ${request.requestName}:`, error.message);
           }
         }
-        
+
         console.log('Requests import completed');
         resolve();
       })
@@ -214,7 +215,7 @@ async function importRequests() {
 async function importRequestLineItems() {
   console.log('Importing Request Line Items...');
   const items = [];
-  
+
   return new Promise((resolve, reject) => {
     fs.createReadStream(path.join(__dirname, '../../data/csv/Request line items 23_6_2025.csv'))
       .pipe(csv())
@@ -234,33 +235,33 @@ async function importRequestLineItems() {
           updatedAt: parseDate(row['Last Updated']) || new Date(),
           openComments: parseInt(row['Open Comments']) || 0
         };
-        
+
         if (item.requestProductName) {
           items.push(item);
         }
       })
       .on('end', async () => {
         console.log(`Found ${items.length} request line items to import`);
-        
+
         for (const item of items) {
           try {
             // Find the request
             const request = await Request.findOne({ requestName: item.requestName });
             const buyerCompany = await Company.findOne({ name: item.buyerCompanyName });
-            
+
             if (request) {
               item.request = request._id;
               item.buyerCompany = buyerCompany ? buyerCompany._id : null;
               delete item.requestName;
               delete item.buyerCompanyName;
-              
+
               await RequestLineItem.create(item);
             }
           } catch (error) {
             console.error(`Error importing line item ${item.requestProductName}:`, error.message);
           }
         }
-        
+
         console.log('Request line items import completed');
         resolve();
       })
@@ -272,7 +273,7 @@ async function importRequestLineItems() {
 async function importProducts() {
   console.log('Importing Products...');
   const products = [];
-  
+
   return new Promise((resolve, reject) => {
     fs.createReadStream(path.join(__dirname, '../../data/csv/Products 23_6_2025.csv'))
       .pipe(csv())
@@ -328,22 +329,22 @@ async function importProducts() {
           updatedAt: parseDate(row['Last Updated']) || new Date(),
           openComments: parseInt(row['Open Comments']) || 0
         };
-        
+
         if (product.productName && product.productId) {
           products.push(product);
         }
       })
       .on('end', async () => {
         console.log(`Found ${products.length} products to import`);
-        
+
         // First, ensure all suppliers exist
         const uniqueSuppliers = [...new Set(products.map(p => p.supplierName).filter(Boolean))];
         for (const supplierName of uniqueSuppliers) {
           if (supplierName) {
             await Company.findOneAndUpdate(
               { name: supplierName },
-              { 
-                name: supplierName, 
+              {
+                name: supplierName,
                 type: 'supplier',
                 status: 'active',
                 country: products.find(p => p.supplierName === supplierName)?.supplierCountry || 'Unknown'
@@ -352,21 +353,21 @@ async function importProducts() {
             );
           }
         }
-        
+
         // Import products
         for (const product of products) {
           try {
             const supplier = await Company.findOne({ name: product.supplierName });
-            const buyer = product.buyerCompanyName ? 
+            const buyer = product.buyerCompanyName ?
               await Company.findOne({ name: product.buyerCompanyName }) : null;
-            
+
             if (supplier) {
               product.supplier = supplier._id;
               product.buyerCompany = buyer ? buyer._id : null;
               delete product.supplierName;
               delete product.buyerCompanyName;
               delete product.supplierCountry;
-              
+
               await Product.findOneAndUpdate(
                 { productId: product.productId },
                 product,
@@ -377,7 +378,7 @@ async function importProducts() {
             console.error(`Error importing product ${product.productName}:`, error.message);
           }
         }
-        
+
         console.log('Products import completed');
         resolve();
       })
@@ -389,7 +390,7 @@ async function importProducts() {
 async function importProposals() {
   console.log('Importing Proposals...');
   const proposals = [];
-  
+
   return new Promise((resolve, reject) => {
     fs.createReadStream(path.join(__dirname, '../../data/csv/Proposals  Samples 23_6_2025.csv'))
       .pipe(csv())
@@ -420,21 +421,21 @@ async function importProposals() {
           updatedAt: parseDate(row['Last Updated']) || new Date(),
           openComments: parseInt(row['Open Comments']) || 0
         };
-        
+
         if (proposal.proposalId) {
           proposals.push(proposal);
         }
       })
       .on('end', async () => {
         console.log(`Found ${proposals.length} proposals to import`);
-        
+
         for (const proposal of proposals) {
           try {
             // Find related entities
             const request = await Request.findOne({ requestName: proposal.requestName });
             const buyer = await Company.findOne({ name: proposal.buyerName });
             const supplier = await Company.findOne({ name: proposal.supplierName });
-            
+
             if (request && buyer && supplier) {
               proposal.request = request._id;
               proposal.buyer = buyer._id;
@@ -443,7 +444,7 @@ async function importProposals() {
               delete proposal.buyerName;
               delete proposal.supplierName;
               delete proposal.supplierCountry;
-              
+
               await Proposal.findOneAndUpdate(
                 { proposalId: proposal.proposalId },
                 proposal,
@@ -454,7 +455,7 @@ async function importProposals() {
             console.error(`Error importing proposal ${proposal.proposalId}:`, error.message);
           }
         }
-        
+
         console.log('Proposals import completed');
         resolve();
       })
@@ -466,7 +467,7 @@ async function importProposals() {
 async function importAllData() {
   try {
     console.log('Starting complete data import...\n');
-    
+
     // Import in order of dependencies
     await importBuyers();
     await importBuyerContacts();
@@ -474,23 +475,23 @@ async function importAllData() {
     await importRequestLineItems();
     await importProducts();
     await importProposals();
-    
+
     console.log('\nData import completed successfully!');
-    
+
     // Display summary
     const buyerCount = await Company.countDocuments({ type: 'buyer' });
     const supplierCount = await Company.countDocuments({ type: 'supplier' });
     const requestCount = await Request.countDocuments();
     const productCount = await Product.countDocuments();
     const proposalCount = await Proposal.countDocuments();
-    
+
     console.log('\nImport Summary:');
     console.log(`- Buyers: ${buyerCount}`);
     console.log(`- Suppliers: ${supplierCount}`);
     console.log(`- Requests (RFQs): ${requestCount}`);
     console.log(`- Products: ${productCount}`);
     console.log(`- Proposals: ${proposalCount}`);
-    
+
     process.exit(0);
   } catch (error) {
     console.error('Import failed:', error);

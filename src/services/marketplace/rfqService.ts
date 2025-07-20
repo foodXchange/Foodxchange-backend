@@ -1,13 +1,15 @@
-import { RFQ, IRFQ } from '../../models/marketplace/RFQ';
-import { Proposal, IProposal } from '../../models/marketplace/Proposal';
-import { Product } from '../../models/marketplace/Product';
-import { User } from '../../models/auth/User';
-import { Logger } from '../../core/logging/logger';
-import { NotFoundError, ValidationError, ForbiddenError } from '../../core/errors';
-import { CacheService } from '../../infrastructure/cache/CacheService';
-import { MetricsService } from '../../core/monitoring/metrics';
 import { EventEmitter } from 'events';
+
 import mongoose from 'mongoose';
+
+import { NotFoundError, ValidationError, ForbiddenError } from '../../core/errors';
+import { Logger } from '../../core/logging/logger';
+import { MetricsService } from '../../core/monitoring/metrics';
+import { CacheService } from '../../infrastructure/cache/CacheService';
+import { User } from '../../models/auth/User';
+import { Product } from '../../models/marketplace/Product';
+import { Proposal, IProposal } from '../../models/marketplace/Proposal';
+import { RFQ, IRFQ } from '../../models/marketplace/RFQ';
 
 const logger = new Logger('RFQService');
 const metrics = metricsService;
@@ -63,7 +65,7 @@ export interface RFQFilters {
 }
 
 export class RFQService extends EventEmitter {
-  private cache: CacheService;
+  private readonly cache: CacheService;
 
   constructor() {
     super();
@@ -72,7 +74,7 @@ export class RFQService extends EventEmitter {
 
   async createRFQ(buyerId: string, data: RFQCreateData): Promise<IRFQ> {
     const timer = metrics.startTimer('rfq_create_duration');
-    
+
     try {
       logger.info('Creating new RFQ', { buyerId, title: data.title });
 
@@ -88,20 +90,20 @@ export class RFQService extends EventEmitter {
         buyer: buyerId,
         status: 'draft',
         proposals: [],
-        viewedBy: [],
+        viewedBy: []
       });
 
       await rfq.save();
-      
+
       // Clear caches
       await this.clearRFQCaches();
-      
+
       // Emit event
       this.emit('rfq:created', rfq);
-      
+
       metrics.increment('rfqs_created');
       timer();
-      
+
       logger.info('RFQ created successfully', { rfqId: rfq._id });
       return rfq;
     } catch (error) {
@@ -116,7 +118,7 @@ export class RFQService extends EventEmitter {
     updates: Partial<RFQCreateData>
   ): Promise<IRFQ> {
     const timer = metrics.startTimer('rfq_update_duration');
-    
+
     try {
       logger.info('Updating RFQ', { rfqId, buyerId });
 
@@ -140,17 +142,17 @@ export class RFQService extends EventEmitter {
       rfq.updatedAt = new Date();
 
       await rfq.save();
-      
+
       // Clear caches
       await this.clearRFQCaches();
       await this.cache.delete(`rfq:${rfqId}`);
-      
+
       // Emit event
       this.emit('rfq:updated', rfq);
-      
+
       metrics.increment('rfqs_updated');
       timer();
-      
+
       return rfq;
     } catch (error) {
       timer();
@@ -190,7 +192,7 @@ export class RFQService extends EventEmitter {
 
   async getRFQ(rfqId: string, userId?: string): Promise<IRFQ> {
     const cacheKey = `rfq:${rfqId}`;
-    
+
     // Check cache
     const cached = await this.cache.get<IRFQ>(cacheKey);
     if (cached) {
@@ -205,8 +207,8 @@ export class RFQService extends EventEmitter {
         path: 'proposals',
         populate: {
           path: 'supplier',
-          select: 'name location',
-        },
+          select: 'name location'
+        }
       });
 
     if (!rfq) {
@@ -241,26 +243,26 @@ export class RFQService extends EventEmitter {
     pages: number;
   }> {
     const timer = metrics.startTimer('rfq_list_duration');
-    
+
     try {
       // Build query
       const query: any = {};
-      
+
       if (filters.status) {
         query.status = filters.status;
       } else {
         // Default to showing only open RFQs
         query.status = 'open';
       }
-      
+
       if (filters.category) {
         query.category = filters.category;
       }
-      
+
       if (filters.buyer) {
         query.buyer = filters.buyer;
       }
-      
+
       if (filters.minBudget !== undefined || filters.maxBudget !== undefined) {
         query['budget.max'] = {};
         if (filters.minBudget !== undefined) {
@@ -270,7 +272,7 @@ export class RFQService extends EventEmitter {
           query['budget.min'] = { $lte: filters.maxBudget };
         }
       }
-      
+
       if (filters.deliveryDateFrom || filters.deliveryDateTo) {
         query.deliveryDate = {};
         if (filters.deliveryDateFrom) {
@@ -283,7 +285,7 @@ export class RFQService extends EventEmitter {
 
       // Execute query
       const skip = (page - 1) * limit;
-      
+
       const [rfqs, total] = await Promise.all([
         RFQ.find(query)
           .populate('buyer', 'email profile company')
@@ -291,14 +293,14 @@ export class RFQService extends EventEmitter {
           .sort(sort)
           .skip(skip)
           .limit(limit),
-        RFQ.countDocuments(query),
+        RFQ.countDocuments(query)
       ]);
 
       const result = {
         rfqs,
         total,
         page,
-        pages: Math.ceil(total / limit),
+        pages: Math.ceil(total / limit)
       };
 
       timer();
@@ -316,8 +318,8 @@ export class RFQService extends EventEmitter {
         path: 'proposals',
         populate: {
           path: 'supplier',
-          select: 'name location',
-        },
+          select: 'name location'
+        }
       })
       .sort('-createdAt');
   }
@@ -327,7 +329,7 @@ export class RFQService extends EventEmitter {
     data: ProposalCreateData
   ): Promise<IProposal> {
     const timer = metrics.startTimer('proposal_create_duration');
-    
+
     try {
       logger.info('Creating proposal', { supplierId, rfqId: data.rfqId });
 
@@ -344,7 +346,7 @@ export class RFQService extends EventEmitter {
       // Check if supplier already submitted a proposal
       const existingProposal = await Proposal.findOne({
         rfq: data.rfqId,
-        supplier: supplierId,
+        supplier: supplierId
       });
 
       if (existingProposal) {
@@ -373,7 +375,7 @@ export class RFQService extends EventEmitter {
         paymentTerms: data.paymentTerms,
         notes: data.notes,
         attachments: data.attachments,
-        status: 'submitted',
+        status: 'submitted'
       });
 
       await proposal.save();
@@ -446,7 +448,7 @@ export class RFQService extends EventEmitter {
 
     // Check access - either supplier or RFQ buyer
     const rfq = await RFQ.findById(proposal.rfq);
-    const canAccess = 
+    const canAccess =
       proposal.supplier.toString() === userId ||
       rfq?.buyer.toString() === userId;
 
@@ -499,12 +501,12 @@ export class RFQService extends EventEmitter {
         {
           rfq: rfq._id,
           _id: { $ne: proposalId },
-          status: 'submitted',
+          status: 'submitted'
         },
         {
           status: 'rejected',
           reviewedAt: new Date(),
-          reviewFeedback: 'Another proposal was selected',
+          reviewFeedback: 'Another proposal was selected'
         }
       );
     }
@@ -543,12 +545,12 @@ export class RFQService extends EventEmitter {
     await Proposal.updateMany(
       {
         rfq: rfqId,
-        status: 'submitted',
+        status: 'submitted'
       },
       {
         status: 'rejected',
         reviewedAt: new Date(),
-        reviewFeedback: 'RFQ was closed',
+        reviewFeedback: 'RFQ was closed'
       }
     );
 
@@ -565,9 +567,9 @@ export class RFQService extends EventEmitter {
 
   async getRFQAnalytics(rfqId: string): Promise<any> {
     const rfq = await this.getRFQ(rfqId);
-    
+
     const proposals = await Proposal.find({ rfq: rfqId });
-    
+
     const analytics = {
       rfqId,
       totalViews: rfq.viewedBy.length,
@@ -577,14 +579,14 @@ export class RFQService extends EventEmitter {
         : 0,
       priceRange: {
         min: Math.min(...proposals.map(p => p.totalAmount)),
-        max: Math.max(...proposals.map(p => p.totalAmount)),
+        max: Math.max(...proposals.map(p => p.totalAmount))
       },
       proposalsByStatus: {
         submitted: proposals.filter(p => p.status === 'submitted').length,
         accepted: proposals.filter(p => p.status === 'accepted').length,
-        rejected: proposals.filter(p => p.status === 'rejected').length,
+        rejected: proposals.filter(p => p.status === 'rejected').length
       },
-      responseTime: this.calculateAverageResponseTime(rfq, proposals),
+      responseTime: this.calculateAverageResponseTime(rfq, proposals)
     };
 
     return analytics;
@@ -593,7 +595,7 @@ export class RFQService extends EventEmitter {
   private calculateAverageResponseTime(rfq: IRFQ, proposals: IProposal[]): number {
     if (proposals.length === 0 || !rfq.publishedAt) return 0;
 
-    const responseTimes = proposals.map(p => 
+    const responseTimes = proposals.map(p =>
       p.createdAt.getTime() - rfq.publishedAt!.getTime()
     );
 

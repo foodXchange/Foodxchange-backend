@@ -1,0 +1,94 @@
+{
+  "data": {
+    "detection": {
+      "order": [
+        "header",
+        "querystring",
+        "cookie",
+        "session"
+      ],
+      "lookupHeader": "accept-language",
+      "lookupQuerystring": "lang",
+      "lookupCookie": "i18next",
+      "lookupSession": "language",
+      "caches": [
+        "cookie",
+        "session"
+      ],
+      "excludeCacheFor": [
+        "cimode"
+      ]
+    },
+    "fallbackLng": "en",
+    "supportedLngs": [
+      "en",
+      "es",
+      "fr",
+      "de",
+      "it",
+      "pt",
+      "zh",
+      "ja",
+      "ko",
+      "ar",
+      "hi",
+      "ru"
+    ],
+    "preload": [
+      "en"
+    ],
+    "backend": {
+      "loadPath": "C:\\Users\\foodz\\Documents\\GitHub\\Development\\Foodxchange-backend\\src\\locales\\{{lng}}\\{{ns}}.json",
+      "addPath": "C:\\Users\\foodz\\Documents\\GitHub\\Development\\Foodxchange-backend\\src\\locales\\{{lng}}\\{{ns}}.missing.json",
+      "jsonIndent": 2
+    },
+    "ns": [
+      "common",
+      "auth",
+      "products",
+      "orders",
+      "companies",
+      "users",
+      "notifications",
+      "analytics",
+      "compliance",
+      "search",
+      "errors",
+      "validation",
+      "emails"
+    ],
+    "defaultNS": "common",
+    "debug": true,
+    "load": "languageOnly",
+    "cleanCode": true,
+    "interpolation": {
+      "escapeValue": false,
+      "formatSeparator": ","
+    },
+    "react": {
+      "useSuspense": false,
+      "bindI18n": "languageChanged",
+      "bindI18nStore": "added removed",
+      "transEmptyNodeValue": "",
+      "transSupportBasicHtmlNodes": true,
+      "transKeepBasicHtmlNodesFor": [
+        "br",
+        "strong",
+        "i",
+        "em"
+      ]
+    },
+    "saveMissing": true,
+    "updateMissing": true,
+    "initImmediate": false,
+    "keySeparator": ".",
+    "nsSeparator": ":",
+    "postProcess": [
+      "interval",
+      "plural"
+    ]
+  },
+  "timestamp": 1753018567208,
+  "checksum": "fefb924b72bf59643c6912edd09b8659",
+  "version": "1.0.0"
+}

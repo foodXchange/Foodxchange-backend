@@ -1,20 +1,21 @@
 import { Request, Response } from 'express';
-import { getMobileOptimizationService } from '../services/mobile/MobileOptimizationService';
-import { Logger } from '../core/logging/logger';
+
 import { ValidationError } from '../core/errors';
+import { Logger } from '../core/logging/logger';
+import { getMobileOptimizationService } from '../services/mobile/MobileOptimizationService';
 
 const logger = new Logger('MobileController');
 
 export class MobileController {
-  private mobileService = getMobileOptimizationService();
+  private readonly mobileService = getMobileOptimizationService();
 
   /**
    * Get mobile dashboard
    */
   async getDashboard(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
-      const userId = req.userId!;
+      const {tenantId} = req;
+      const {userId} = req;
 
       const dashboard = await this.mobileService.getMobileDashboard(tenantId, userId);
 
@@ -42,8 +43,8 @@ export class MobileController {
    */
   async getProducts(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
-      const userId = req.userId!;
+      const {tenantId} = req;
+      const {userId} = req;
       const {
         category,
         search,
@@ -104,8 +105,8 @@ export class MobileController {
    */
   async getProductDetails(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
-      const userId = req.userId!;
+      const {tenantId} = req;
+      const {userId} = req;
       const { productId } = req.params;
 
       const product = await this.mobileService.getMobileProductDetails(tenantId, productId);
@@ -137,8 +138,8 @@ export class MobileController {
    */
   async getOrders(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
-      const userId = req.userId!;
+      const {tenantId} = req;
+      const {userId} = req;
       const { status, page = 1, limit = 20 } = req.query;
 
       const filters = {
@@ -174,8 +175,8 @@ export class MobileController {
    */
   async getRFQs(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
-      const userId = req.userId!;
+      const {tenantId} = req;
+      const {userId} = req;
       const { status, page = 1, limit = 20 } = req.query;
 
       const filters = {
@@ -211,8 +212,8 @@ export class MobileController {
    */
   async getSearchSuggestions(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
-      const userId = req.userId!;
+      const {tenantId} = req;
+      const {userId} = req;
       const { q, limit = 10 } = req.query;
 
       if (!q || (q as string).length < 2) {
@@ -258,8 +259,8 @@ export class MobileController {
    */
   async trackEvent(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
-      const userId = req.userId!;
+      const {tenantId} = req;
+      const {userId} = req;
       const { eventType, data } = req.body;
 
       if (!eventType) {
@@ -274,7 +275,7 @@ export class MobileController {
       });
     } catch (error) {
       logger.error('Track mobile event error:', error);
-      
+
       if (error instanceof ValidationError) {
         res.status(400).json({
           success: false,
@@ -294,8 +295,8 @@ export class MobileController {
    */
   async getAppConfig(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
-      const userId = req.userId!;
+      const {tenantId} = req;
+      const {userId} = req;
 
       // This would be configurable per tenant
       const config = {
@@ -355,8 +356,8 @@ export class MobileController {
    */
   async getCategories(req: Request, res: Response): Promise<void> {
     try {
-      const tenantId = req.tenantId!;
-      const userId = req.userId!;
+      const {tenantId} = req;
+      const {userId} = req;
 
       // Get unique categories from products
       const categories = await this.mobileService.getMobileProducts(tenantId, { limit: 1000 })

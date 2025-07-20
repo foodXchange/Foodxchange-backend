@@ -1,5 +1,6 @@
-import { Logger } from '../../core/logging/logger';
 import { performance } from 'perf_hooks';
+
+import { Logger } from '../../core/logging/logger';
 
 export interface MetricData {
   name: string;
@@ -22,9 +23,9 @@ export interface TimerMetric {
 
 export class MetricsService {
   private static instance: MetricsService;
-  private logger: Logger;
-  private counters: Map<string, CounterMetric> = new Map();
-  private timers: Map<string, number> = new Map();
+  private readonly logger: Logger;
+  private readonly counters: Map<string, CounterMetric> = new Map();
+  private readonly timers: Map<string, number> = new Map();
 
   constructor() {
     this.logger = new Logger('MetricsService');
@@ -43,7 +44,7 @@ export class MetricsService {
   incrementCounter(name: string, tags?: Record<string, string>): void {
     const key = this.generateKey(name, tags);
     const existing = this.counters.get(key);
-    
+
     if (existing) {
       existing.value++;
     } else {
@@ -68,7 +69,7 @@ export class MetricsService {
     };
 
     this.logger.debug(`Timer recorded: ${name}`, timerData);
-    
+
     // In a real implementation, you would send this to a metrics backend
     // For now, we'll just log it
   }
@@ -135,12 +136,12 @@ export class MetricsService {
    */
   private generateKey(name: string, tags?: Record<string, string>): string {
     if (!tags) return name;
-    
+
     const sortedTags = Object.keys(tags)
       .sort()
       .map(key => `${key}:${tags[key]}`)
       .join(',');
-    
+
     return `${name}|${sortedTags}`;
   }
 
@@ -151,7 +152,7 @@ export class MetricsService {
     counters: CounterMetric[];
     activeTimers: string[];
     timestamp: Date;
-  } {
+    } {
     return {
       counters: this.getAllCounters(),
       activeTimers: Array.from(this.timers.keys()),

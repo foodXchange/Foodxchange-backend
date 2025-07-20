@@ -1,30 +1,30 @@
 import express from 'express';
-import multer from 'multer';
-import { requireAuth, optionalAuth } from '../middleware/auth';
-import { 
-  extractTenantContext, 
-  enforceTenantIsolation, 
-  requireTenantFeature,
-  checkTenantLimits,
-  tenantFeatures 
-} from '../middleware/tenantIsolation';
-import ProductController from '../controllers/marketplace/productController';
-import { 
-  validateRequest, 
-  commonValidations, 
-  foodValidations,
-  sanitizers 
-} from '../middleware/advancedValidation';
 import { body, param, query } from 'express-validator';
-import { 
-  apiRateLimiter, 
-  searchRateLimiter, 
-  uploadRateLimiter 
+import multer from 'multer';
+
+import * as productController from '../controllers/product.controller';
+import {
+  validateRequest,
+  commonValidations,
+  foodValidations,
+  sanitizers
+} from '../middleware/advancedValidation';
+import { requireAuth, optionalAuth } from '../middleware/auth';
+import {
+  apiRateLimiter,
+  searchRateLimiter,
+  uploadRateLimiter
 } from '../middleware/rateLimiter';
 import { fileUploadSecurity } from '../middleware/security';
+import {
+  extractTenantContext,
+  enforceTenantIsolation,
+  requireTenantFeature,
+  checkTenantLimits,
+  tenantFeatures
+} from '../middleware/tenantIsolation';
 
 const router = express.Router();
-const productController = ProductController;
 
 // Configure multer for image uploads
 const upload = multer({
@@ -294,10 +294,10 @@ router.post('/',
     ...foodValidations.temperature(),
     ...foodValidations.certification(),
     ...foodValidations.batch(),
-    
+
     body('status').optional().isIn(['draft', 'active', 'inactive']),
     body('isPublished').optional().isBoolean(),
-    
+
     // Pricing validation
     body('pricing.currency').notEmpty().isLength({ min: 3, max: 3 }),
     body('pricing.basePrice').isFloat({ min: 0 }),
@@ -307,18 +307,18 @@ router.post('/',
     body('pricing.tierPricing.*.price').isFloat({ min: 0 }),
     body('pricing.taxRate').optional().isFloat({ min: 0, max: 100 }),
     body('pricing.isTaxIncluded').optional().isBoolean(),
-    
+
     // Inventory validation
     body('inventory.trackInventory').optional().isBoolean(),
     body('inventory.quantity').optional().isInt({ min: 0 }),
     body('inventory.lowStockThreshold').optional().isInt({ min: 0 }),
     body('inventory.outOfStockBehavior').optional().isIn(['hide', 'show', 'backorder']),
-    
+
     // Packaging validation
     body('packaging.type').notEmpty(),
     body('packaging.unitsPerCase').isInt({ min: 1 }),
     body('packaging.casesPerPallet').optional().isInt({ min: 1 }),
-    
+
     // Logistics validation
     body('logistics.requiresRefrigeration').optional().isBoolean(),
     body('logistics.temperatureControlled').optional().isBoolean(),

@@ -1,9 +1,11 @@
 import { Router } from 'express';
-import { asyncHandler } from '../../core/errors';
+import { body } from 'express-validator';
+
 import { authController } from '../../controllers/auth/AuthController';
+import { asyncHandler } from '../../core/errors';
 import { authenticate } from '../../middleware/auth';
 import { validateRequest } from '../../middleware/validation';
-import { body } from 'express-validator';
+
 
 const router = Router();
 
@@ -17,7 +19,7 @@ router.get('/health', asyncHandler(async (req, res) => {
 }));
 
 // Register
-router.post('/register', 
+router.post('/register',
   validateRequest([
     body('email').isEmail().normalizeEmail(),
     body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
@@ -32,7 +34,7 @@ router.post('/register',
 );
 
 // Login
-router.post('/login', 
+router.post('/login',
   validateRequest([
     body('email').isEmail().normalizeEmail(),
     body('password').notEmpty().withMessage('Password is required'),
@@ -42,7 +44,7 @@ router.post('/login',
 );
 
 // Two-Factor Authentication
-router.post('/2fa/verify', 
+router.post('/2fa/verify',
   validateRequest([
     body('challengeId').notEmpty(),
     body('code').notEmpty(),
@@ -51,12 +53,12 @@ router.post('/2fa/verify',
   asyncHandler(authController.verifyTwoFactor.bind(authController))
 );
 
-router.post('/2fa/enable', 
+router.post('/2fa/enable',
   authenticate,
   asyncHandler(authController.enableTwoFactor.bind(authController))
 );
 
-router.post('/2fa/confirm', 
+router.post('/2fa/confirm',
   authenticate,
   validateRequest([
     body('token').notEmpty()
@@ -64,20 +66,20 @@ router.post('/2fa/confirm',
   asyncHandler(authController.confirmTwoFactor.bind(authController))
 );
 
-router.post('/2fa/disable', 
+router.post('/2fa/disable',
   authenticate,
   asyncHandler(authController.disableTwoFactor.bind(authController))
 );
 
 // Password Management
-router.post('/forgot-password', 
+router.post('/forgot-password',
   validateRequest([
     body('email').isEmail().normalizeEmail()
   ]),
   asyncHandler(authController.forgotPassword.bind(authController))
 );
 
-router.post('/reset-password', 
+router.post('/reset-password',
   validateRequest([
     body('token').notEmpty(),
     body('newPassword').isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
@@ -85,7 +87,7 @@ router.post('/reset-password',
   asyncHandler(authController.resetPassword.bind(authController))
 );
 
-router.post('/change-password', 
+router.post('/change-password',
   authenticate,
   validateRequest([
     body('currentPassword').notEmpty(),
@@ -95,7 +97,7 @@ router.post('/change-password',
 );
 
 // Email Verification
-router.post('/verify-email', 
+router.post('/verify-email',
   validateRequest([
     body('token').notEmpty()
   ]),
@@ -103,7 +105,7 @@ router.post('/verify-email',
 );
 
 // Token Management
-router.post('/refresh-token', 
+router.post('/refresh-token',
   validateRequest([
     body('refreshToken').notEmpty()
   ]),
@@ -111,12 +113,12 @@ router.post('/refresh-token',
 );
 
 // Profile Management
-router.get('/me', 
+router.get('/me',
   authenticate,
   asyncHandler(authController.getMe.bind(authController))
 );
 
-router.put('/profile', 
+router.put('/profile',
   authenticate,
   validateRequest([
     body('firstName').optional().trim(),
@@ -128,12 +130,12 @@ router.put('/profile',
 );
 
 // Logout
-router.post('/logout', 
+router.post('/logout',
   authenticate,
   asyncHandler(authController.logout.bind(authController))
 );
 
-router.post('/logout-all', 
+router.post('/logout-all',
   authenticate,
   asyncHandler(authController.logoutAll.bind(authController))
 );

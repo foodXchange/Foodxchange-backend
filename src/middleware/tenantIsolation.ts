@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import { User } from '../models/User';
+
 import { AuthenticationError, AuthorizationError } from '../core/errors';
 import { Logger } from '../core/logging/logger';
+import { User } from '../models/User';
 
 const logger = new Logger('TenantIsolationMiddleware');
 
@@ -39,7 +40,7 @@ export const extractTenantContext = async (req: Request, res: Response, next: Ne
     }
 
     const user = await User.findById(req.userId).populate('company');
-    
+
     if (!user) {
       throw new AuthenticationError('User not found');
     }
@@ -113,7 +114,7 @@ export const requireTenantFeature = (feature: string) => {
         throw new AuthorizationError('Tenant context required');
       }
 
-      const hasFeature = req.tenantContext.features.includes(feature) || 
+      const hasFeature = req.tenantContext.features.includes(feature) ||
                         req.tenantContext.subscriptionTier === 'enterprise';
 
       if (!hasFeature) {
@@ -156,12 +157,12 @@ export const checkTenantLimits = (resource: 'users' | 'products' | 'orders') => 
       }
 
       const limit = req.tenantContext.limits[`max${resource.charAt(0).toUpperCase() + resource.slice(1)}` as keyof typeof req.tenantContext.limits];
-      
+
       // Get current count for the resource
       let currentCount = 0;
       switch (resource) {
         case 'users':
-          currentCount = await User.countDocuments({ 
+          currentCount = await User.countDocuments({
             company: req.tenantId,
             accountStatus: 'active'
           });
@@ -261,32 +262,32 @@ export const tenantFeatures = {
   BASIC_CATALOG: 'basic_catalog',
   ADVANCED_SEARCH: 'advanced_search',
   BULK_OPERATIONS: 'bulk_operations',
-  
+
   // Commerce features
   RFQ_MANAGEMENT: 'rfq_management',
   ORDER_AUTOMATION: 'order_automation',
   PRICE_OPTIMIZATION: 'price_optimization',
-  
+
   // Compliance features
   COMPLIANCE_TRACKING: 'compliance_tracking',
   AUDIT_TRAILS: 'audit_trails',
   CERTIFICATE_MANAGEMENT: 'certificate_management',
-  
+
   // Analytics features
   BASIC_ANALYTICS: 'basic_analytics',
   ADVANCED_ANALYTICS: 'advanced_analytics',
   CUSTOM_REPORTS: 'custom_reports',
-  
+
   // Integration features
   API_ACCESS: 'api_access',
   WEBHOOK_SUPPORT: 'webhook_support',
   ERP_INTEGRATION: 'erp_integration',
-  
+
   // AI features
   AI_RECOMMENDATIONS: 'ai_recommendations',
   PREDICTIVE_ANALYTICS: 'predictive_analytics',
   DOCUMENT_PROCESSING: 'document_processing',
-  
+
   // Support features
   PRIORITY_SUPPORT: 'priority_support',
   DEDICATED_MANAGER: 'dedicated_manager',

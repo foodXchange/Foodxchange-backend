@@ -4,28 +4,29 @@
  */
 
 import { Express, Router } from 'express';
+
+import aiRoutes from '../api/routes/ai';
+import recommendationRoutes from '../api/routes/recommendations';
 import { Logger } from '../core/logging/logger';
 
 // Import route modules
+import agentRoutes from './agentRoutes';
+import aiRecommendationRoutes from './ai/recommendationRoutes';
+import analyticsRoutes from './analytics/analyticsRoutes';
 import authRoutes from './auth/authRoutes';
+import complianceRoutes from './compliance/complianceRoutes';
+import exportRoutes from './export/exportRoutes';
+import importRoutes from './import';
+import orderRoutes from './marketplace/orderRoutes';
 import productRoutes from './marketplace/productRoutes';
 import rfqRoutes from './marketplace/rfqRoutes';
-import complianceRoutes from './compliance/complianceRoutes';
-import orderRoutes from './marketplace/orderRoutes';
 import sampleRoutes from './marketplace/sampleRoutes';
 import supplierRoutes from './marketplace/supplierRoutes';
-import importRoutes from './import';
-import trackingRoutes from './tracking';
-import recommendationRoutes from '../api/routes/recommendations';
-import aiRoutes from '../api/routes/ai';
-import agentRoutes from './agentRoutes';
-import webhookRoutes from './webhookRoutes';
-import signalRRoutes from './signalr';
-import analyticsRoutes from './analytics/analyticsRoutes';
 import mobileRoutes from './mobile/mobileRoutes';
-import aiRecommendationRoutes from './ai/recommendationRoutes';
-import exportRoutes from './export/exportRoutes';
 import performanceRoutes from './performance';
+import signalRRoutes from './signalr';
+import trackingRoutes from './tracking';
+import webhookRoutes from './webhookRoutes';
 
 const logger = new Logger('Routes');
 
@@ -56,7 +57,7 @@ export const configureRoutes = (app: Express): void => {
     { path: '/mobile', router: mobileRoutes, name: 'Mobile API' },
     { path: '/ai', router: aiRecommendationRoutes, name: 'AI Recommendations & Search' },
     { path: '/export', router: exportRoutes, name: 'Data Export/Import' },
-    { path: '/performance', router: performanceRoutes, name: 'Performance Monitoring' },
+    { path: '/performance', router: performanceRoutes, name: 'Performance Monitoring' }
   ];
 
   // Register each route
@@ -81,9 +82,9 @@ export const configureRoutes = (app: Express): void => {
       documentation: '/api/docs',
       endpoints: routes.map(r => ({
         path: `${API_PREFIX}${r.path}`,
-        name: r.name,
+        name: r.name
       })),
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     });
   });
 

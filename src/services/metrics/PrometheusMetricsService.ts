@@ -1,51 +1,52 @@
-import { register, collectDefaultMetrics, Counter, Histogram, Gauge } from 'prom-client';
 import { Request, Response, NextFunction } from 'express';
+import { register, collectDefaultMetrics, Counter, Histogram, Gauge } from 'prom-client';
+
 import { Logger } from '../../core/logging/logger';
 
 export class PrometheusMetricsService {
   private static instance: PrometheusMetricsService;
-  private logger: Logger;
-  
+  private readonly logger: Logger;
+
   // HTTP Metrics
   private httpRequestsTotal: Counter<string>;
   private httpRequestDuration: Histogram<string>;
   private httpRequestSizeBytes: Histogram<string>;
   private httpResponseSizeBytes: Histogram<string>;
-  
+
   // Database Metrics
   private databaseConnectionsActive: Gauge<string>;
   private databaseQueryDuration: Histogram<string>;
   private databaseOperationsTotal: Counter<string>;
-  
+
   // Business Metrics
   private ordersTotal: Counter<string>;
   private usersTotal: Counter<string>;
   private rfqsTotal: Counter<string>;
   private agentOperationsTotal: Counter<string>;
-  
+
   // System Metrics
   private memoryUsage: Gauge<string>;
   private cpuUsage: Gauge<string>;
   private activeWebsocketConnections: Gauge<string>;
-  
+
   // Cache Metrics
   private cacheOperationsTotal: Counter<string>;
   private cacheHitRate: Gauge<string>;
-  
+
   // AI Service Metrics
   private aiServiceCallsTotal: Counter<string>;
   private aiServiceDuration: Histogram<string>;
 
   constructor() {
     this.logger = new Logger('PrometheusMetricsService');
-    
+
     // Enable default metrics collection
     collectDefaultMetrics({
       register,
       prefix: 'foodxchange_',
-      gcDurationBuckets: [0.001, 0.01, 0.1, 1, 2, 5],
+      gcDurationBuckets: [0.001, 0.01, 0.1, 1, 2, 5]
     });
-    
+
     this.initializeMetrics();
   }
 
@@ -62,7 +63,7 @@ export class PrometheusMetricsService {
       name: 'foodxchange_http_requests_total',
       help: 'Total number of HTTP requests',
       labelNames: ['method', 'route', 'status_code', 'user_role'],
-      registers: [register],
+      registers: [register]
     });
 
     this.httpRequestDuration = new Histogram({
@@ -70,7 +71,7 @@ export class PrometheusMetricsService {
       help: 'Duration of HTTP requests in seconds',
       labelNames: ['method', 'route', 'status_code'],
       buckets: [0.001, 0.01, 0.1, 0.5, 1, 2, 5, 10],
-      registers: [register],
+      registers: [register]
     });
 
     this.httpRequestSizeBytes = new Histogram({
@@ -78,7 +79,7 @@ export class PrometheusMetricsService {
       help: 'Size of HTTP requests in bytes',
       labelNames: ['method', 'route'],
       buckets: [100, 1000, 10000, 100000, 1000000],
-      registers: [register],
+      registers: [register]
     });
 
     this.httpResponseSizeBytes = new Histogram({
@@ -86,14 +87,14 @@ export class PrometheusMetricsService {
       help: 'Size of HTTP responses in bytes',
       labelNames: ['method', 'route'],
       buckets: [100, 1000, 10000, 100000, 1000000],
-      registers: [register],
+      registers: [register]
     });
 
     // Database Metrics
     this.databaseConnectionsActive = new Gauge({
       name: 'foodxchange_database_connections_active',
       help: 'Number of active database connections',
-      registers: [register],
+      registers: [register]
     });
 
     this.databaseQueryDuration = new Histogram({
@@ -101,14 +102,14 @@ export class PrometheusMetricsService {
       help: 'Duration of database queries in seconds',
       labelNames: ['operation', 'collection'],
       buckets: [0.001, 0.01, 0.1, 0.5, 1, 2, 5],
-      registers: [register],
+      registers: [register]
     });
 
     this.databaseOperationsTotal = new Counter({
       name: 'foodxchange_database_operations_total',
       help: 'Total number of database operations',
       labelNames: ['operation', 'collection', 'status'],
-      registers: [register],
+      registers: [register]
     });
 
     // Business Metrics
@@ -116,28 +117,28 @@ export class PrometheusMetricsService {
       name: 'foodxchange_orders_total',
       help: 'Total number of orders',
       labelNames: ['status', 'user_role'],
-      registers: [register],
+      registers: [register]
     });
 
     this.usersTotal = new Counter({
       name: 'foodxchange_users_total',
       help: 'Total number of users',
       labelNames: ['role', 'status'],
-      registers: [register],
+      registers: [register]
     });
 
     this.rfqsTotal = new Counter({
       name: 'foodxchange_rfqs_total',
       help: 'Total number of RFQs',
       labelNames: ['status', 'category'],
-      registers: [register],
+      registers: [register]
     });
 
     this.agentOperationsTotal = new Counter({
       name: 'foodxchange_agent_operations_total',
       help: 'Total number of agent operations',
       labelNames: ['operation', 'status'],
-      registers: [register],
+      registers: [register]
     });
 
     // System Metrics
@@ -145,19 +146,19 @@ export class PrometheusMetricsService {
       name: 'foodxchange_memory_usage_bytes',
       help: 'Memory usage in bytes',
       labelNames: ['type'],
-      registers: [register],
+      registers: [register]
     });
 
     this.cpuUsage = new Gauge({
       name: 'foodxchange_cpu_usage_percent',
       help: 'CPU usage percentage',
-      registers: [register],
+      registers: [register]
     });
 
     this.activeWebsocketConnections = new Gauge({
       name: 'foodxchange_websocket_connections_active',
       help: 'Number of active WebSocket connections',
-      registers: [register],
+      registers: [register]
     });
 
     // Cache Metrics
@@ -165,14 +166,14 @@ export class PrometheusMetricsService {
       name: 'foodxchange_cache_operations_total',
       help: 'Total number of cache operations',
       labelNames: ['operation', 'cache_type', 'status'],
-      registers: [register],
+      registers: [register]
     });
 
     this.cacheHitRate = new Gauge({
       name: 'foodxchange_cache_hit_rate',
       help: 'Cache hit rate percentage',
       labelNames: ['cache_type'],
-      registers: [register],
+      registers: [register]
     });
 
     // AI Service Metrics
@@ -180,7 +181,7 @@ export class PrometheusMetricsService {
       name: 'foodxchange_ai_service_calls_total',
       help: 'Total number of AI service calls',
       labelNames: ['service', 'operation', 'status'],
-      registers: [register],
+      registers: [register]
     });
 
     this.aiServiceDuration = new Histogram({
@@ -188,7 +189,7 @@ export class PrometheusMetricsService {
       help: 'Duration of AI service calls in seconds',
       labelNames: ['service', 'operation'],
       buckets: [0.1, 0.5, 1, 2, 5, 10, 30],
-      registers: [register],
+      registers: [register]
     });
 
     this.logger.info('Prometheus metrics initialized successfully');
@@ -267,12 +268,12 @@ export class PrometheusMetricsService {
   getHttpMetricsMiddleware() {
     return (req: Request, res: Response, next: NextFunction): void => {
       const startTime = Date.now();
-      
+
       // Record request size
-      const requestSize = req.headers['content-length'] 
-        ? parseInt(req.headers['content-length'], 10) 
+      const requestSize = req.headers['content-length']
+        ? parseInt(req.headers['content-length'], 10)
         : 0;
-      
+
       if (requestSize > 0) {
         this.recordHttpRequestSize(req.method, req.route?.path || req.path, requestSize);
       }
@@ -282,7 +283,7 @@ export class PrometheusMetricsService {
       res.end = function(chunk?: any, encoding?: any) {
         const duration = (Date.now() - startTime) / 1000;
         const userRole = req.user?.role || 'anonymous';
-        
+
         // Record HTTP request metrics
         PrometheusmetricsService.recordHttpRequest(
           req.method,
@@ -326,7 +327,7 @@ export class PrometheusMetricsService {
   }
 
   // Get metrics for /metrics endpoint
-  getMetrics(): Promise<string> {
+  async getMetrics(): Promise<string> {
     return register.metrics();
   }
 

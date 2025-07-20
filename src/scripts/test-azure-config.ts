@@ -1,4 +1,5 @@
-import { SearchClient, AzureKeyCredential } from "@azure/search-documents";
+import { SearchClient, AzureKeyCredential } from '@azure/search-documents';
+
 import { config } from '../core/config';
 import { Logger } from '../core/logging/logger';
 
@@ -21,7 +22,7 @@ async function testAzureSearchConfig() {
 
     logger.info('Testing Azure Search configuration...', {
       endpoint,
-      indexName: indexName
+      indexName
     });
 
     const searchClient = new SearchClient(
@@ -31,7 +32,7 @@ async function testAzureSearchConfig() {
     );
 
     // Test basic search functionality
-    const results = await searchClient.search("organic tomatoes", {
+    const results = await searchClient.search('organic tomatoes', {
       top: 5,
       includeTotalCount: true
     });
@@ -52,12 +53,12 @@ async function testAllAzureServices() {
   logger.info('Testing all Azure service configurations...');
 
   const results = {
-    search: await testAzureSearchConfig(),
+    search: await testAzureSearchConfig()
     // Add other service tests here
   };
 
   const allPassed = Object.values(results).every(Boolean);
-  
+
   logger.info('Azure configuration test results:', {
     ...results,
     overall: allPassed ? 'PASSED' : 'FAILED'

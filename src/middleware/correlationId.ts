@@ -21,8 +21,8 @@ export const correlationIdMiddleware = (
   next: NextFunction
 ): void => {
   // Check for existing correlation ID from headers
-  const correlationId = req.headers['x-correlation-id'] as string || 
-                       req.headers['x-request-id'] as string || 
+  const correlationId = req.headers['x-correlation-id'] as string ||
+                       req.headers['x-request-id'] as string ||
                        uuidv4();
 
   // Attach to request

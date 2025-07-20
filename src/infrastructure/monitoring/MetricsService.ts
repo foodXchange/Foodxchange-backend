@@ -4,6 +4,7 @@
  */
 
 import { EventEmitter } from 'events';
+
 import { Logger } from '../../core/logging/logger';
 
 const logger = new Logger('MetricsService');
@@ -36,12 +37,12 @@ interface Timer {
 
 export class MetricsService extends EventEmitter {
   private static instance: MetricsService;
-  
-  private counters: Map<string, Counter> = new Map();
-  private gauges: Map<string, number> = new Map();
-  private histograms: Map<string, Histogram> = new Map();
-  private timers: Map<string, Timer> = new Map();
-  
+
+  private readonly counters: Map<string, Counter> = new Map();
+  private readonly gauges: Map<string, number> = new Map();
+  private readonly histograms: Map<string, Histogram> = new Map();
+  private readonly timers: Map<string, Timer> = new Map();
+
   private flushInterval: NodeJS.Timer | null = null;
   private readonly flushIntervalMs = 60000; // 1 minute
   private readonly histogramMaxSize = 1000;
@@ -80,14 +81,14 @@ export class MetricsService extends EventEmitter {
   public histogram(name: string, value: number, tags?: Record<string, string>): void {
     const key = this.buildKey(name, tags);
     let hist = this.histograms.get(key);
-    
+
     if (!hist) {
       hist = {
         values: [],
         sum: 0,
         count: 0,
         min: Infinity,
-        max: -Infinity,
+        max: -Infinity
       };
       this.histograms.set(key, hist);
     }
@@ -111,7 +112,7 @@ export class MetricsService extends EventEmitter {
     const timer: Timer = {
       startTime: Date.now(),
       name,
-      tags,
+      tags
     };
     this.timers.set(timerId, timer);
 
@@ -130,29 +131,29 @@ export class MetricsService extends EventEmitter {
 
   // Business metrics
   public recordAPICall(service: string, duration: number, success: boolean): void {
-    this.increment(`api.calls`, 1, { service, status: success ? 'success' : 'failure' });
-    this.histogram(`api.duration`, duration, { service });
-    
+    this.increment('api.calls', 1, { service, status: success ? 'success' : 'failure' });
+    this.histogram('api.duration', duration, { service });
+
     if (!success) {
-      this.increment(`api.errors`, 1, { service });
+      this.increment('api.errors', 1, { service });
     }
   }
 
   public recordDatabaseQuery(operation: string, collection: string, duration: number, success: boolean): void {
-    this.increment(`db.queries`, 1, { operation, collection, status: success ? 'success' : 'failure' });
-    this.histogram(`db.duration`, duration, { operation, collection });
+    this.increment('db.queries', 1, { operation, collection, status: success ? 'success' : 'failure' });
+    this.histogram('db.duration', duration, { operation, collection });
   }
 
   public recordCacheHit(operation: string): void {
-    this.increment(`cache.hits`, 1, { operation });
+    this.increment('cache.hits', 1, { operation });
   }
 
   public recordCacheMiss(operation: string): void {
-    this.increment(`cache.misses`, 1, { operation });
+    this.increment('cache.misses', 1, { operation });
   }
 
   public recordBusinessEvent(event: string, metadata?: Record<string, any>): void {
-    this.increment(`business.events`, 1, { event });
+    this.increment('business.events', 1, { event });
     logger.info('Business event recorded', { event, metadata });
   }
 
@@ -170,11 +171,11 @@ export class MetricsService extends EventEmitter {
       p95: number;
       p99: number;
     }>;
-  } {
+    } {
     const snapshot = {
       counters: {} as Record<string, number>,
       gauges: {} as Record<string, number>,
-      histograms: {} as Record<string, any>,
+      histograms: {} as Record<string, any>
     };
 
     // Counters
@@ -198,7 +199,7 @@ export class MetricsService extends EventEmitter {
         max: hist.max === -Infinity ? 0 : hist.max,
         p50: this.percentile(sortedValues, 50),
         p95: this.percentile(sortedValues, 95),
-        p99: this.percentile(sortedValues, 99),
+        p99: this.percentile(sortedValues, 99)
       };
     });
 
@@ -234,18 +235,18 @@ export class MetricsService extends EventEmitter {
     if (!tags || Object.keys(tags).length === 0) {
       return name;
     }
-    
+
     const tagString = Object.entries(tags)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([k, v]) => `${k}=${v}`)
       .join(',');
-    
+
     return `${name}{${tagString}}`;
   }
 
   private percentile(sortedValues: number[], p: number): number {
     if (sortedValues.length === 0) return 0;
-    
+
     const index = Math.ceil((p / 100) * sortedValues.length) - 1;
     return sortedValues[Math.max(0, index)];
   }
@@ -258,20 +259,20 @@ export class MetricsService extends EventEmitter {
 
   private flush(): void {
     const snapshot = this.getSnapshot();
-    
+
     // Emit metrics event for external collectors
     this.emit('metrics', snapshot);
-    
+
     // Log summary
     logger.debug('Metrics flushed', {
       counters: Object.keys(snapshot.counters).length,
       gauges: Object.keys(snapshot.gauges).length,
-      histograms: Object.keys(snapshot.histograms).length,
+      histograms: Object.keys(snapshot.histograms).length
     });
 
     // Reset counters after flush
     this.counters.clear();
-    
+
     // Collect system metrics for next interval
     this.collectSystemMetrics();
   }

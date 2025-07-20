@@ -1,4 +1,4 @@
-import { SearchClient, AzureKeyCredential } from "@azure/search-documents";
+import { SearchClient, AzureKeyCredential } from '@azure/search-documents';
 import * as dotenv from 'dotenv';
 
 // Load environment variables
@@ -33,7 +33,7 @@ async function testAzureSearch() {
 
     // Test 1: Basic search
     console.log('📋 Test 1: Basic search functionality');
-    const results = await searchClient.search("*", {
+    const results = await searchClient.search('*', {
       top: 1,
       includeTotalCount: true
     });
@@ -42,7 +42,7 @@ async function testAzureSearch() {
 
     // Test 2: Specific search
     console.log('📋 Test 2: Specific search query');
-    const specificResults = await searchClient.search("organic", {
+    const specificResults = await searchClient.search('organic', {
       top: 3,
       includeTotalCount: true
     });
@@ -51,11 +51,11 @@ async function testAzureSearch() {
 
     // Test 3: Search with facets
     console.log('📋 Test 3: Search with facets');
-    const facetResults = await searchClient.search("*", {
-      facets: ["category", "brand", "isOrganic"],
+    const facetResults = await searchClient.search('*', {
+      facets: ['category', 'brand', 'isOrganic'],
       top: 1
     });
-    
+
     console.log('✅ Faceted search successful!');
     if (facetResults.facets) {
       console.log('Available facets:', Object.keys(facetResults.facets));
@@ -66,13 +66,13 @@ async function testAzureSearch() {
 
   } catch (error: any) {
     console.error('❌ Azure Search test failed:', error.message);
-    
+
     if (error.statusCode === 403) {
       console.error('💡 Hint: Check if the API key is correct and has proper permissions');
     } else if (error.statusCode === 404) {
       console.error('💡 Hint: Check if the endpoint URL and index name are correct');
     }
-    
+
     return false;
   }
 }

@@ -105,14 +105,14 @@ proposalSchema.pre('save', function(next) {
       item.totalPrice = item.quantity * item.unitPrice;
       return sum + item.totalPrice;
     }, 0);
-    
+
     this.pricing.subtotal = subtotal;
-    
+
     const otherChargesTotal = this.pricing.otherCharges?.reduce((sum, charge) => sum + charge.amount, 0) || 0;
-    
-    this.pricing.total = subtotal + 
-                        (this.pricing.taxes || 0) + 
-                        (this.pricing.shipping || 0) + 
+
+    this.pricing.total = subtotal +
+                        (this.pricing.taxes || 0) +
+                        (this.pricing.shipping || 0) +
                         otherChargesTotal;
   }
   next();

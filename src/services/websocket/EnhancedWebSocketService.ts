@@ -1,11 +1,14 @@
-import { Server as SocketIOServer, Socket } from 'socket.io';
-import { Server as HttpServer } from 'http';
-import { Logger } from '../../core/logging/logger';
-import { CacheService } from '../../infrastructure/cache/CacheService';
-import { MetricsService } from '../../core/monitoring/metrics';
 import { EventEmitter } from 'events';
+import { Server as HttpServer } from 'http';
+
 import jwt from 'jsonwebtoken';
+import { Server as SocketIOServer, Socket } from 'socket.io';
+
 import { config } from '../../core/config';
+import { Logger } from '../../core/logging/logger';
+import { MetricsService } from '../../core/monitoring/metrics';
+import { CacheService } from '../../infrastructure/cache/CacheService';
+
 
 const logger = new Logger('EnhancedWebSocketService');
 const metrics = metricsService;
@@ -55,10 +58,10 @@ export interface WebSocketEvent {
 export class EnhancedWebSocketService extends EventEmitter {
   private static instance: EnhancedWebSocketService;
   private io: SocketIOServer | null = null;
-  private cache: CacheService;
-  private activeSessions: Map<string, WebSocketSession> = new Map();
-  private activeRooms: Map<string, WebSocketRoom> = new Map();
-  private userSockets: Map<string, Set<string>> = new Map();
+  private readonly cache: CacheService;
+  private readonly activeSessions: Map<string, WebSocketSession> = new Map();
+  private readonly activeRooms: Map<string, WebSocketRoom> = new Map();
+  private readonly userSockets: Map<string, Set<string>> = new Map();
 
   private constructor() {
     super();
@@ -76,11 +79,11 @@ export class EnhancedWebSocketService extends EventEmitter {
     this.io = new SocketIOServer(server, {
       cors: {
         origin: config.cors.allowedOrigins,
-        credentials: true,
+        credentials: true
       },
       transports: ['websocket', 'polling'],
       pingTimeout: 60000,
-      pingInterval: 25000,
+      pingInterval: 25000
     });
 
     this.setupMiddleware();
@@ -97,13 +100,13 @@ export class EnhancedWebSocketService extends EventEmitter {
     this.io.use(async (socket, next) => {
       try {
         const token = socket.handshake.auth.token || socket.handshake.query.token;
-        
+
         if (!token) {
           throw new Error('No authentication token provided');
         }
 
         const decoded = jwt.verify(token, config.auth.jwt.secret) as any;
-        
+
         // Add user info to socket
         socket.userId = decoded.id;
         socket.userRole = decoded.role;
@@ -133,21 +136,21 @@ export class EnhancedWebSocketService extends EventEmitter {
 
   private handleConnection(socket: Socket): void {
     const session = this.createSession(socket);
-    
+
     logger.info('WebSocket connection established', {
       sessionId: session.id,
       userId: session.userId,
-      socketId: socket.id,
+      socketId: socket.id
     });
 
     // Store session
     this.activeSessions.set(socket.id, session);
-    
+
     // Add socket to user mapping
     if (!this.userSockets.has(session.userId)) {
       this.userSockets.set(session.userId, new Set());
     }
-    this.userSockets.get(session.userId)!.add(socket.id);
+    this.userSockets.get(session.userId).add(socket.id);
 
     // Set up socket event handlers
     this.setupSocketEventHandlers(socket, session);
@@ -160,8 +163,8 @@ export class EnhancedWebSocketService extends EventEmitter {
       type: 'connection_established',
       payload: {
         sessionId: session.id,
-        timestamp: new Date(),
-      },
+        timestamp: new Date()
+      }
     });
 
     // Update metrics
@@ -171,35 +174,35 @@ export class EnhancedWebSocketService extends EventEmitter {
 
   private setupSocketEventHandlers(socket: Socket, session: WebSocketSession): void {
     // RFQ events
-    socket.on('rfq:join', (data) => this.handleRFQJoin(socket, session, data));
-    socket.on('rfq:leave', (data) => this.handleRFQLeave(socket, session, data));
-    socket.on('rfq:status_update', (data) => this.handleRFQStatusUpdate(socket, session, data));
-    socket.on('rfq:proposal_submitted', (data) => this.handleProposalSubmitted(socket, session, data));
+    socket.on('rfq:join', async (data) => this.handleRFQJoin(socket, session, data));
+    socket.on('rfq:leave', async (data) => this.handleRFQLeave(socket, session, data));
+    socket.on('rfq:status_update', async (data) => this.handleRFQStatusUpdate(socket, session, data));
+    socket.on('rfq:proposal_submitted', async (data) => this.handleProposalSubmitted(socket, session, data));
 
     // Compliance events
-    socket.on('compliance:check_request', (data) => this.handleComplianceCheckRequest(socket, session, data));
-    socket.on('compliance:status_update', (data) => this.handleComplianceStatusUpdate(socket, session, data));
+    socket.on('compliance:check_request', async (data) => this.handleComplianceCheckRequest(socket, session, data));
+    socket.on('compliance:status_update', async (data) => this.handleComplianceStatusUpdate(socket, session, data));
 
     // Order events
-    socket.on('order:status_update', (data) => this.handleOrderStatusUpdate(socket, session, data));
-    socket.on('order:tracking_update', (data) => this.handleOrderTrackingUpdate(socket, session, data));
+    socket.on('order:status_update', async (data) => this.handleOrderStatusUpdate(socket, session, data));
+    socket.on('order:tracking_update', async (data) => this.handleOrderTrackingUpdate(socket, session, data));
 
     // Chat/messaging events
-    socket.on('chat:message', (data) => this.handleChatMessage(socket, session, data));
-    socket.on('chat:typing', (data) => this.handleTypingIndicator(socket, session, data));
+    socket.on('chat:message', async (data) => this.handleChatMessage(socket, session, data));
+    socket.on('chat:typing', async (data) => this.handleTypingIndicator(socket, session, data));
 
     // Notification events
-    socket.on('notification:read', (data) => this.handleNotificationRead(socket, session, data));
-    socket.on('notification:subscribe', (data) => this.handleNotificationSubscribe(socket, session, data));
+    socket.on('notification:read', async (data) => this.handleNotificationRead(socket, session, data));
+    socket.on('notification:subscribe', async (data) => this.handleNotificationSubscribe(socket, session, data));
 
     // Heartbeat
-    socket.on('heartbeat', () => this.handleHeartbeat(socket, session));
+    socket.on('heartbeat', async () => this.handleHeartbeat(socket, session));
 
     // Disconnect
-    socket.on('disconnect', (reason) => this.handleDisconnect(socket, session, reason));
+    socket.on('disconnect', async (reason) => this.handleDisconnect(socket, session, reason));
 
     // Error handling
-    socket.on('error', (error) => this.handleSocketError(socket, session, error));
+    socket.on('error', async (error) => this.handleSocketError(socket, session, error));
   }
 
   private createSession(socket: Socket): WebSocketSession {
@@ -214,8 +217,8 @@ export class EnhancedWebSocketService extends EventEmitter {
       rooms: [],
       metadata: {
         role: socket.userRole,
-        company: socket.userCompany,
-      },
+        company: socket.userCompany
+      }
     };
   }
 
@@ -245,7 +248,7 @@ export class EnhancedWebSocketService extends EventEmitter {
     try {
       const { rfqId } = data;
       const roomId = `rfq:${rfqId}`;
-      
+
       // Validate access to RFQ
       const hasAccess = await this.validateRFQAccess(session.userId, rfqId);
       if (!hasAccess) {
@@ -263,13 +266,13 @@ export class EnhancedWebSocketService extends EventEmitter {
       // Notify others in room
       socket.to(roomId).emit('rfq:user_joined', {
         userId: session.userId,
-        timestamp: new Date(),
+        timestamp: new Date()
       });
 
       // Send confirmation
       this.sendToSocket(socket.id, {
         type: 'rfq:joined',
-        payload: { rfqId, roomId },
+        payload: { rfqId, roomId }
       });
 
       logger.info('User joined RFQ room', { userId: session.userId, rfqId, roomId });
@@ -283,7 +286,7 @@ export class EnhancedWebSocketService extends EventEmitter {
     try {
       const { rfqId } = data;
       const roomId = `rfq:${rfqId}`;
-      
+
       // Leave room
       socket.leave(roomId);
       session.rooms = session.rooms.filter(room => room !== roomId);
@@ -294,13 +297,13 @@ export class EnhancedWebSocketService extends EventEmitter {
       // Notify others in room
       socket.to(roomId).emit('rfq:user_left', {
         userId: session.userId,
-        timestamp: new Date(),
+        timestamp: new Date()
       });
 
       // Send confirmation
       this.sendToSocket(socket.id, {
         type: 'rfq:left',
-        payload: { rfqId, roomId },
+        payload: { rfqId, roomId }
       });
 
       logger.info('User left RFQ room', { userId: session.userId, rfqId, roomId });
@@ -329,8 +332,8 @@ export class EnhancedWebSocketService extends EventEmitter {
           status,
           message,
           updatedBy: session.userId,
-          timestamp: new Date(),
-        },
+          timestamp: new Date()
+        }
       });
 
       // Emit to external event system
@@ -355,14 +358,14 @@ export class EnhancedWebSocketService extends EventEmitter {
           rfqId,
           proposalId,
           supplierId,
-          timestamp: new Date(),
-        },
+          timestamp: new Date()
+        }
       });
 
       // Notify RFQ owner directly
       await this.notifyRFQOwner(rfqId, {
         type: 'proposal_submitted',
-        payload: { rfqId, proposalId, supplierId },
+        payload: { rfqId, proposalId, supplierId }
       });
 
       // Emit to external event system
@@ -393,8 +396,8 @@ export class EnhancedWebSocketService extends EventEmitter {
           region,
           checkType,
           requestId: this.generateRequestId(),
-          timestamp: new Date(),
-        },
+          timestamp: new Date()
+        }
       });
 
       // Emit to external event system
@@ -418,8 +421,8 @@ export class EnhancedWebSocketService extends EventEmitter {
           checkId,
           status,
           results,
-          timestamp: new Date(),
-        },
+          timestamp: new Date()
+        }
       });
 
       // Emit to external event system
@@ -450,8 +453,8 @@ export class EnhancedWebSocketService extends EventEmitter {
           status,
           message,
           updatedBy: session.userId,
-          timestamp: new Date(),
-        },
+          timestamp: new Date()
+        }
       });
 
       // Emit to external event system
@@ -474,8 +477,8 @@ export class EnhancedWebSocketService extends EventEmitter {
         payload: {
           orderId,
           trackingInfo,
-          timestamp: new Date(),
-        },
+          timestamp: new Date()
+        }
       });
 
       logger.info('Order tracking updated', { orderId, userId: session.userId });
@@ -504,8 +507,8 @@ export class EnhancedWebSocketService extends EventEmitter {
           message,
           replyTo,
           senderId: session.userId,
-          timestamp: new Date(),
-        },
+          timestamp: new Date()
+        }
       }, [socket.id]); // Exclude sender
 
       // Send confirmation to sender
@@ -513,8 +516,8 @@ export class EnhancedWebSocketService extends EventEmitter {
         type: 'chat:message_sent',
         payload: {
           roomId,
-          timestamp: new Date(),
-        },
+          timestamp: new Date()
+        }
       });
 
       logger.info('Chat message sent', { roomId, userId: session.userId });
@@ -532,7 +535,7 @@ export class EnhancedWebSocketService extends EventEmitter {
       socket.to(roomId).emit('chat:typing', {
         userId: session.userId,
         isTyping,
-        timestamp: new Date(),
+        timestamp: new Date()
       });
     } catch (error) {
       logger.error('Error handling typing indicator', { error, data });
@@ -565,8 +568,8 @@ export class EnhancedWebSocketService extends EventEmitter {
         payload: {
           types,
           entities,
-          timestamp: new Date(),
-        },
+          timestamp: new Date()
+        }
       });
 
       logger.info('Notification subscriptions updated', { userId: session.userId, types, entities });
@@ -606,7 +609,7 @@ export class EnhancedWebSocketService extends EventEmitter {
       logger.info('WebSocket disconnected', {
         sessionId: session.id,
         userId: session.userId,
-        reason,
+        reason
       });
     } catch (error) {
       logger.error('Error handling disconnect', { error, reason });
@@ -617,7 +620,7 @@ export class EnhancedWebSocketService extends EventEmitter {
     logger.error('WebSocket error', {
       sessionId: session.id,
       userId: session.userId,
-      error: error.message,
+      error: error.message
     });
 
     metrics.increment('websocket_errors');
@@ -646,7 +649,7 @@ export class EnhancedWebSocketService extends EventEmitter {
     if (!this.io) return;
 
     let broadcast = this.io.to(roomId);
-    
+
     if (excludeSockets) {
       for (const socketId of excludeSockets) {
         broadcast = broadcast.except(socketId);
@@ -665,7 +668,7 @@ export class EnhancedWebSocketService extends EventEmitter {
   public async sendError(socket: Socket, message: string): Promise<void> {
     socket.emit('error', {
       message,
-      timestamp: new Date(),
+      timestamp: new Date()
     });
   }
 
@@ -716,11 +719,11 @@ export class EnhancedWebSocketService extends EventEmitter {
   }
 
   private generateRequestId(): string {
-    return 'req_' + Date.now().toString(36) + Math.random().toString(36).substr(2);
+    return `req_${  Date.now().toString(36)  }${Math.random().toString(36).substr(2)}`;
   }
 
   private generateMessageId(): string {
-    return 'msg_' + Date.now().toString(36) + Math.random().toString(36).substr(2);
+    return `msg_${  Date.now().toString(36)  }${Math.random().toString(36).substr(2)}`;
   }
 
   private setupHealthCheck(): void {
@@ -738,7 +741,7 @@ export class EnhancedWebSocketService extends EventEmitter {
       activeSessions: this.activeSessions.size,
       activeRooms: this.activeRooms.size,
       activeUsers: this.userSockets.size,
-      uptime: process.uptime(),
+      uptime: process.uptime()
     };
   }
 }

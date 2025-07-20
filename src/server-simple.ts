@@ -1,9 +1,9 @@
-import express from 'express';
 import cors from 'cors';
-import helmet from 'helmet';
-import morgan from 'morgan';
 import dotenv from 'dotenv';
+import express from 'express';
+import helmet from 'helmet';
 import mongoose from 'mongoose';
+import morgan from 'morgan';
 
 // Load environment variables
 dotenv.config();
@@ -64,14 +64,14 @@ app.get('/api/health', (req, res) => {
 });
 
 // Import route files that exist
-import authRoutes from './api/routes/auth';
-import productRoutes from './api/routes/products';
-import rfqRoutes from './api/routes/rfq';
-import orderRoutes from './api/routes/order';
-import supplierRoutes from './api/routes/supplier';
-import complianceRoutes from './api/routes/compliance';
 import aiRoutes from './api/routes/ai';
+import authRoutes from './api/routes/auth';
+import complianceRoutes from './api/routes/compliance';
+import orderRoutes from './api/routes/order';
+import productRoutes from './api/routes/products';
 import recommendationRoutes from './api/routes/recommendations';
+import rfqRoutes from './api/routes/rfq';
+import supplierRoutes from './api/routes/supplier';
 
 // Mount routes
 app.use('/api/auth', authRoutes);

@@ -1,10 +1,11 @@
+import { LoginRequest, RegisterRequest } from '@shared/types';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { User } from '../../models/User';
+
 import { config } from '../../core/config';
-import { Logger } from '../../core/logging/logger';
 import { AuthenticationError, ValidationError, NotFoundError } from '../../core/errors';
-import { LoginRequest, RegisterRequest } from '@shared/types';
+import { Logger } from '../../core/logging/logger';
+import { User } from '../../models/User';
 
 const logger = new Logger('AuthService');
 
@@ -31,9 +32,9 @@ export class AuthService {
       profile: {
         firstName: data.firstName,
         lastName: data.lastName,
-        phone: data.phone,
+        phone: data.phone
       },
-      company: data.company,
+      company: data.company
     });
 
     await user.save();
@@ -45,7 +46,7 @@ export class AuthService {
     return {
       user: this.sanitizeUser(user),
       token,
-      expiresIn: this.getTokenExpiry(),
+      expiresIn: this.getTokenExpiry()
     };
   }
 
@@ -92,7 +93,7 @@ export class AuthService {
     return {
       user: this.sanitizeUser(user),
       token,
-      expiresIn: this.getTokenExpiry(),
+      expiresIn: this.getTokenExpiry()
     };
   }
 
@@ -105,7 +106,7 @@ export class AuthService {
     const token = this.generateToken(user);
     return {
       token,
-      expiresIn: this.getTokenExpiry(),
+      expiresIn: this.getTokenExpiry()
     };
   }
 
@@ -161,11 +162,11 @@ export class AuthService {
       id: user._id,
       email: user.email,
       role: user.role,
-      company: user.company?._id,
+      company: user.company?._id
     };
 
     return jwt.sign(payload, config.auth.jwt.secret, {
-      expiresIn: config.auth.jwt.expiresIn,
+      expiresIn: config.auth.jwt.expiresIn
     });
   }
 

@@ -1,11 +1,13 @@
 import express from 'express';
 import { Request, Response, NextFunction } from 'express';
-import { auth } from '../../middleware/auth';
-import { validateRequest } from '../../middleware/advancedValidation';
-import { Logger } from '../../core/logging/logger';
-import { apiResponse } from '../../utils/apiResponse';
-import EnhancedRFQService from '../../services/marketplace/EnhancedRFQService';
 import { z } from 'zod';
+
+import { Logger } from '../../core/logging/logger';
+import { validateRequest } from '../../middleware/advancedValidation';
+import { auth } from '../../middleware/auth';
+import EnhancedRFQService from '../../services/marketplace/EnhancedRFQService';
+import { apiResponse } from '../../utils/apiResponse';
+
 
 const router = express.Router();
 const logger = new Logger('RFQRoutes');
@@ -30,7 +32,7 @@ const createRFQSchema = z.object({
       minimumOrder: z.number().positive(),
       maximumOrder: z.number().positive().optional(),
       frequency: z.enum(['one_time', 'weekly', 'monthly', 'quarterly', 'annual']).default('one_time'),
-      duration: z.number().positive().optional(),
+      duration: z.number().positive().optional()
     }),
     qualityRequirements: z.array(z.object({
       type: z.enum(['certification', 'specification', 'test_result', 'sample']),
@@ -39,7 +41,7 @@ const createRFQSchema = z.object({
       operator: z.enum(['equals', 'greater_than', 'less_than', 'contains', 'range']).default('equals'),
       required: z.boolean().default(true),
       priority: z.enum(['must_have', 'nice_to_have', 'preferred']).default('must_have'),
-      verification: z.enum(['document', 'test', 'audit', 'self_declaration']).default('document'),
+      verification: z.enum(['document', 'test', 'audit', 'self_declaration']).default('document')
     })).default([]),
     packaging: z.object({
       type: z.string().min(1),
@@ -47,39 +49,39 @@ const createRFQSchema = z.object({
       material: z.string().min(1),
       sustainability: z.array(z.string()).default([]),
       labeling: z.array(z.string()).default([]),
-      customRequirements: z.array(z.string()).default([]),
+      customRequirements: z.array(z.string()).default([])
     }),
     delivery: z.object({
       location: z.string().min(1),
       coordinates: z.object({
         lat: z.number(),
-        lng: z.number(),
+        lng: z.number()
       }).optional(),
       timeframe: z.string().min(1),
       incoterms: z.string().min(1),
       transportation: z.array(z.string()).default([]),
-      specialRequirements: z.array(z.string()).default([]),
+      specialRequirements: z.array(z.string()).default([])
     }),
     pricing: z.object({
       currency: z.string().length(3).default('USD'),
       budgetRange: z.object({
         min: z.number().positive(),
-        max: z.number().positive(),
+        max: z.number().positive()
       }),
       paymentTerms: z.string().min(1),
       priceIncludes: z.array(z.string()).default([]),
       negotiable: z.boolean().default(true),
-      volumeDiscounts: z.boolean().default(false),
+      volumeDiscounts: z.boolean().default(false)
     }),
     compliance: z.object({
       certifications: z.array(z.string()).default([]),
       regulations: z.array(z.string()).default([]),
       testing: z.array(z.string()).default([]),
       documentation: z.array(z.string()).default([]),
-      region: z.string().min(1),
+      region: z.string().min(1)
     }),
     isOptional: z.boolean().default(false),
-    priority: z.number().min(1).max(10).default(5),
+    priority: z.number().min(1).max(10).default(5)
   })).min(1),
   requirements: z.object({
     totalBudget: z.number().positive(),
@@ -93,10 +95,10 @@ const createRFQSchema = z.object({
       type: z.enum(['certification', 'experience', 'capacity', 'location', 'rating']),
       description: z.string().min(1),
       required: z.boolean().default(true),
-      weight: z.number().min(0).max(1).default(0.5),
+      weight: z.number().min(0).max(1).default(0.5)
     })).default([]),
     contractTerms: z.array(z.string()).default([]),
-    specialInstructions: z.string().default(''),
+    specialInstructions: z.string().default('')
   }),
   tags: z.array(z.string()).default([]),
   attachments: z.array(z.object({
@@ -106,8 +108,8 @@ const createRFQSchema = z.object({
     size: z.number(),
     url: z.string().url(),
     description: z.string().optional(),
-    isPublic: z.boolean().default(true),
-  })).default([]),
+    isPublic: z.boolean().default(true)
+  })).default([])
 });
 
 const updateRFQSchema = z.object({
@@ -115,7 +117,7 @@ const updateRFQSchema = z.object({
   description: z.string().min(1).max(5000).optional(),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
   deadline: z.string().refine((date) => !isNaN(Date.parse(date))).optional(),
-  tags: z.array(z.string()).optional(),
+  tags: z.array(z.string()).optional()
 });
 
 const submitProposalSchema = z.object({
@@ -134,45 +136,45 @@ const submitProposalSchema = z.object({
         number: z.string().min(1),
         validUntil: z.string().refine((date) => !isNaN(Date.parse(date))),
         documentUrl: z.string().url(),
-        verified: z.boolean().default(false),
+        verified: z.boolean().default(false)
       })).default([]),
       testResults: z.array(z.object({
         type: z.string().min(1),
         result: z.any(),
         date: z.string().refine((date) => !isNaN(Date.parse(date))),
         lab: z.string().min(1),
-        documentUrl: z.string().url(),
+        documentUrl: z.string().url()
       })).default([]),
       qualityGuarantee: z.string().default(''),
       warranty: z.string().default(''),
-      returns: z.string().default(''),
+      returns: z.string().default('')
     }),
     packaging: z.object({
       type: z.string().min(1),
       size: z.string().min(1),
       material: z.string().min(1),
       sustainability: z.array(z.string()).default([]),
-      customization: z.array(z.string()).default([]),
+      customization: z.array(z.string()).default([])
     }),
     delivery: z.object({
       method: z.string().min(1),
       timeframe: z.string().min(1),
       cost: z.number().min(0),
       insurance: z.boolean().default(false),
-      tracking: z.boolean().default(false),
+      tracking: z.boolean().default(false)
     }),
     alternatives: z.array(z.object({
       description: z.string().min(1),
       price: z.number().positive(),
       specifications: z.record(z.any()).default({}),
-      advantages: z.array(z.string()).default([]),
+      advantages: z.array(z.string()).default([])
     })).default([]),
     samples: z.array(z.object({
       description: z.string().min(1),
       cost: z.number().min(0),
       deliveryTime: z.number().positive(),
-      available: z.boolean().default(true),
-    })).default([]),
+      available: z.boolean().default(true)
+    })).default([])
   })).min(1),
   currency: z.string().length(3).default('USD'),
   deliveryTime: z.number().positive(),
@@ -187,7 +189,7 @@ const submitProposalSchema = z.object({
     penalties: z.string().min(1),
     bonuses: z.string().min(1),
     exclusivity: z.boolean().default(false),
-    confidentiality: z.boolean().default(true),
+    confidentiality: z.boolean().default(true)
   }),
   attachments: z.array(z.object({
     id: z.string(),
@@ -195,8 +197,8 @@ const submitProposalSchema = z.object({
     type: z.string(),
     size: z.number(),
     url: z.string().url(),
-    description: z.string().optional(),
-  })).default([]),
+    description: z.string().optional()
+  })).default([])
 });
 
 /**
@@ -235,14 +237,14 @@ router.post('/', auth, validateRequest(createRFQSchema), async (req: Request, re
       deadline: new Date(rfqData.deadline),
       requirements: {
         ...rfqData.requirements,
-        deliveryDate: new Date(rfqData.requirements.deliveryDate),
-      },
+        deliveryDate: new Date(rfqData.requirements.deliveryDate)
+      }
     };
 
     const rfq = await EnhancedRFQService.createRFQ(buyerId, processedRFQData, {
       autoPublish: autoPublish === 'true',
       generateMatching: generateMatching === 'true',
-      notifySuppliers: notifySuppliers === 'true',
+      notifySuppliers: notifySuppliers === 'true'
     });
 
     res.status(201).json(apiResponse.success(rfq, 'RFQ created successfully'));
@@ -358,7 +360,7 @@ router.get('/', auth, async (req: Request, res: Response, next: NextFunction) =>
       page = 1,
       limit = 20,
       sort = 'createdAt',
-      order = 'desc',
+      order = 'desc'
     } = req.query;
 
     const filters = {
@@ -367,14 +369,14 @@ router.get('/', auth, async (req: Request, res: Response, next: NextFunction) =>
       location: location as string,
       budgetRange: budgetMin || budgetMax ? {
         min: budgetMin ? parseFloat(budgetMin as string) : undefined,
-        max: budgetMax ? parseFloat(budgetMax as string) : undefined,
+        max: budgetMax ? parseFloat(budgetMax as string) : undefined
       } : undefined,
-      matchingScore: matchingScore ? parseFloat(matchingScore as string) : undefined,
+      matchingScore: matchingScore ? parseFloat(matchingScore as string) : undefined
     };
 
     const pagination = {
       page: parseInt(page as string),
-      limit: parseInt(limit as string),
+      limit: parseInt(limit as string)
     };
 
     const sortField = `${order === 'desc' ? '-' : ''}${sort}`;
@@ -467,7 +469,7 @@ router.put('/:id', auth, validateRequest(updateRFQSchema), async (req: Request, 
     // Convert date strings to Date objects
     const processedUpdates = {
       ...updates,
-      deadline: updates.deadline ? new Date(updates.deadline) : undefined,
+      deadline: updates.deadline ? new Date(updates.deadline) : undefined
     };
 
     const rfq = await EnhancedRFQService.updateRFQ(id, buyerId, processedUpdates);
@@ -555,7 +557,7 @@ router.post('/:id/publish', auth, async (req: Request, res: Response, next: Next
 
     const rfq = await EnhancedRFQService.publishRFQ(id, buyerId, {
       notifySuppliers,
-      targetSuppliers,
+      targetSuppliers
     });
 
     res.json(apiResponse.success(rfq, 'RFQ published successfully'));
@@ -609,20 +611,20 @@ router.post('/:id/proposal', auth, validateRequest(submitProposalSchema), async 
           ...product.quality,
           certifications: product.quality.certifications.map((cert: any) => ({
             ...cert,
-            validUntil: new Date(cert.validUntil),
+            validUntil: new Date(cert.validUntil)
           })),
           testResults: product.quality.testResults.map((test: any) => ({
             ...test,
-            date: new Date(test.date),
-          })),
-        },
-      })),
+            date: new Date(test.date)
+          }))
+        }
+      }))
     };
 
     const proposal = await EnhancedRFQService.submitProposal(rfqId, supplierId, processedProposalData, {
       submitAsDraft: submitAsDraft === 'true',
       requestComplianceCheck: requestComplianceCheck === 'true',
-      attachSamples: attachSamples === 'true',
+      attachSamples: attachSamples === 'true'
     });
 
     res.status(201).json(apiResponse.success(proposal, 'Proposal submitted successfully'));
@@ -721,7 +723,7 @@ router.put('/:id/proposal/:proposalId/accept', auth, async (req: Request, res: R
     const proposal = await EnhancedRFQService.acceptProposal(rfqId, proposalId, buyerId, {
       closeRFQ,
       createContract,
-      notifyOthers,
+      notifyOthers
     });
 
     res.json(apiResponse.success(proposal, 'Proposal accepted successfully'));
@@ -892,7 +894,7 @@ router.get('/supplier/:supplierId/opportunities', auth, async (req: Request, res
       budgetMax,
       matchingScore,
       page = 1,
-      limit = 20,
+      limit = 20
     } = req.query;
 
     const filters = {
@@ -900,14 +902,14 @@ router.get('/supplier/:supplierId/opportunities', auth, async (req: Request, res
       location: location as string,
       budgetRange: budgetMin || budgetMax ? {
         min: budgetMin ? parseFloat(budgetMin as string) : undefined,
-        max: budgetMax ? parseFloat(budgetMax as string) : undefined,
+        max: budgetMax ? parseFloat(budgetMax as string) : undefined
       } : undefined,
-      matchingScore: matchingScore ? parseFloat(matchingScore as string) : undefined,
+      matchingScore: matchingScore ? parseFloat(matchingScore as string) : undefined
     };
 
     const pagination = {
       page: parseInt(page as string),
-      limit: parseInt(limit as string),
+      limit: parseInt(limit as string)
     };
 
     logger.info('Getting supplier opportunities', { supplierId, filters, pagination });

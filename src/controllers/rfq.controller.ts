@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
-import { RFQ } from '../models/RFQ';
+
 import { AuthRequest } from '../middleware/auth.middleware';
+import { RFQ } from '../models/RFQ';
 
 // @desc    Create new RFQ
 // @route   POST /api/rfq
@@ -14,7 +15,7 @@ export const createRFQ = async (req: AuthRequest, res: Response) => {
     };
 
     const rfq = await RFQ.create(rfqData);
-    
+
     res.status(201).json({
       success: true,
       data: rfq
@@ -45,10 +46,10 @@ export const getRFQs = async (req: Request, res: Response) => {
 
     // Build filter
     const filter: any = {};
-    
+
     if (status) filter.status = status;
     if (category) filter.category = category;
-    
+
     if (search) {
       filter.$or = [
         { title: { $regex: search, $options: 'i' } },
@@ -98,7 +99,7 @@ export const getRFQ = async (req: Request, res: Response) => {
     const rfq = await RFQ.findById(req.params.id)
       .populate('buyer', 'name email company')
       .populate('proposals.supplier', 'name email company');
-    
+
     if (!rfq) {
       return res.status(404).json({
         success: false,
@@ -125,7 +126,7 @@ export const getRFQ = async (req: Request, res: Response) => {
 export const updateRFQ = async (req: AuthRequest, res: Response) => {
   try {
     let rfq = await RFQ.findById(req.params.id);
-    
+
     if (!rfq) {
       return res.status(404).json({
         success: false,
@@ -174,7 +175,7 @@ export const updateRFQ = async (req: AuthRequest, res: Response) => {
 export const submitProposal = async (req: AuthRequest, res: Response) => {
   try {
     const rfq = await RFQ.findById(req.params.id);
-    
+
     if (!rfq) {
       return res.status(404).json({
         success: false,
@@ -194,7 +195,7 @@ export const submitProposal = async (req: AuthRequest, res: Response) => {
     const existingProposal = rfq.proposals.find(
       p => p.supplier.toString() === req.userId
     );
-    
+
     if (existingProposal) {
       return res.status(400).json({
         success: false,
@@ -232,7 +233,7 @@ export const submitProposal = async (req: AuthRequest, res: Response) => {
 export const acceptProposal = async (req: AuthRequest, res: Response) => {
   try {
     const rfq = await RFQ.findById(req.params.id);
-    
+
     if (!rfq) {
       return res.status(404).json({
         success: false,
@@ -252,7 +253,7 @@ export const acceptProposal = async (req: AuthRequest, res: Response) => {
     const proposal = rfq.proposals.find(
       p => p._id.toString() === req.params.proposalId
     );
-    
+
     if (!proposal) {
       return res.status(404).json({
         success: false,
@@ -264,7 +265,7 @@ export const acceptProposal = async (req: AuthRequest, res: Response) => {
     proposal.status = 'accepted';
     rfq.status = 'closed';
     rfq.acceptedProposal = proposal._id;
-    
+
     await rfq.save();
 
     // Here you would typically create an order from the accepted proposal
@@ -289,7 +290,7 @@ export const acceptProposal = async (req: AuthRequest, res: Response) => {
 export const closeRFQ = async (req: AuthRequest, res: Response) => {
   try {
     const rfq = await RFQ.findById(req.params.id);
-    
+
     if (!rfq) {
       return res.status(404).json({
         success: false,

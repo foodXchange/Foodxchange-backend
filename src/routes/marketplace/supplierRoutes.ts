@@ -1,4 +1,5 @@
 import { Router } from 'express';
+
 import { asyncHandler } from '../../core/errors';
 
 const router = Router();

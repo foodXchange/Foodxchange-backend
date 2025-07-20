@@ -1,11 +1,14 @@
-import { Logger } from '../../core/logging/logger';
-import { ValidationError } from '../../core/errors';
-import { CacheService } from '../../infrastructure/cache/CacheService';
-import { AzureAIService } from '../../infrastructure/azure/ai/AzureAIService';
-import { MetricsService } from '../../core/monitoring/metrics';
 import { EventEmitter } from 'events';
-import { AuditService } from '../audit/AuditService';
+
 import mongoose from 'mongoose';
+
+import { ValidationError } from '../../core/errors';
+import { Logger } from '../../core/logging/logger';
+import { MetricsService } from '../../core/monitoring/metrics';
+import { AzureAIService } from '../../infrastructure/azure/ai/AzureAIService';
+import { CacheService } from '../../infrastructure/cache/CacheService';
+import { AuditService } from '../audit/AuditService';
+
 
 const logger = new Logger('EnhancedValidationService');
 const metrics = metricsService;
@@ -231,12 +234,12 @@ export interface RuleExecutionStats {
 }
 
 export class EnhancedValidationService extends EventEmitter {
-  private cache: CacheService;
-  private ai: AzureAIService;
-  private audit: AuditService;
-  private validationSchemas: Map<string, ValidationSchema>;
-  private cornflakePatterns: Map<string, CornflakePattern>;
-  private ruleCache: Map<string, ValidationRule[]>;
+  private readonly cache: CacheService;
+  private readonly ai: AzureAIService;
+  private readonly audit: AuditService;
+  private readonly validationSchemas: Map<string, ValidationSchema>;
+  private readonly cornflakePatterns: Map<string, CornflakePattern>;
+  private readonly ruleCache: Map<string, ValidationRule[]>;
 
   constructor() {
     super();
@@ -246,7 +249,7 @@ export class EnhancedValidationService extends EventEmitter {
     this.validationSchemas = new Map();
     this.cornflakePatterns = new Map();
     this.ruleCache = new Map();
-    
+
     this.initializeValidationSchemas();
     this.initializeCornflakePatterns();
   }
@@ -255,7 +258,7 @@ export class EnhancedValidationService extends EventEmitter {
     // Load validation schemas from database
     const schemas = await this.loadValidationSchemas();
     schemas.forEach(schema => this.validationSchemas.set(schema.id, schema));
-    
+
     // Initialize common product validation schemas
     await this.initializeProductValidationSchemas();
   }
@@ -272,7 +275,7 @@ export class EnhancedValidationService extends EventEmitter {
         confidence: 0.95,
         examples: ['cornflake → golden yellow', 'cornflakes → light brown'],
         frequency: 45,
-        lastSeen: new Date(),
+        lastSeen: new Date()
       },
       {
         id: 'texture-specification-error',
@@ -283,7 +286,7 @@ export class EnhancedValidationService extends EventEmitter {
         confidence: 0.88,
         examples: ['chips → crispy', 'crackers → crunchy'],
         frequency: 32,
-        lastSeen: new Date(),
+        lastSeen: new Date()
       },
       {
         id: 'flavor-profile-error',
@@ -294,8 +297,8 @@ export class EnhancedValidationService extends EventEmitter {
         confidence: 0.92,
         examples: ['coca-cola → cola flavored', 'sprite → citrus flavored'],
         frequency: 28,
-        lastSeen: new Date(),
-      },
+        lastSeen: new Date()
+      }
     ];
 
     patterns.forEach(pattern => this.cornflakePatterns.set(pattern.id, pattern));
@@ -314,12 +317,12 @@ export class EnhancedValidationService extends EventEmitter {
   ): Promise<ValidationResult> {
     const timer = metrics.startTimer('validation_duration');
     const startTime = Date.now();
-    
+
     try {
-      logger.info('Starting product specification validation', { 
-        productType, 
+      logger.info('Starting product specification validation', {
+        productType,
         userId: context.userId,
-        correlationId: context.correlationId 
+        correlationId: context.correlationId
       });
 
       // Get validation schema
@@ -338,7 +341,7 @@ export class EnhancedValidationService extends EventEmitter {
         confidence: 1.0,
         processingTime: 0,
         rulesFired: [],
-        preventedErrors: [],
+        preventedErrors: []
       };
 
       // Pre-process data with cornflake error prevention
@@ -430,9 +433,9 @@ export class EnhancedValidationService extends EventEmitter {
           isValid: result.isValid,
           errorCount: result.errors.length,
           warningCount: result.warnings.length,
-          cornflakeErrorsPrevented: result.preventedErrors.length,
+          cornflakeErrorsPrevented: result.preventedErrors.length
         },
-        timestamp: new Date(),
+        timestamp: new Date()
       });
 
       metrics.increment('validations_total');
@@ -458,11 +461,11 @@ export class EnhancedValidationService extends EventEmitter {
     } = {}
   ): Promise<ValidationResult> {
     const timer = metrics.startTimer('rfq_validation_duration');
-    
+
     try {
-      logger.info('Starting RFQ specification validation', { 
+      logger.info('Starting RFQ specification validation', {
         rfqId: rfqData.id,
-        userId: context.userId 
+        userId: context.userId
       });
 
       // Get RFQ validation schema
@@ -480,7 +483,7 @@ export class EnhancedValidationService extends EventEmitter {
         confidence: 1.0,
         processingTime: 0,
         rulesFired: [],
-        preventedErrors: [],
+        preventedErrors: []
       };
 
       // Validate RFQ structure
@@ -495,14 +498,14 @@ export class EnhancedValidationService extends EventEmitter {
           context,
           { enableAIValidation: options.enableAIValidation }
         );
-        
+
         if (!specResult.isValid) {
           result.errors.push(...specResult.errors.map(e => ({
             ...e,
-            field: `productSpecs.${spec.id}.${e.field}`,
+            field: `productSpecs.${spec.id}.${e.field}`
           })));
         }
-        
+
         result.warnings.push(...specResult.warnings);
         result.suggestions.push(...specResult.suggestions);
       }
@@ -543,12 +546,12 @@ export class EnhancedValidationService extends EventEmitter {
       const fieldValue = correctedData[pattern.field];
       if (fieldValue && typeof fieldValue === 'string') {
         const lowerValue = fieldValue.toLowerCase();
-        
+
         // Check if value matches incorrect pattern
-        const incorrectMatch = pattern.incorrectValues.find(incorrect => 
+        const incorrectMatch = pattern.incorrectValues.find(incorrect =>
           lowerValue.includes(incorrect.toLowerCase())
         );
-        
+
         if (incorrectMatch) {
           // Find best correction
           const correction = await this.findBestCorrection(
@@ -556,7 +559,7 @@ export class EnhancedValidationService extends EventEmitter {
             pattern,
             productType
           );
-          
+
           if (correction) {
             correctedData[pattern.field] = correction.value;
             preventedErrors.push({
@@ -565,9 +568,9 @@ export class EnhancedValidationService extends EventEmitter {
               originalValue: fieldValue,
               correctedValue: correction.value,
               confidence: correction.confidence,
-              prevention: `Auto-corrected ${incorrectMatch} to ${correction.value}`,
+              prevention: `Auto-corrected ${incorrectMatch} to ${correction.value}`
             });
-            
+
             // Update pattern frequency
             pattern.frequency++;
             pattern.lastSeen = new Date();
@@ -600,7 +603,7 @@ export class EnhancedValidationService extends EventEmitter {
       confidence: 1.0,
       processingTime: 0,
       rulesFired: [],
-      preventedErrors: [],
+      preventedErrors: []
     };
 
     for (const rule of rules) {
@@ -619,7 +622,7 @@ export class EnhancedValidationService extends EventEmitter {
           rule: rule.name,
           value: data[rule.field],
           suggestion: ruleResult.suggestion,
-          context: ruleResult.context,
+          context: ruleResult.context
         };
 
         if (rule.severity === 'error') {
@@ -633,7 +636,7 @@ export class EnhancedValidationService extends EventEmitter {
             rule: rule.name,
             value: data[rule.field],
             suggestion: ruleResult.suggestion,
-            canIgnore: rule.severity === 'warning',
+            canIgnore: rule.severity === 'warning'
           });
         }
       }
@@ -656,7 +659,7 @@ export class EnhancedValidationService extends EventEmitter {
       confidence: 1.0,
       processingTime: 0,
       rulesFired: [],
-      preventedErrors: [],
+      preventedErrors: []
     };
 
     // Check required fields
@@ -669,7 +672,7 @@ export class EnhancedValidationService extends EventEmitter {
           severity: 'error',
           category: 'business',
           rule: 'required_field',
-          value: data[requiredField],
+          value: data[requiredField]
         });
       }
     }
@@ -685,7 +688,7 @@ export class EnhancedValidationService extends EventEmitter {
           severity: 'error',
           category: 'business',
           rule: 'conditional_field',
-          value: data[conditionalField.field],
+          value: data[conditionalField.field]
         });
       }
     }
@@ -701,7 +704,7 @@ export class EnhancedValidationService extends EventEmitter {
           severity: crossValidation.severity,
           category: 'business',
           rule: crossValidation.name,
-          value: crossValidation.fields.map(f => data[f]).join(','),
+          value: crossValidation.fields.map(f => data[f]).join(',')
         };
 
         if (crossValidation.severity === 'error') {
@@ -714,7 +717,7 @@ export class EnhancedValidationService extends EventEmitter {
             category: error.category,
             rule: error.rule,
             value: error.value,
-            canIgnore: true,
+            canIgnore: true
           });
         }
       }
@@ -737,12 +740,12 @@ export class EnhancedValidationService extends EventEmitter {
       confidence: 1.0,
       processingTime: 0,
       rulesFired: [],
-      preventedErrors: [],
+      preventedErrors: []
     };
 
     // Apply cross-field validation rules
     const crossFieldRules = schema.rules.filter(rule => rule.type === 'cross_field');
-    
+
     for (const rule of crossFieldRules) {
       const ruleResult = await this.evaluateRule(rule, data, context);
       if (!ruleResult.passed) {
@@ -754,7 +757,7 @@ export class EnhancedValidationService extends EventEmitter {
           category: rule.category,
           rule: rule.name,
           value: data[rule.field],
-          suggestion: ruleResult.suggestion,
+          suggestion: ruleResult.suggestion
         });
       }
     }
@@ -778,7 +781,7 @@ export class EnhancedValidationService extends EventEmitter {
         confidence: 1.0,
         processingTime: 0,
         rulesFired: [],
-        preventedErrors: [],
+        preventedErrors: []
       };
     }
 
@@ -791,7 +794,7 @@ export class EnhancedValidationService extends EventEmitter {
       confidence: 1.0,
       processingTime: 0,
       rulesFired: [],
-      preventedErrors: [],
+      preventedErrors: []
     };
 
     // AI-powered validation
@@ -811,7 +814,7 @@ export class EnhancedValidationService extends EventEmitter {
     `;
 
     const aiAnalysis = await this.ai.generateText(prompt, { maxTokens: 800 });
-    
+
     // Parse AI insights
     const insights = this.parseAIValidationInsights(aiAnalysis.text);
     result.aiInsights = insights;
@@ -838,7 +841,7 @@ export class EnhancedValidationService extends EventEmitter {
           suggestion: error.suggestion,
           reason: `To fix: ${error.message}`,
           confidence: 0.8,
-          aiGenerated: false,
+          aiGenerated: false
         });
       }
     }
@@ -870,13 +873,13 @@ export class EnhancedValidationService extends EventEmitter {
       case 'required':
         return {
           passed: fieldValue !== undefined && fieldValue !== null && fieldValue !== '',
-          suggestion: `Please provide a value for ${rule.field}`,
+          suggestion: `Please provide a value for ${rule.field}`
         };
 
       case 'enum':
         return {
           passed: Array.isArray(rule.value) && rule.value.includes(fieldValue),
-          suggestion: `${rule.field} must be one of: ${rule.value.join(', ')}`,
+          suggestion: `${rule.field} must be one of: ${rule.value.join(', ')}`
         };
 
       case 'range':
@@ -884,26 +887,26 @@ export class EnhancedValidationService extends EventEmitter {
         const [min, max] = rule.value;
         return {
           passed: !isNaN(numValue) && numValue >= min && numValue <= max,
-          suggestion: `${rule.field} must be between ${min} and ${max}`,
+          suggestion: `${rule.field} must be between ${min} and ${max}`
         };
 
       case 'format':
         const regex = new RegExp(rule.value);
         return {
           passed: typeof fieldValue === 'string' && regex.test(fieldValue),
-          suggestion: `${rule.field} format is invalid`,
+          suggestion: `${rule.field} format is invalid`
         };
 
       case 'regex':
         const pattern = new RegExp(rule.value);
         return {
           passed: typeof fieldValue === 'string' && pattern.test(fieldValue),
-          suggestion: `${rule.field} does not match required pattern`,
+          suggestion: `${rule.field} does not match required pattern`
         };
 
       case 'conditional':
         if (rule.conditions) {
-          const conditionMet = rule.conditions.every(condition => 
+          const conditionMet = rule.conditions.every(condition =>
             this.evaluateCondition(condition, data)
           );
           if (conditionMet) {
@@ -922,7 +925,7 @@ export class EnhancedValidationService extends EventEmitter {
 
   private evaluateCondition(condition: RuleCondition, data: any): boolean {
     const fieldValue = data[condition.field];
-    
+
     switch (condition.operator) {
       case 'equals':
         return fieldValue === condition.value;
@@ -974,7 +977,7 @@ export class EnhancedValidationService extends EventEmitter {
     // Simple selection - in production, use ML for better matching
     return {
       value: corrections[0],
-      confidence: pattern.confidence,
+      confidence: pattern.confidence
     };
   }
 
@@ -997,14 +1000,14 @@ export class EnhancedValidationService extends EventEmitter {
 
   private calculateValidationConfidence(result: ValidationResult): number {
     let confidence = 1.0;
-    
+
     // Reduce confidence based on errors and warnings
     confidence -= result.errors.length * 0.1;
     confidence -= result.warnings.length * 0.05;
-    
+
     // Increase confidence based on AI insights
     confidence += result.aiInsights.length * 0.02;
-    
+
     return Math.max(0, Math.min(1, confidence));
   }
 
@@ -1036,7 +1039,7 @@ export class EnhancedValidationService extends EventEmitter {
       confidence: 1.0,
       processingTime: 0,
       rulesFired: [],
-      preventedErrors: [],
+      preventedErrors: []
     };
   }
 
@@ -1054,7 +1057,7 @@ export class EnhancedValidationService extends EventEmitter {
       confidence: 1.0,
       processingTime: 0,
       rulesFired: [],
-      preventedErrors: [],
+      preventedErrors: []
     };
   }
 
@@ -1072,7 +1075,7 @@ export class EnhancedValidationService extends EventEmitter {
       confidence: 1.0,
       processingTime: 0,
       rulesFired: [],
-      preventedErrors: [],
+      preventedErrors: []
     };
   }
 
@@ -1116,8 +1119,8 @@ export class EnhancedValidationService extends EventEmitter {
         peakProcessingTime: 0,
         cacheHitRate: 0,
         aiUsageRate: 0,
-        ruleExecutionStats: [],
-      },
+        ruleExecutionStats: []
+      }
     };
   }
 

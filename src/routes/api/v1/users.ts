@@ -1,9 +1,10 @@
 import { Router } from 'express';
+
 import { UserController } from '../../../controllers/user/UserController';
-import { protect } from '../../../middleware/auth';
-import { validate } from '../../../middleware/validation';
-import { responseFormatterMiddleware } from '../../../middleware/responseFormatter';
 import { asyncHandler } from '../../../core/errors';
+import { protect } from '../../../middleware/auth';
+import { responseFormatterMiddleware } from '../../../middleware/responseFormatter';
+import { validate } from '../../../middleware/validation';
 
 const router = Router();
 const userController = new UserController();
@@ -35,7 +36,7 @@ router.use(protect); // All user routes require authentication
  *       401:
  *         description: Unauthorized
  */
-router.get('/profile', 
+router.get('/profile',
   asyncHandler(userController.getProfile.bind(userController))
 );
 
@@ -74,8 +75,8 @@ router.get('/profile',
  *       401:
  *         description: Unauthorized
  */
-router.put('/profile', 
-  validate.userUpdate, 
+router.put('/profile',
+  validate.userUpdate,
   asyncHandler(userController.updateProfile.bind(userController))
 );
 
@@ -117,7 +118,7 @@ router.put('/profile',
  *       401:
  *         description: Unauthorized
  */
-router.get('/profile/completion', 
+router.get('/profile/completion',
   asyncHandler(userController.getProfileCompletion.bind(userController))
 );
 
@@ -179,8 +180,8 @@ router.get('/profile/completion',
  *       401:
  *         description: Unauthorized
  */
-router.put('/company', 
-  validate.companyUpdate, 
+router.put('/company',
+  validate.companyUpdate,
   asyncHandler(userController.updateCompany.bind(userController))
 );
 
@@ -209,7 +210,7 @@ router.put('/company',
  *       404:
  *         description: Company not found
  */
-router.get('/company', 
+router.get('/company',
   asyncHandler(userController.getCompany.bind(userController))
 );
 
@@ -247,8 +248,8 @@ router.get('/company',
  *       401:
  *         description: Unauthorized or invalid current password
  */
-router.put('/password', 
-  validate.userChangePassword, 
+router.put('/password',
+  validate.userChangePassword,
   asyncHandler(userController.changePassword.bind(userController))
 );
 
@@ -281,7 +282,7 @@ router.put('/password',
  *       401:
  *         description: Unauthorized
  */
-router.post('/documents', 
+router.post('/documents',
   asyncHandler(userController.uploadDocument.bind(userController))
 );
 
@@ -320,7 +321,7 @@ router.post('/documents',
  *       401:
  *         description: Unauthorized
  */
-router.get('/documents', 
+router.get('/documents',
   asyncHandler(userController.getDocuments.bind(userController))
 );
 
@@ -360,7 +361,7 @@ router.get('/documents',
  *       401:
  *         description: Unauthorized
  */
-router.put('/preferences', 
+router.put('/preferences',
   asyncHandler(userController.updatePreferences.bind(userController))
 );
 

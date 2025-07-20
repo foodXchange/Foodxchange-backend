@@ -29,7 +29,7 @@ exports.createProposal = async (req, res) => {
 exports.getProposalsByRFQ = async (req, res) => {
   try {
     const rfq = await RFQ.findById(req.params.rfqId);
-    
+
     if (!rfq) {
       return res.status(404).json({ error: 'RFQ not found' });
     }
@@ -64,7 +64,7 @@ exports.getProposalById = async (req, res) => {
 
     // Check access
     const rfq = await RFQ.findById(proposal.rfq._id);
-    if (proposal.supplier._id.toString() !== req.user._id.toString() && 
+    if (proposal.supplier._id.toString() !== req.user._id.toString() &&
         rfq.buyer.toString() !== req.user._id.toString()) {
       return res.status(403).json({ error: 'Access denied' });
     }
@@ -100,11 +100,11 @@ exports.acceptProposal = async (req, res) => {
 
     // Create order from accepted proposal
     const Order = require('../models/Order');
-    
+
     // Generate order number
     const orderCount = await Order.countDocuments();
     const orderNumber = `ORD-${new Date().getFullYear()}-${String(orderCount + 1).padStart(6, '0')}`;
-    
+
     // Map proposal items to order items
     const orderItems = proposal.products.map((item) => ({
       productId: item.product,
@@ -123,7 +123,7 @@ exports.acceptProposal = async (req, res) => {
       status: 'pending',
       notes: item.notes
     }));
-    
+
     // Create the order
     const order = new Order({
       orderNumber,
@@ -134,7 +134,7 @@ exports.acceptProposal = async (req, res) => {
       supplierCompany: proposal.supplier,
       tenantId: rfq.tenantId || 'default',
       items: orderItems,
-      
+
       // Financial information
       subtotal: proposal.pricing.subtotal,
       taxAmount: proposal.pricing.taxes || 0,
@@ -142,14 +142,14 @@ exports.acceptProposal = async (req, res) => {
       discountAmount: 0,
       totalAmount: proposal.pricing.total,
       currency: proposal.pricing.currency || 'USD',
-      
+
       // Payment information
       paymentTerms: {
         method: 'net30',
         customTerms: proposal.terms?.paymentTerms
       },
       paymentStatus: 'pending',
-      
+
       // Delivery information from RFQ
       deliveryAddress: rfq.deliveryLocation,
       deliveryTerms: {
@@ -162,7 +162,7 @@ exports.acceptProposal = async (req, res) => {
         requestedDate: rfq.deliverySchedule?.requestedDate,
         estimatedDate: new Date(Date.now() + (proposal.terms?.leadTime || 7) * 24 * 60 * 60 * 1000)
       },
-      
+
       // Order status
       status: 'pending',
       statusHistory: [{
@@ -171,14 +171,14 @@ exports.acceptProposal = async (req, res) => {
         changedBy: req.user._id,
         reason: 'Order created from accepted proposal'
       }],
-      
+
       // Set dates
       createdAt: new Date(),
       updatedAt: new Date()
     });
-    
+
     await order.save();
-    
+
     // Update proposal with order reference
     proposal.orderId = order._id;
     await proposal.save();

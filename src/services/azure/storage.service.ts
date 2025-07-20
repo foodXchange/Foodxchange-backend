@@ -1,8 +1,10 @@
-import { BlobServiceClient, ContainerClient, BlockBlobClient, BlobGenerateSasUrlOptions, BlobSASPermissions } from "@azure/storage-blob";
-import { v4 as uuidv4 } from 'uuid';
-import { Logger } from '../../core/logging/logger';
-import { trackAzureServiceCall } from '../../config/applicationInsights';
 import * as path from 'path';
+
+import { BlobServiceClient, ContainerClient, BlockBlobClient, BlobGenerateSasUrlOptions, BlobSASPermissions } from '@azure/storage-blob';
+import { v4 as uuidv4 } from 'uuid';
+
+import { trackAzureServiceCall } from '../../config/applicationInsights';
+import { Logger } from '../../core/logging/logger';
 
 const logger = new Logger('StorageService');
 
@@ -46,7 +48,7 @@ class StorageService {
   private async initialize(): Promise<void> {
     try {
       const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
-      
+
       if (!connectionString) {
         logger.warn('Azure Storage not configured - missing connection string');
         return;
@@ -57,7 +59,7 @@ class StorageService {
 
       // Ensure container exists
       await this.ensureContainerExists();
-      
+
       this.isInitialized = true;
       logger.info('✅ Azure Storage service initialized', { container: this.containerName });
     } catch (error) {
@@ -101,7 +103,7 @@ class StorageService {
       const baseName = path.basename(fileName, fileExtension);
       const sanitizedBaseName = this.sanitizeFileName(baseName);
       const uniqueId = uuidv4();
-      
+
       let blobName: string;
       if (folder) {
         blobName = `${folder}/${uniqueId}-${sanitizedBaseName}${fileExtension}`;
@@ -128,7 +130,7 @@ class StorageService {
 
       // Upload blob
       const uploadResponse = await blockBlobClient.upload(fileBuffer, fileBuffer.length, {
-        blobHTTPHeaders: { 
+        blobHTTPHeaders: {
           blobContentType: contentType,
           blobContentDisposition: `inline; filename="${fileName}"`
         },
@@ -143,8 +145,8 @@ class StorageService {
         url: blockBlobClient.url,
         contentType,
         size: fileBuffer.length,
-        etag: uploadResponse.etag!,
-        lastModified: uploadResponse.lastModified!
+        etag: uploadResponse.etag,
+        lastModified: uploadResponse.lastModified
       };
 
       logger.info('File uploaded successfully', {
@@ -174,7 +176,7 @@ class StorageService {
     folder?: string
   ): Promise<UploadResult[]> {
     const results: UploadResult[] = [];
-    
+
     for (const file of files) {
       try {
         const result = await this.uploadFile(
@@ -223,8 +225,8 @@ class StorageService {
         content,
         contentType: downloadResponse.contentType || 'application/octet-stream',
         contentLength: downloadResponse.contentLength || content.length,
-        lastModified: downloadResponse.lastModified!,
-        etag: downloadResponse.etag!
+        lastModified: downloadResponse.lastModified,
+        etag: downloadResponse.etag
       };
 
       logger.debug('File downloaded successfully', {
@@ -282,7 +284,7 @@ class StorageService {
 
       // Generate SAS URL for secure access
       const sasOptions: BlobGenerateSasUrlOptions = {
-        permissions: BlobSASPermissions.parse("r"), // Read permission
+        permissions: BlobSASPermissions.parse('r'), // Read permission
         expiresOn: new Date(Date.now() + expiresInHours * 60 * 60 * 1000)
       };
 
@@ -310,25 +312,25 @@ class StorageService {
       const files: Array<{ blobName: string; url: string; metadata: Record<string, string>; lastModified: Date; size: number }> = [];
 
       const listOptions = prefix ? { prefix } : undefined;
-      
+
       for await (const blob of this.containerClient.listBlobsFlat({ includeMetadata: true, ...listOptions })) {
         // Filter by entity type and ID if provided
         if (entityType && blob.metadata?.entityType !== entityType) continue;
         if (entityId && blob.metadata?.entityId !== entityId) continue;
 
         const blockBlobClient = this.containerClient.getBlockBlobClient(blob.name);
-        
+
         files.push({
           blobName: blob.name,
           url: blockBlobClient.url,
           metadata: blob.metadata || {},
-          lastModified: blob.properties.lastModified!,
+          lastModified: blob.properties.lastModified,
           size: blob.properties.contentLength || 0
         });
       }
 
       success = true;
-      
+
       logger.debug('Files listed successfully', {
         count: files.length,
         prefix,
@@ -369,7 +371,7 @@ class StorageService {
     try {
       const blockBlobClient = this.containerClient.getBlockBlobClient(blobName);
       await blockBlobClient.setMetadata(metadata);
-      
+
       logger.debug('File metadata updated', { blobName, metadata });
       return true;
     } catch (error) {

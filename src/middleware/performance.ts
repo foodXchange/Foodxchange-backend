@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+
 import { Logger } from '../core/logging/logger';
 import { getApplicationCacheService } from '../services/performance/CacheService';
 import { getDatabaseOptimizationService } from '../services/performance/DatabaseOptimizationService';
@@ -22,7 +23,7 @@ export interface PerformanceMetrics {
 export class PerformanceMonitor {
   private static instance: PerformanceMonitor;
   private metrics: PerformanceMetrics[] = [];
-  private maxMetricsHistory = 1000;
+  private readonly maxMetricsHistory = 1000;
 
   static getInstance(): PerformanceMonitor {
     if (!this.instance) {
@@ -33,7 +34,7 @@ export class PerformanceMonitor {
 
   addMetric(metric: PerformanceMetrics): void {
     this.metrics.push(metric);
-    
+
     // Keep only the last N metrics
     if (this.metrics.length > this.maxMetricsHistory) {
       this.metrics = this.metrics.slice(-this.maxMetricsHistory);
@@ -74,11 +75,11 @@ export const performanceMiddleware = (req: Request, res: Response, next: NextFun
   const startTime = process.hrtime.bigint();
   const startMemory = process.memoryUsage().heapUsed;
   const requestId = req.headers['x-request-id'] as string || Math.random().toString(36).substr(2, 9);
-  
+
   // Track database queries
-  let dbQueryCount = 0;
+  const dbQueryCount = 0;
   const originalQuery = req.query;
-  
+
   // Override res.end to capture response time
   const originalEnd = res.end;
   res.end = function(chunk: any, encoding?: any) {
@@ -120,7 +121,7 @@ export const performanceMiddleware = (req: Request, res: Response, next: NextFun
   // Add request metadata
   req.requestId = requestId;
   req.startTime = startTime;
-  
+
   next();
 };
 
@@ -135,18 +136,18 @@ export const cacheMiddleware = (ttl: number = 300) => {
     }
 
     const cacheKey = `${req.tenantId}:${req.path}:${JSON.stringify(req.query)}`;
-    
+
     try {
       const cachedData = await cacheService.get(cacheKey);
-      
+
       if (cachedData) {
         res.locals.cacheHit = true;
         logger.debug('Cache hit', { cacheKey });
         return res.json(cachedData);
       }
-      
+
       res.locals.cacheHit = false;
-      
+
       // Override res.json to cache the response
       const originalJson = res.json;
       res.json = function(data: any) {
@@ -157,7 +158,7 @@ export const cacheMiddleware = (ttl: number = 300) => {
         }
         return originalJson.call(this, data);
       };
-      
+
       next();
     } catch (error) {
       logger.error('Cache middleware error', { cacheKey, error });
@@ -170,12 +171,12 @@ export const cacheMiddleware = (ttl: number = 300) => {
  * Database query optimization middleware
  */
 export const dbOptimizationMiddleware = (req: Request, res: Response, next: NextFunction) => {
-  let queryCount = 0;
-  
+  const queryCount = 0;
+
   // This would typically hook into your database driver
   // For now, it's a placeholder that tracks query count
   res.locals.dbQueries = queryCount;
-  
+
   next();
 };
 
@@ -184,21 +185,21 @@ export const dbOptimizationMiddleware = (req: Request, res: Response, next: Next
  */
 export const rateLimitMiddleware = (windowMs: number = 60000, maxRequests: number = 100) => {
   const requests = new Map<string, { count: number; resetTime: number }>();
-  
+
   return (req: Request, res: Response, next: NextFunction) => {
     const clientId = req.ip || req.connection.remoteAddress || 'unknown';
     const now = Date.now();
     const windowStart = now - windowMs;
-    
+
     // Clean up old entries
     for (const [key, value] of requests.entries()) {
       if (value.resetTime < windowStart) {
         requests.delete(key);
       }
     }
-    
+
     const clientRequests = requests.get(clientId) || { count: 0, resetTime: now + windowMs };
-    
+
     if (clientRequests.count >= maxRequests) {
       return res.status(429).json({
         success: false,
@@ -209,10 +210,10 @@ export const rateLimitMiddleware = (windowMs: number = 60000, maxRequests: numbe
         }
       });
     }
-    
+
     clientRequests.count++;
     requests.set(clientId, clientRequests);
-    
+
     next();
   };
 };
@@ -222,7 +223,7 @@ export const rateLimitMiddleware = (windowMs: number = 60000, maxRequests: numbe
  */
 export const compressionMiddleware = (req: Request, res: Response, next: NextFunction) => {
   const acceptEncoding = req.headers['accept-encoding'] || '';
-  
+
   if (acceptEncoding.includes('gzip')) {
     res.setHeader('Content-Encoding', 'gzip');
     res.locals.compression = 'gzip';
@@ -230,7 +231,7 @@ export const compressionMiddleware = (req: Request, res: Response, next: NextFun
     res.setHeader('Content-Encoding', 'deflate');
     res.locals.compression = 'deflate';
   }
-  
+
   next();
 };
 
@@ -240,7 +241,7 @@ export const compressionMiddleware = (req: Request, res: Response, next: NextFun
 export const memoryMonitorMiddleware = (req: Request, res: Response, next: NextFunction) => {
   const memoryUsage = process.memoryUsage();
   const memoryThreshold = 500 * 1024 * 1024; // 500MB
-  
+
   if (memoryUsage.heapUsed > memoryThreshold) {
     logger.warn('High memory usage detected', {
       heapUsed: `${(memoryUsage.heapUsed / 1024 / 1024).toFixed(2)}MB`,
@@ -249,7 +250,7 @@ export const memoryMonitorMiddleware = (req: Request, res: Response, next: NextF
       rss: `${(memoryUsage.rss / 1024 / 1024).toFixed(2)}MB`
     });
   }
-  
+
   next();
 };
 
@@ -265,7 +266,7 @@ export const performanceHealthCheck = async (req: Request, res: Response) => {
     const cacheStats = await cacheService.getStats();
     const dbMetrics = await dbOptimizationService.getPerformanceMetrics();
     const memoryUsage = process.memoryUsage();
-    
+
     res.json({
       success: true,
       data: {
@@ -309,22 +310,22 @@ export const performanceRecommendations = async (req: Request, res: Response) =>
     const suggestions = await dbOptimizationService.suggestOptimizations();
     const slowRequests = performanceMonitor.getSlowRequests();
     const cacheHitRate = performanceMonitor.getCacheHitRate();
-    
+
     const recommendations: string[] = [...suggestions];
-    
+
     if (slowRequests.length > 10) {
       recommendations.push('Consider implementing request throttling for high-traffic endpoints');
     }
-    
+
     if (cacheHitRate < 50) {
       recommendations.push('Consider implementing more aggressive caching strategies');
     }
-    
+
     const memoryUsage = process.memoryUsage();
     if (memoryUsage.heapUsed > 400 * 1024 * 1024) {
       recommendations.push('Consider implementing memory optimization techniques');
     }
-    
+
     res.json({
       success: true,
       data: {

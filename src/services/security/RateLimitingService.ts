@@ -1,6 +1,7 @@
-import Redis from 'ioredis';
-import { Logger } from '../../core/logging/logger';
 import { Request } from 'express';
+import Redis from 'ioredis';
+
+import { Logger } from '../../core/logging/logger';
 
 const logger = new Logger('RateLimitingService');
 
@@ -34,10 +35,10 @@ interface TierConfig {
 }
 
 export class RateLimitingService {
-  private redis: Redis;
+  private readonly redis: Redis;
   private readonly defaultWindow = 60000; // 1 minute
   private readonly defaultMaxRequests = 100;
-  
+
   // Tier configurations
   private readonly tiers: Map<string, TierConfig> = new Map([
     ['free', {
@@ -111,24 +112,24 @@ export class RateLimitingService {
       const now = Date.now();
       const window = config.windowMs;
       const limit = config.maxRequests;
-      
+
       // Use Redis sliding window algorithm
       const windowStart = now - window;
       const redisKey = `ratelimit:${key}`;
-      
+
       // Remove old entries
       await this.redis.zremrangebyscore(redisKey, '-inf', windowStart);
-      
+
       // Count current requests in window
       const current = await this.redis.zcard(redisKey);
-      
+
       if (current >= limit) {
         // Get oldest entry to calculate retry after
         const oldestEntry = await this.redis.zrange(redisKey, 0, 0, 'WITHSCORES');
         const oldestTime = oldestEntry[1] ? parseInt(oldestEntry[1]) : now;
         const resetTime = new Date(oldestTime + window);
         const retryAfter = Math.ceil((oldestTime + window - now) / 1000);
-        
+
         return {
           allowed: false,
           info: {
@@ -140,13 +141,13 @@ export class RateLimitingService {
           }
         };
       }
-      
+
       // Add current request
       await this.redis.zadd(redisKey, now, `${now}-${Math.random()}`);
       await this.redis.expire(redisKey, Math.ceil(window / 1000));
-      
+
       const resetTime = new Date(now + window);
-      
+
       return {
         allowed: true,
         info: {
@@ -183,37 +184,37 @@ export class RateLimitingService {
     try {
       const now = Date.now();
       const bucketKey = `bucket:${key}`;
-      
+
       // Get current bucket state
       const bucketData = await this.redis.get(bucketKey);
       let tokens = capacity;
       let lastRefill = now;
-      
+
       if (bucketData) {
         const parsed = JSON.parse(bucketData);
         tokens = parsed.tokens;
         lastRefill = parsed.lastRefill;
-        
+
         // Calculate tokens to add based on time passed
         const timePassed = now - lastRefill;
         const tokensToAdd = (timePassed / 1000) * refillRate;
         tokens = Math.min(capacity, tokens + tokensToAdd);
       }
-      
+
       if (tokens >= tokensRequested) {
         // Consume tokens
         tokens -= tokensRequested;
-        
+
         // Save bucket state
         await this.redis.setex(
           bucketKey,
           86400, // Expire after 24 hours
           JSON.stringify({ tokens, lastRefill: now })
         );
-        
+
         return { allowed: true, tokensRemaining: Math.floor(tokens) };
       }
-      
+
       return { allowed: false, tokensRemaining: Math.floor(tokens) };
     } catch (error) {
       logger.error('Token bucket check failed:', error);
@@ -228,9 +229,9 @@ export class RateLimitingService {
     userId: string,
     tier: string = 'free'
   ): Promise<{ allowed: boolean; info: any }> {
-    const tierConfig = this.tiers.get(tier) || this.tiers.get('free')!;
+    const tierConfig = this.tiers.get(tier) || this.tiers.get('free');
     const checks: Promise<any>[] = [];
-    
+
     // Check all time windows
     if (tierConfig.limits.perSecond) {
       checks.push(this.checkRateLimit(`${userId}:second`, {
@@ -238,28 +239,28 @@ export class RateLimitingService {
         maxRequests: tierConfig.limits.perSecond
       }));
     }
-    
+
     if (tierConfig.limits.perMinute) {
       checks.push(this.checkRateLimit(`${userId}:minute`, {
         windowMs: 60000,
         maxRequests: tierConfig.limits.perMinute
       }));
     }
-    
+
     if (tierConfig.limits.perHour) {
       checks.push(this.checkRateLimit(`${userId}:hour`, {
         windowMs: 3600000,
         maxRequests: tierConfig.limits.perHour
       }));
     }
-    
+
     if (tierConfig.limits.perDay) {
       checks.push(this.checkRateLimit(`${userId}:day`, {
         windowMs: 86400000,
         maxRequests: tierConfig.limits.perDay
       }));
     }
-    
+
     // Check burst if configured
     if (tierConfig.burst) {
       checks.push(this.checkTokenBucket(
@@ -268,9 +269,9 @@ export class RateLimitingService {
         tierConfig.limits.perSecond || 10
       ));
     }
-    
+
     const results = await Promise.all(checks);
-    
+
     // Find the most restrictive limit
     let mostRestrictive: any = null;
     for (const result of results) {
@@ -282,7 +283,7 @@ export class RateLimitingService {
         mostRestrictive = result;
       }
     }
-    
+
     return {
       allowed: mostRestrictive?.allowed ?? true,
       info: {
@@ -322,7 +323,7 @@ export class RateLimitingService {
         return {0, count}
       end
     `;
-    
+
     try {
       const result = await this.redis.eval(
         script,
@@ -332,7 +333,7 @@ export class RateLimitingService {
         window,
         Date.now()
       ) as [number, number];
-      
+
       return {
         allowed: result[0] === 1,
         count: result[1]
@@ -355,12 +356,12 @@ export class RateLimitingService {
     // Adjust limit based on system load (0-1)
     const loadFactor = Math.max(0.1, 1 - systemLoad);
     const adjustedLimit = Math.floor(baseLimit * loadFactor);
-    
+
     const result = await this.checkRateLimit(key, {
       windowMs: window,
       maxRequests: adjustedLimit
     });
-    
+
     return {
       allowed: result.allowed,
       adjustedLimit
@@ -379,7 +380,7 @@ export class RateLimitingService {
       maxRequests: config?.maxRequests || 20, // Lower limit for IPs
       ...config
     };
-    
+
     return this.checkRateLimit(`ip:${ip}`, ipConfig);
   }
 
@@ -395,7 +396,7 @@ export class RateLimitingService {
       maxRequests: config?.maxRequests || 1000, // Higher limit for API keys
       ...config
     };
-    
+
     return this.checkRateLimit(`apikey:${apiKey}`, keyConfig);
   }
 
@@ -412,7 +413,7 @@ export class RateLimitingService {
       maxRequests: config?.maxRequests || this.getEndpointLimit(endpoint),
       ...config
     };
-    
+
     return this.checkRateLimit(`${endpoint}:${key}`, endpointConfig);
   }
 
@@ -429,7 +430,7 @@ export class RateLimitingService {
       '/api/v1/analytics': 20,
       default: 100
     };
-    
+
     return limits[endpoint] || limits.default;
   }
 
@@ -440,10 +441,10 @@ export class RateLimitingService {
     try {
       const keys = await this.redis.keys(`ratelimit:${pattern}`);
       if (keys.length === 0) return 0;
-      
+
       const deleted = await this.redis.del(...keys);
       logger.info(`Reset ${deleted} rate limit keys matching pattern: ${pattern}`);
-      
+
       return deleted;
     } catch (error) {
       logger.error('Failed to reset rate limits:', error);
@@ -462,24 +463,24 @@ export class RateLimitingService {
         byType: {} as Record<string, number>,
         topLimited: [] as Array<{ key: string; count: number }>
       };
-      
+
       // Analyze keys by type
       for (const key of keys) {
         const type = key.split(':')[1];
         stats.byType[type] = (stats.byType[type] || 0) + 1;
-        
+
         // Get request count
         const count = await this.redis.zcard(key);
         if (count > 0) {
           stats.topLimited.push({ key, count });
         }
       }
-      
+
       // Sort by count and take top 10
       stats.topLimited = stats.topLimited
         .sort((a, b) => b.count - a.count)
         .slice(0, 10);
-      
+
       return stats;
     } catch (error) {
       logger.error('Failed to get rate limit statistics:', error);
@@ -513,7 +514,7 @@ export class RateLimitingService {
   async addToBlacklist(key: string, reason: string, duration?: number): Promise<void> {
     const blacklistKey = `blacklist:${key}`;
     const data = JSON.stringify({ reason, timestamp: Date.now() });
-    
+
     if (duration) {
       await this.redis.setex(blacklistKey, duration, data);
     } else {
@@ -527,7 +528,7 @@ export class RateLimitingService {
   async isBlacklisted(key: string): Promise<{ blocked: boolean; reason?: string }> {
     const data = await this.redis.get(`blacklist:${key}`);
     if (!data) return { blocked: false };
-    
+
     try {
       const parsed = JSON.parse(data);
       return { blocked: true, reason: parsed.reason };

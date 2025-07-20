@@ -51,7 +51,7 @@ interface RiskAssessment {
 }
 
 class AIMatchingService {
-  private suppliers: Supplier[] = [
+  private readonly suppliers: Supplier[] = [
     {
       id: 'sup_001',
       name: 'Golden Grains Ltd',
@@ -132,13 +132,13 @@ class AIMatchingService {
 
   findBestMatches(rfqRequirement: RFQRequirement, maxResults: number = 5): MatchingResult[] {
     console.log('🤖 AI analyzing RFQ requirements...');
-    
+
     const matches = this.suppliers
       .filter(s => this.isEligibleSupplier(s, rfqRequirement))
       .map(s => this.calculateMatch(s, rfqRequirement))
       .sort((a, b) => b.compatibilityScore - a.compatibilityScore)
       .slice(0, maxResults);
-    
+
     console.log(`🎯 AI found ${matches.length} compatible suppliers`);
     return matches;
   }
@@ -156,8 +156,8 @@ class AIMatchingService {
 
     // Check compliance requirements
     const requiredCerts = rfq.complianceRequirements;
-    const hasRequiredCerts = requiredCerts.every(cert => 
-      supplier.certifications.some(supplierCert => 
+    const hasRequiredCerts = requiredCerts.every(cert =>
+      supplier.certifications.some(supplierCert =>
         supplierCert.toLowerCase().includes(cert.toLowerCase())
       )
     );
@@ -207,7 +207,7 @@ class AIMatchingService {
   private calculatePriceScore(supplier: Supplier, rfq: RFQRequirement): number {
     const budgetPerUnit = rfq.budget / rfq.quantity;
     const priceRatio = supplier.averagePrice / budgetPerUnit;
-    
+
     if (priceRatio <= 0.8) return 100;
     if (priceRatio <= 1.0) return 90;
     if (priceRatio <= 1.2) return 70;
@@ -225,7 +225,7 @@ class AIMatchingService {
   private calculateDeliveryScore(supplier: Supplier, rfq: RFQRequirement): number {
     const deadlineDays = Math.ceil((new Date(rfq.deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
     const deliveryBuffer = deadlineDays - supplier.averageLeadTime;
-    
+
     if (deliveryBuffer > 14) return 100;
     if (deliveryBuffer > 7) return 85;
     if (deliveryBuffer > 0) return 65;
@@ -234,7 +234,7 @@ class AIMatchingService {
 
   private calculateRiskScore(supplier: Supplier, rfq: RFQRequirement): number {
     let riskScore = 100;
-    
+
     supplier.riskFactors.forEach(risk => {
       switch (risk) {
         case 'longer_lead_times':
@@ -259,7 +259,7 @@ class AIMatchingService {
 
   private calculateSpecializationScore(supplier: Supplier, rfq: RFQRequirement): number {
     let score = 50;
-    
+
     supplier.specializations.forEach(spec => {
       if (spec.includes(rfq.productType)) score += 20;
       if (spec === 'premium_quality' && rfq.budget > 40000) score += 15;
@@ -277,7 +277,7 @@ class AIMatchingService {
 
   private generateMatchReasons(supplier: Supplier, rfq: RFQRequirement, scores: any): string[] {
     const reasons = [];
-    
+
     if (scores.price > 85) reasons.push('💰 Excellent price competitiveness');
     if (scores.quality > 90) reasons.push('⭐ Outstanding quality track record');
     if (scores.compliance > 95) reasons.push('✅ Perfect compliance match');
@@ -292,7 +292,7 @@ class AIMatchingService {
 
   private generateRiskWarnings(supplier: Supplier, rfq: RFQRequirement): string[] {
     const warnings = [];
-    
+
     if (supplier.riskFactors.includes('quality_variance')) {
       warnings.push('⚠️ Historical quality variance - request quality samples');
     }
@@ -308,7 +308,7 @@ class AIMatchingService {
 
   private generateRecommendations(supplier: Supplier, rfq: RFQRequirement, scores: any): string[] {
     const recommendations = [];
-    
+
     if (scores.price < 70) {
       recommendations.push('💡 Consider negotiating volume discounts');
     }
@@ -327,33 +327,33 @@ class AIMatchingService {
 
   private estimatePrice(supplier: Supplier, rfq: RFQRequirement): number {
     let basePrice = supplier.averagePrice;
-    
+
     // Volume discounts
     if (rfq.quantity > 10000) basePrice *= 0.95;
     if (rfq.quantity > 50000) basePrice *= 0.90;
-    
+
     // Premium for special requirements
     if (rfq.specifications?.certification === 'organic') basePrice *= 1.15;
     if (rfq.specifications?.packaging === 'premium') basePrice *= 1.10;
-    
+
     return Math.round(basePrice * 100) / 100;
   }
 
   private estimateLeadTime(supplier: Supplier, rfq: RFQRequirement): number {
     let leadTime = supplier.averageLeadTime;
-    
+
     // Additional time for high volume
     if (rfq.quantity > supplier.capacity * 0.8) leadTime += 7;
-    
+
     // Additional time for custom requirements
     if (rfq.specifications?.custom_packaging) leadTime += 3;
-    
+
     return leadTime;
   }
 
   private calculateConfidenceLevel(scores: any): 'high' | 'medium' | 'low' {
     const avgScore = Object.values(scores).reduce((sum: number, score: any) => sum + score, 0) / Object.keys(scores).length;
-    
+
     if (avgScore > 85) return 'high';
     if (avgScore > 70) return 'medium';
     return 'low';
@@ -361,7 +361,7 @@ class AIMatchingService {
 
   assessSpecificationRisks(rfqRequirement: RFQRequirement): RiskAssessment {
     console.log('🤖 AI analyzing specification risks...');
-    
+
     const riskFactors: string[] = [];
     const preventionSuggestions: string[] = [];
     const historicalFailures: string[] = [];
@@ -370,9 +370,9 @@ class AIMatchingService {
 
     // Check for critical spec errors (like cornflake color)
     if (rfqRequirement.productType === 'cornflakes' && rfqRequirement.specifications?.color) {
-      const color = rfqRequirement.specifications.color;
+      const {color} = rfqRequirement.specifications;
       const invalidColors = ['dark_brown', 'white', 'black'];
-      
+
       if (invalidColors.includes(color)) {
         riskLevel = 'critical';
         complianceScore = 25;

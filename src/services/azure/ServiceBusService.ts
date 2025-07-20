@@ -1,6 +1,8 @@
-import { ServiceBusClient, ServiceBusMessage, ServiceBusReceiver, ServiceBusReceivedMessage } from '@azure/service-bus';
-import { Logger } from '../../core/logging/logger';
 import { EventEmitter } from 'events';
+
+import { ServiceBusClient, ServiceBusMessage, ServiceBusReceiver, ServiceBusReceivedMessage } from '@azure/service-bus';
+
+import { Logger } from '../../core/logging/logger';
 
 const logger = new Logger('ServiceBusService');
 
@@ -31,10 +33,10 @@ export interface ServiceBusTopic {
 }
 
 export class ServiceBusService extends EventEmitter {
-  private client: ServiceBusClient | null = null;
-  private receivers: Map<string, ServiceBusReceiver> = new Map();
+  private readonly client: ServiceBusClient | null = null;
+  private readonly receivers: Map<string, ServiceBusReceiver> = new Map();
   private isProcessing = false;
-  
+
   // Predefined queues for different event types
   private readonly queues: ServiceBusQueue[] = [
     { name: 'order-events', description: 'Order lifecycle events', maxRetries: 3, retryDelay: 5000 },
@@ -49,39 +51,39 @@ export class ServiceBusService extends EventEmitter {
 
   // Predefined topics for pub/sub patterns
   private readonly topics: ServiceBusTopic[] = [
-    { 
-      name: 'order-lifecycle', 
+    {
+      name: 'order-lifecycle',
       description: 'Order lifecycle topic',
       subscriptions: ['order-analytics', 'order-notifications', 'order-compliance']
     },
-    { 
-      name: 'rfq-lifecycle', 
+    {
+      name: 'rfq-lifecycle',
       description: 'RFQ lifecycle topic',
       subscriptions: ['rfq-analytics', 'rfq-notifications', 'rfq-matching']
     },
-    { 
-      name: 'compliance-alerts', 
+    {
+      name: 'compliance-alerts',
       description: 'Compliance monitoring topic',
       subscriptions: ['compliance-notifications', 'compliance-analytics', 'compliance-reporting']
     },
-    { 
-      name: 'system-events', 
+    {
+      name: 'system-events',
       description: 'System-wide events topic',
       subscriptions: ['system-monitoring', 'system-analytics', 'system-notifications']
     }
   ];
-  
+
   constructor() {
     super();
     const connectionString = process.env.AZURE_SERVICE_BUS_CONNECTION_STRING;
-    
+
     if (connectionString) {
       this.client = new ServiceBusClient(connectionString);
     } else {
       logger.warn('Azure Service Bus connection string not configured');
     }
   }
-  
+
   /**
    * Initialize message processing
    */
@@ -110,7 +112,7 @@ export class ServiceBusService extends EventEmitter {
     }
 
     this.isProcessing = true;
-    
+
     for (const queue of this.queues) {
       try {
         await this.startQueueProcessor(queue.name);
@@ -152,7 +154,7 @@ export class ServiceBusService extends EventEmitter {
   private async processMessage(queueName: string, message: ServiceBusReceivedMessage): Promise<void> {
     try {
       const eventData = message.body as ServiceBusEvent;
-      
+
       logger.debug('Processing message', {
         queueName,
         eventType: eventData.eventType,
@@ -172,7 +174,7 @@ export class ServiceBusService extends EventEmitter {
 
       // Complete the message
       await message.complete();
-      
+
       logger.debug('Message processed successfully', {
         queueName,
         eventType: eventData.eventType,
@@ -180,7 +182,7 @@ export class ServiceBusService extends EventEmitter {
       });
     } catch (error) {
       logger.error('Error processing message:', error);
-      
+
       // Abandon the message for retry
       await message.abandon();
       throw error;
@@ -195,10 +197,10 @@ export class ServiceBusService extends EventEmitter {
       logger.warn('Service Bus not configured, skipping event');
       return;
     }
-    
+
     try {
       const sender = this.client.createSender(queueName);
-      
+
       const sbMessage: ServiceBusMessage = {
         body: event,
         contentType: 'application/json',
@@ -214,10 +216,10 @@ export class ServiceBusService extends EventEmitter {
           version: event.version
         }
       };
-      
+
       await sender.sendMessages(sbMessage);
       await sender.close();
-      
+
       logger.debug('Event sent to Service Bus queue', {
         queueName,
         eventType: event.eventType,
@@ -238,26 +240,26 @@ export class ServiceBusService extends EventEmitter {
       logger.warn('Service Bus not configured, skipping message');
       return;
     }
-    
+
     try {
       const sender = this.client.createSender(queueName);
-      
+
       const sbMessage: ServiceBusMessage = {
         body: message,
         contentType: 'application/json',
         messageId: `${Date.now()}-${Math.random()}`
       };
-      
+
       await sender.sendMessages(sbMessage);
       await sender.close();
-      
+
       logger.debug('Message sent to Service Bus queue', { queueName });
     } catch (error) {
       logger.error('Failed to send message to Service Bus:', error);
       throw error;
     }
   }
-  
+
   /**
    * Send message to Service Bus topic
    */
@@ -266,26 +268,26 @@ export class ServiceBusService extends EventEmitter {
       logger.warn('Service Bus not configured, skipping message');
       return;
     }
-    
+
     try {
       const sender = this.client.createSender(topicName);
-      
+
       const sbMessage: ServiceBusMessage = {
         body: message,
         contentType: 'application/json',
         messageId: `${Date.now()}-${Math.random()}`
       };
-      
+
       await sender.sendMessages(sbMessage);
       await sender.close();
-      
+
       logger.debug('Message sent to Service Bus topic', { topicName });
     } catch (error) {
       logger.error('Failed to send message to Service Bus:', error);
       throw error;
     }
   }
-  
+
   /**
    * Send event to topic
    */
@@ -294,10 +296,10 @@ export class ServiceBusService extends EventEmitter {
       logger.warn('Service Bus not configured, skipping event');
       return;
     }
-    
+
     try {
       const sender = this.client.createSender(topicName);
-      
+
       const sbMessage: ServiceBusMessage = {
         body: event,
         contentType: 'application/json',
@@ -313,10 +315,10 @@ export class ServiceBusService extends EventEmitter {
           version: event.version
         }
       };
-      
+
       await sender.sendMessages(sbMessage);
       await sender.close();
-      
+
       logger.debug('Event sent to Service Bus topic', {
         topicName,
         eventType: event.eventType,
@@ -522,23 +524,23 @@ export class ServiceBusService extends EventEmitter {
   async healthCheck(): Promise<{ healthy: boolean; message: string; queueCount: number; receiverCount: number }> {
     try {
       if (!this.client) {
-        return { 
-          healthy: false, 
+        return {
+          healthy: false,
           message: 'Service Bus not configured',
           queueCount: 0,
           receiverCount: 0
         };
       }
 
-      return { 
-        healthy: true, 
+      return {
+        healthy: true,
         message: 'Service Bus healthy',
         queueCount: this.queues.length,
         receiverCount: this.receivers.size
       };
     } catch (error) {
-      return { 
-        healthy: false, 
+      return {
+        healthy: false,
         message: `Service Bus health check failed: ${error.message}`,
         queueCount: this.queues.length,
         receiverCount: this.receivers.size
@@ -551,7 +553,7 @@ export class ServiceBusService extends EventEmitter {
    */
   async stopProcessing(): Promise<void> {
     this.isProcessing = false;
-    
+
     for (const [queueName, receiver] of this.receivers) {
       try {
         await receiver.close();
@@ -560,7 +562,7 @@ export class ServiceBusService extends EventEmitter {
         logger.error(`Error stopping receiver for queue ${queueName}:`, error);
       }
     }
-    
+
     this.receivers.clear();
   }
 
@@ -569,7 +571,7 @@ export class ServiceBusService extends EventEmitter {
    */
   async close(): Promise<void> {
     await this.stopProcessing();
-    
+
     if (this.client) {
       await this.client.close();
       logger.info('Service Bus connection closed');

@@ -1,7 +1,8 @@
 import mongoose, { Document, Schema } from 'mongoose';
+
+import { Logger } from '../../core/logging/logger';
 import { getSignalRService } from '../azure/SignalRService';
 import { getRealtimeEventService } from '../realtime/RealtimeEventService';
-import { Logger } from '../../core/logging/logger';
 
 const logger = new Logger('ChatService');
 
@@ -12,11 +13,11 @@ export interface IChatMessage extends Document {
   message: string;
   messageType: 'text' | 'image' | 'file' | 'system';
   status: 'sent' | 'delivered' | 'read';
-  
+
   // Context information
   orderId?: mongoose.Types.ObjectId;
   rfqId?: mongoose.Types.ObjectId;
-  
+
   // Metadata
   attachments?: Array<{
     name: string;
@@ -24,17 +25,17 @@ export interface IChatMessage extends Document {
     type: string;
     size: number;
   }>;
-  
+
   // Timestamps
   sentAt: Date;
   deliveredAt?: Date;
   readAt?: Date;
-  
+
   // For editing and replies
   editedAt?: Date;
   originalMessage?: string;
   replyToMessageId?: mongoose.Types.ObjectId;
-  
+
   // Soft delete
   isDeleted: boolean;
   deletedAt?: Date;
@@ -43,27 +44,27 @@ export interface IChatMessage extends Document {
 export interface IChatConversation extends Document {
   participants: mongoose.Types.ObjectId[];
   tenantId: string;
-  
+
   // Conversation metadata
   title?: string;
   type: 'direct' | 'group' | 'order' | 'rfq';
-  
+
   // Context
   orderId?: mongoose.Types.ObjectId;
   rfqId?: mongoose.Types.ObjectId;
-  
+
   // Last message info
   lastMessageId?: mongoose.Types.ObjectId;
   lastMessageAt?: Date;
-  
+
   // Settings
   isArchived: boolean;
   isMuted: boolean;
-  
+
   // Timestamps
   createdAt: Date;
   updatedAt: Date;
-  
+
   // Methods
   addParticipant(userId: string): Promise<void>;
   removeParticipant(userId: string): Promise<void>;
@@ -102,7 +103,7 @@ const chatMessageSchema = new Schema<IChatMessage>({
     enum: ['sent', 'delivered', 'read'],
     default: 'sent'
   },
-  
+
   // Context
   orderId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -112,7 +113,7 @@ const chatMessageSchema = new Schema<IChatMessage>({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'RFQ'
   },
-  
+
   // Metadata
   attachments: [{
     name: String,
@@ -120,7 +121,7 @@ const chatMessageSchema = new Schema<IChatMessage>({
     type: String,
     size: Number
   }],
-  
+
   // Timestamps
   sentAt: {
     type: Date,
@@ -128,7 +129,7 @@ const chatMessageSchema = new Schema<IChatMessage>({
   },
   deliveredAt: Date,
   readAt: Date,
-  
+
   // For editing and replies
   editedAt: Date,
   originalMessage: String,
@@ -136,7 +137,7 @@ const chatMessageSchema = new Schema<IChatMessage>({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'ChatMessage'
   },
-  
+
   // Soft delete
   isDeleted: {
     type: Boolean,
@@ -165,7 +166,7 @@ const chatConversationSchema = new Schema<IChatConversation>({
     required: true,
     index: true
   },
-  
+
   // Conversation metadata
   title: String,
   type: {
@@ -173,7 +174,7 @@ const chatConversationSchema = new Schema<IChatConversation>({
     enum: ['direct', 'group', 'order', 'rfq'],
     default: 'direct'
   },
-  
+
   // Context
   orderId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -183,14 +184,14 @@ const chatConversationSchema = new Schema<IChatConversation>({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'RFQ'
   },
-  
+
   // Last message info
   lastMessageId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'ChatMessage'
   },
   lastMessageAt: Date,
-  
+
   // Settings
   isArchived: {
     type: Boolean,
@@ -225,7 +226,7 @@ chatConversationSchema.methods.removeParticipant = async function(userId: string
 
 chatConversationSchema.methods.getMessages = async function(page: number = 1, limit: number = 50): Promise<IChatMessage[]> {
   const skip = (page - 1) * limit;
-  
+
   return await ChatMessage.find({
     $or: [
       { fromUserId: { $in: this.participants } },
@@ -234,11 +235,11 @@ chatConversationSchema.methods.getMessages = async function(page: number = 1, li
     tenantId: this.tenantId,
     isDeleted: false
   })
-  .populate('fromUserId', 'name email')
-  .populate('toUserId', 'name email')
-  .sort({ sentAt: -1 })
-  .skip(skip)
-  .limit(limit);
+    .populate('fromUserId', 'name email')
+    .populate('toUserId', 'name email')
+    .sort({ sentAt: -1 })
+    .skip(skip)
+    .limit(limit);
 };
 
 chatConversationSchema.methods.markAsRead = async function(userId: string): Promise<void> {
@@ -256,8 +257,8 @@ export const ChatMessage = mongoose.model<IChatMessage>('ChatMessage', chatMessa
 export const ChatConversation = mongoose.model<IChatConversation>('ChatConversation', chatConversationSchema);
 
 export class ChatService {
-  private signalRService = getSignalRService();
-  private realtimeEventService = getRealtimeEventService();
+  private readonly signalRService = getSignalRService();
+  private readonly realtimeEventService = getRealtimeEventService();
 
   /**
    * Send a chat message
@@ -364,11 +365,11 @@ export class ChatService {
         tenantId,
         isDeleted: false
       })
-      .populate('fromUserId', 'name email')
-      .populate('toUserId', 'name email')
-      .sort({ sentAt: -1 })
-      .skip(skip)
-      .limit(limit);
+        .populate('fromUserId', 'name email')
+        .populate('toUserId', 'name email')
+        .sort({ sentAt: -1 })
+        .skip(skip)
+        .limit(limit);
 
       const totalMessages = await ChatMessage.countDocuments({
         $or: [
@@ -404,17 +405,17 @@ export class ChatService {
   }> {
     try {
       const skip = (page - 1) * limit;
-      
+
       const conversations = await ChatConversation.find({
         participants: userId,
         tenantId,
         isArchived: false
       })
-      .populate('participants', 'name email')
-      .populate('lastMessageId')
-      .sort({ lastMessageAt: -1 })
-      .skip(skip)
-      .limit(limit);
+        .populate('participants', 'name email')
+        .populate('lastMessageId')
+        .sort({ lastMessageAt: -1 })
+        .skip(skip)
+        .limit(limit);
 
       const totalConversations = await ChatConversation.countDocuments({
         participants: userId,
@@ -439,7 +440,7 @@ export class ChatService {
     try {
       await ChatMessage.findOneAndUpdate(
         { _id: messageId, toUserId: userId, status: { $ne: 'read' } },
-        { 
+        {
           status: 'read',
           readAt: new Date()
         }
@@ -459,7 +460,7 @@ export class ChatService {
     try {
       await ChatMessage.findOneAndUpdate(
         { _id: messageId, fromUserId: userId },
-        { 
+        {
           isDeleted: true,
           deletedAt: new Date()
         }
@@ -487,17 +488,17 @@ export class ChatService {
   }> {
     try {
       const filter: any = { tenantId, isDeleted: false };
-      
+
       if (orderId) {
         filter.orderId = orderId;
       }
-      
+
       if (rfqId) {
         filter.rfqId = rfqId;
       }
 
       const skip = (page - 1) * limit;
-      
+
       const messages = await ChatMessage.find(filter)
         .populate('fromUserId', 'name email')
         .populate('toUserId', 'name email')

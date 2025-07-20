@@ -1,16 +1,18 @@
 import { Router } from 'express';
+
+import { apiVersionMiddleware } from '../../../middleware/apiVersion';
+
 import authRoutes from './auth';
-import userRoutes from './users';
-import supplierRoutes from './suppliers';
-import rfqRoutes from './rfqs';
-import orderRoutes from './orders';
-import publicRoutes from './public';
-import monitoringRoutes from './monitoring';
 import imageRoutes from './images';
-import rateLimitingRoutes from './rate-limiting';
 import jobRoutes from './jobs';
 import memoryRoutes from './memory';
-import { apiVersionMiddleware } from '../../../middleware/apiVersion';
+import monitoringRoutes from './monitoring';
+import orderRoutes from './orders';
+import publicRoutes from './public';
+import rateLimitingRoutes from './rate-limiting';
+import rfqRoutes from './rfqs';
+import supplierRoutes from './suppliers';
+import userRoutes from './users';
 
 const router = Router();
 

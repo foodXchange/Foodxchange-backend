@@ -1,5 +1,6 @@
-import { Logger } from '../../core/logging/logger';
 import Redis from 'ioredis';
+
+import { Logger } from '../../core/logging/logger';
 
 const logger = new Logger('CacheService');
 
@@ -19,9 +20,9 @@ export interface ICacheStats {
 }
 
 export class CacheService {
-  private redis: Redis;
-  private defaultTTL: number = 3600; // 1 hour
-  private stats = {
+  private readonly redis: Redis;
+  private readonly defaultTTL: number = 3600; // 1 hour
+  private readonly stats = {
     hits: 0,
     misses: 0
   };
@@ -59,17 +60,17 @@ export class CacheService {
     try {
       const fullKey = this.buildKey(key, options.namespace);
       const value = await this.redis.get(fullKey);
-      
+
       if (value !== null) {
         this.stats.hits++;
         const parsed = JSON.parse(value);
         logger.debug('Cache hit', { key: fullKey });
         return parsed;
-      } else {
-        this.stats.misses++;
-        logger.debug('Cache miss', { key: fullKey });
-        return null;
       }
+      this.stats.misses++;
+      logger.debug('Cache miss', { key: fullKey });
+      return null;
+
     } catch (error) {
       logger.error('Cache get error:', error);
       this.stats.misses++;
@@ -85,14 +86,14 @@ export class CacheService {
       const fullKey = this.buildKey(key, options.namespace);
       const ttl = options.ttl || this.defaultTTL;
       const serialized = JSON.stringify(value);
-      
+
       await this.redis.setex(fullKey, ttl, serialized);
-      
+
       // Add tags if provided
       if (options.tags && options.tags.length > 0) {
         await this.addTags(fullKey, options.tags);
       }
-      
+
       logger.debug('Cache set', { key: fullKey, ttl });
     } catch (error) {
       logger.error('Cache set error:', error);
@@ -133,15 +134,15 @@ export class CacheService {
     try {
       const fullKeys = keys.map(key => this.buildKey(key, namespace));
       const values = await this.redis.mget(...fullKeys);
-      
+
       return values.map(value => {
         if (value !== null) {
           this.stats.hits++;
           return JSON.parse(value);
-        } else {
-          this.stats.misses++;
-          return null;
         }
+        this.stats.misses++;
+        return null;
+
       });
     } catch (error) {
       logger.error('Cache mget error:', error);
@@ -156,13 +157,13 @@ export class CacheService {
     try {
       const pipeline = this.redis.pipeline();
       const ttl = options.ttl || this.defaultTTL;
-      
+
       keyValuePairs.forEach(({ key, value }) => {
         const fullKey = this.buildKey(key, options.namespace);
         const serialized = JSON.stringify(value);
         pipeline.setex(fullKey, ttl, serialized);
       });
-      
+
       await pipeline.exec();
       logger.debug('Cache mset', { count: keyValuePairs.length, ttl });
     } catch (error) {
@@ -209,7 +210,7 @@ export class CacheService {
       if (cached !== null) {
         return cached;
       }
-      
+
       const value = await factory();
       await this.set(key, value, options);
       return value;
@@ -226,7 +227,7 @@ export class CacheService {
     try {
       const fullPattern = this.buildKey(pattern, namespace);
       const keys = await this.redis.keys(fullPattern);
-      
+
       if (keys.length > 0) {
         await this.redis.del(...keys);
         logger.debug('Cache invalidate pattern', { pattern: fullPattern, count: keys.length });
@@ -242,17 +243,17 @@ export class CacheService {
   async invalidateByTags(tags: string[]): Promise<void> {
     try {
       const pipeline = this.redis.pipeline();
-      
+
       for (const tag of tags) {
         const tagKey = `tag:${tag}`;
         const keys = await this.redis.smembers(tagKey);
-        
+
         if (keys.length > 0) {
           pipeline.del(...keys);
           pipeline.del(tagKey);
         }
       }
-      
+
       await pipeline.exec();
       logger.debug('Cache invalidate by tags', { tags });
     } catch (error) {
@@ -287,19 +288,19 @@ export class CacheService {
     try {
       const info = await this.redis.info('memory');
       const keyspaceInfo = await this.redis.info('keyspace');
-      
+
       // Parse memory usage
       const memoryMatch = info.match(/used_memory:(\d+)/);
       const memoryUsage = memoryMatch ? parseInt(memoryMatch[1]) : 0;
-      
+
       // Parse total keys
       const keysMatch = keyspaceInfo.match(/keys=(\d+)/);
       const totalKeys = keysMatch ? parseInt(keysMatch[1]) : 0;
-      
-      const hitRate = this.stats.hits + this.stats.misses > 0 
-        ? (this.stats.hits / (this.stats.hits + this.stats.misses)) * 100 
+
+      const hitRate = this.stats.hits + this.stats.misses > 0
+        ? (this.stats.hits / (this.stats.hits + this.stats.misses)) * 100
         : 0;
-      
+
       return {
         hits: this.stats.hits,
         misses: this.stats.misses,
@@ -354,12 +355,12 @@ export class CacheService {
   private async addTags(key: string, tags: string[]): Promise<void> {
     try {
       const pipeline = this.redis.pipeline();
-      
+
       tags.forEach(tag => {
         const tagKey = `tag:${tag}`;
         pipeline.sadd(tagKey, key);
       });
-      
+
       await pipeline.exec();
     } catch (error) {
       logger.error('Add tags error:', error);
@@ -387,8 +388,8 @@ export class ApplicationCacheService extends CacheService {
    * Cache product data
    */
   async cacheProduct(productId: string, productData: any, ttl: number = 1800): Promise<void> {
-    await this.set(`product:${productId}`, productData, { 
-      ttl, 
+    await this.set(`product:${productId}`, productData, {
+      ttl,
       namespace: 'products',
       tags: ['products', `category:${productData.category}`]
     });
@@ -405,8 +406,8 @@ export class ApplicationCacheService extends CacheService {
    * Cache order data
    */
   async cacheOrder(orderId: string, orderData: any, ttl: number = 900): Promise<void> {
-    await this.set(`order:${orderId}`, orderData, { 
-      ttl, 
+    await this.set(`order:${orderId}`, orderData, {
+      ttl,
       namespace: 'orders',
       tags: ['orders', `status:${orderData.status}`]
     });
@@ -437,8 +438,8 @@ export class ApplicationCacheService extends CacheService {
    * Cache search results
    */
   async cacheSearchResults(searchKey: string, results: any, ttl: number = 600): Promise<void> {
-    await this.set(`search:${searchKey}`, results, { 
-      ttl, 
+    await this.set(`search:${searchKey}`, results, {
+      ttl,
       namespace: 'search',
       tags: ['search']
     });
@@ -455,8 +456,8 @@ export class ApplicationCacheService extends CacheService {
    * Cache session data
    */
   async cacheSession(sessionId: string, sessionData: any, ttl: number = 86400): Promise<void> {
-    await this.set(`session:${sessionId}`, sessionData, { 
-      ttl, 
+    await this.set(`session:${sessionId}`, sessionData, {
+      ttl,
       namespace: 'sessions',
       tags: ['sessions']
     });
@@ -517,10 +518,10 @@ export class ApplicationCacheService extends CacheService {
   async warmUpCache(): Promise<void> {
     try {
       logger.info('Starting cache warm-up...');
-      
+
       // This would contain logic to pre-populate cache with frequently accessed data
       // For example: top products, active users, etc.
-      
+
       logger.info('Cache warm-up completed');
     } catch (error) {
       logger.error('Cache warm-up error:', error);

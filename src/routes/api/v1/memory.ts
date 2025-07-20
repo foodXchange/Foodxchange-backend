@@ -1,9 +1,10 @@
 import { Router } from 'express';
+
+import { Logger } from '../../../core/logging/logger';
+import { asyncHandler } from '../../../middleware/asyncHandler';
 import { authenticate } from '../../../middleware/auth';
 import { authorize } from '../../../middleware/authorize';
-import { asyncHandler } from '../../../middleware/asyncHandler';
 import { memoryOptimizationService } from '../../../services/optimization/MemoryOptimizationService';
-import { Logger } from '../../../core/logging/logger';
 
 const router = Router();
 const logger = new Logger('MemoryRoutes');
@@ -20,7 +21,7 @@ router.use(authorize('admin'));
 router.get('/stats',
   asyncHandler(async (req, res) => {
     const stats = memoryOptimizationService.getStatistics();
-    
+
     res.json({
       success: true,
       data: stats
@@ -36,7 +37,7 @@ router.get('/stats',
 router.get('/metrics',
   asyncHandler(async (req, res) => {
     const metrics = memoryOptimizationService.getCurrentMetrics();
-    
+
     res.json({
       success: true,
       data: metrics
@@ -52,7 +53,7 @@ router.get('/metrics',
 router.get('/report',
   asyncHandler(async (req, res) => {
     const report = await memoryOptimizationService.createMemoryReport();
-    
+
     res.json({
       success: true,
       data: report
@@ -73,13 +74,13 @@ router.post('/gc',
         error: 'Garbage collection not available. Run with --expose-gc flag'
       });
     }
-    
+
     memoryOptimizationService.performGarbageCollection();
-    
+
     logger.info('Manual garbage collection triggered', {
-      adminId: (req as any).user.id
+      adminId: (req).user.id
     });
-    
+
     res.json({
       success: true,
       message: 'Garbage collection completed',
@@ -96,7 +97,7 @@ router.post('/gc',
 router.get('/leaks',
   asyncHandler(async (req, res) => {
     const leakDetection = await memoryOptimizationService.detectMemoryLeaks();
-    
+
     res.json({
       success: true,
       data: leakDetection
@@ -112,7 +113,7 @@ router.get('/leaks',
 router.get('/recommendations',
   asyncHandler(async (req, res) => {
     const recommendations = memoryOptimizationService.getOptimizationRecommendations();
-    
+
     res.json({
       success: true,
       data: {
@@ -131,11 +132,11 @@ router.get('/recommendations',
 router.post('/optimize',
   asyncHandler(async (req, res) => {
     memoryOptimizationService.applyOptimizations();
-    
+
     logger.info('Memory optimizations applied', {
-      adminId: (req as any).user.id
+      adminId: (req).user.id
     });
-    
+
     res.json({
       success: true,
       message: 'Memory optimizations applied',
@@ -154,7 +155,7 @@ router.get('/heap',
     const v8 = require('v8');
     const heapStats = v8.getHeapStatistics();
     const heapSpaces = v8.getHeapSpaceStatistics();
-    
+
     res.json({
       success: true,
       data: {
@@ -182,7 +183,7 @@ router.get('/process',
   asyncHandler(async (req, res) => {
     const memUsage = process.memoryUsage();
     const cpuUsage = process.cpuUsage();
-    
+
     res.json({
       success: true,
       data: {
@@ -194,8 +195,8 @@ router.get('/process',
           arrayBuffers: formatBytes(memUsage.arrayBuffers || 0)
         },
         cpu: {
-          user: (cpuUsage.user / 1000000).toFixed(2) + 's',
-          system: (cpuUsage.system / 1000000).toFixed(2) + 's'
+          user: `${(cpuUsage.user / 1000000).toFixed(2)  }s`,
+          system: `${(cpuUsage.system / 1000000).toFixed(2)  }s`
         },
         process: {
           pid: process.pid,
@@ -216,15 +217,15 @@ router.get('/process',
  * @access  Admin
  */
 router.ws('/stream', (ws, req) => {
-  const adminId = (req as any).user?.id;
-  
+  const adminId = (req).user?.id;
+
   if (!adminId) {
     ws.close(1008, 'Unauthorized');
     return;
   }
-  
+
   logger.info('WebSocket connection for memory monitoring', { adminId });
-  
+
   // Send current metrics immediately
   const currentMetrics = memoryOptimizationService.getCurrentMetrics();
   if (currentMetrics) {
@@ -233,7 +234,7 @@ router.ws('/stream', (ws, req) => {
       data: currentMetrics
     }));
   }
-  
+
   // Subscribe to metrics updates
   const metricsHandler = (metrics: any) => {
     if (ws.readyState === ws.OPEN) {
@@ -243,7 +244,7 @@ router.ws('/stream', (ws, req) => {
       }));
     }
   };
-  
+
   const gcHandler = (data: any) => {
     if (ws.readyState === ws.OPEN) {
       ws.send(JSON.stringify({
@@ -252,7 +253,7 @@ router.ws('/stream', (ws, req) => {
       }));
     }
   };
-  
+
   const warningHandler = (metrics: any) => {
     if (ws.readyState === ws.OPEN) {
       ws.send(JSON.stringify({
@@ -261,7 +262,7 @@ router.ws('/stream', (ws, req) => {
       }));
     }
   };
-  
+
   const criticalHandler = (metrics: any) => {
     if (ws.readyState === ws.OPEN) {
       ws.send(JSON.stringify({
@@ -270,20 +271,20 @@ router.ws('/stream', (ws, req) => {
       }));
     }
   };
-  
+
   // Register handlers
   memoryOptimizationService.on('metrics', metricsHandler);
   memoryOptimizationService.on('gc', gcHandler);
   memoryOptimizationService.on('warning', warningHandler);
   memoryOptimizationService.on('critical', criticalHandler);
-  
+
   // Ping to keep connection alive
   const pingInterval = setInterval(() => {
     if (ws.readyState === ws.OPEN) {
       ws.ping();
     }
   }, 30000);
-  
+
   // Cleanup on disconnect
   ws.on('close', () => {
     clearInterval(pingInterval);
@@ -300,13 +301,13 @@ function formatBytes(bytes: number): string {
   const units = ['B', 'KB', 'MB', 'GB'];
   let size = Math.abs(bytes);
   let unitIndex = 0;
-  
+
   while (size >= 1024 && unitIndex < units.length - 1) {
     size /= 1024;
     unitIndex++;
   }
-  
-  return size.toFixed(2) + ' ' + units[unitIndex];
+
+  return `${size.toFixed(2)  } ${  units[unitIndex]}`;
 }
 
 export default router;

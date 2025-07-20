@@ -1,10 +1,11 @@
 import * as dotenv from 'dotenv';
-import { documentIntelligenceService } from '../services/azure/documentIntelligence.service';
+
+import { telemetryClient } from '../config/applicationInsights';
 import { computerVisionService } from '../services/azure/computerVision.service';
+import { documentIntelligenceService } from '../services/azure/documentIntelligence.service';
 import { openAIService } from '../services/azure/openAI.service';
 import { serviceBusService } from '../services/azure/serviceBus.service';
 import { storageService } from '../services/azure/storage.service';
-import { telemetryClient } from '../config/applicationInsights';
 
 // Load environment variables
 dotenv.config();
@@ -27,7 +28,7 @@ async function initializeAzureServices() {
     if (telemetryClient) {
       telemetryClient.trackEvent({
         name: 'AzureServices.InitializationTest',
-        properties: { 
+        properties: {
           timestamp: new Date().toISOString(),
           source: 'initialization-script'
         }
@@ -126,7 +127,7 @@ async function initializeAzureServices() {
   console.log('\n📋 Summary:');
   const successCount = Object.values(results).filter(Boolean).length;
   const totalCount = Object.keys(results).length;
-  
+
   Object.entries(results).forEach(([service, success]) => {
     console.log(`${success ? '✅' : '❌'} ${service}`);
   });
@@ -152,7 +153,7 @@ async function testAzureAPIs() {
       console.log('🖼️  Testing Computer Vision API...');
       // Using a sample food image URL for testing
       const testImageUrl = 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=300';
-      
+
       const analysis = await computerVisionService.analyzeProductImage(testImageUrl);
       console.log('✅ Computer Vision API - Working!');
       console.log(`   Description: ${analysis.description}`);
@@ -167,7 +168,7 @@ async function testAzureAPIs() {
   if (openAIService.getHealthStatus().healthy) {
     try {
       console.log('\n🤖 Testing Azure OpenAI API...');
-      
+
       const sampleData = {
         buyerHistory: {
           totalSamples: 5,
@@ -213,7 +214,7 @@ if (require.main === module) {
       if (results.computerVision || results.openAI) {
         await testAzureAPIs();
       }
-      
+
       const successCount = Object.values(results).filter(Boolean).length;
       process.exit(successCount > 0 ? 0 : 1);
     })

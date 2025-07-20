@@ -1,5 +1,8 @@
 const express = require('express');
+
 const router = express.Router();
+const { body, param, query, validationResult } = require('express-validator');
+
 const {
   agentOnboarding,
   getAgentProfile,
@@ -12,7 +15,6 @@ const {
   getAgentCommissions
 } = require('../controllers/agentController');
 const { protect, authorize } = require('../middleware/auth');
-const { body, param, query, validationResult } = require('express-validator');
 
 // Validation middleware
 const validate = (req, res, next) => {
@@ -24,7 +26,7 @@ const validate = (req, res, next) => {
 };
 
 // Agent onboarding
-router.post('/onboard', 
+router.post('/onboard',
   protect,
   authorize('agent'),
   [
@@ -36,14 +38,14 @@ router.post('/onboard',
 );
 
 // Get agent profile
-router.get('/profile', 
+router.get('/profile',
   protect,
   authorize('agent'),
   getAgentProfile
 );
 
 // Update agent profile
-router.put('/profile', 
+router.put('/profile',
   protect,
   authorize('agent'),
   [
@@ -55,7 +57,7 @@ router.put('/profile',
 );
 
 // Verify agent (admin only)
-router.post('/verify', 
+router.post('/verify',
   protect,
   authorize('admin'),
   [
@@ -68,7 +70,7 @@ router.post('/verify',
 );
 
 // Get agent dashboard
-router.get('/dashboard', 
+router.get('/dashboard',
   protect,
   authorize('agent'),
   [
@@ -79,7 +81,7 @@ router.get('/dashboard',
 );
 
 // Get available leads
-router.get('/leads', 
+router.get('/leads',
   protect,
   authorize('agent'),
   [
@@ -94,7 +96,7 @@ router.get('/leads',
 );
 
 // Accept a lead
-router.post('/leads/:leadId/accept', 
+router.post('/leads/:leadId/accept',
   protect,
   authorize('agent'),
   [
@@ -105,7 +107,7 @@ router.post('/leads/:leadId/accept',
 );
 
 // Decline a lead
-router.post('/leads/:leadId/decline', 
+router.post('/leads/:leadId/decline',
   protect,
   authorize('agent'),
   [
@@ -117,7 +119,7 @@ router.post('/leads/:leadId/decline',
 );
 
 // Get agent commissions
-router.get('/commissions', 
+router.get('/commissions',
   protect,
   authorize('agent'),
   [

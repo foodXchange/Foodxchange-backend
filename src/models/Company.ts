@@ -21,7 +21,7 @@ export interface ICompany extends Document {
     phone?: string;
     website?: string;
   };
-  
+
   // Multi-tenant subscription fields
   domain?: string;
   subscriptionTier: 'basic' | 'standard' | 'premium' | 'enterprise';
@@ -32,14 +32,14 @@ export interface ICompany extends Document {
     maxOrders: number;
     apiCallsPerMinute: number;
   };
-  
+
   // Subscription management
   subscriptionId?: string;
   subscriptionStatus: 'active' | 'inactive' | 'suspended' | 'cancelled';
   subscriptionStartDate?: Date;
   subscriptionEndDate?: Date;
   billingCycle: 'monthly' | 'yearly';
-  
+
   // Tenant settings
   tenantSettings: {
     customBranding?: boolean;
@@ -48,7 +48,7 @@ export interface ICompany extends Document {
     apiAccessEnabled?: boolean;
     webhookEndpoints?: string[];
   };
-  
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -137,7 +137,7 @@ const companySchema = new Schema<ICompany>({
     count: { type: Number, default: 0 }
   },
   isActive: { type: Boolean, default: true },
-  
+
   // Multi-tenant subscription fields
   domain: String,
   subscriptionTier: {
@@ -155,7 +155,7 @@ const companySchema = new Schema<ICompany>({
     maxOrders: { type: Number, default: 50 },
     apiCallsPerMinute: { type: Number, default: 100 }
   },
-  
+
   // Subscription management
   subscriptionId: String,
   subscriptionStatus: {
@@ -170,7 +170,7 @@ const companySchema = new Schema<ICompany>({
     enum: ['monthly', 'yearly'],
     default: 'monthly'
   },
-  
+
   // Tenant settings
   tenantSettings: {
     customBranding: { type: Boolean, default: false },

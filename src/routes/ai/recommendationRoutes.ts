@@ -1,10 +1,11 @@
 import express from 'express';
+
 import { RecommendationController } from '../../controllers/RecommendationController';
-import { requireAuth } from '../../middleware/auth';
-import { enforceTenantIsolation } from '../../middleware/tenantIsolation';
-import { createCustomRateLimiter } from '../../middleware/rateLimiter';
-import { authorize } from '../../middleware/authorize';
 import { asyncHandler } from '../../core/errors';
+import { requireAuth } from '../../middleware/auth';
+import { authorize } from '../../middleware/authorize';
+import { createCustomRateLimiter } from '../../middleware/rateLimiter';
+import { enforceTenantIsolation } from '../../middleware/tenantIsolation';
 
 const router = express.Router();
 const recommendationController = new RecommendationController();
@@ -22,7 +23,7 @@ router.use(aiRateLimiter);
  * @desc Get personalized product recommendations
  * @access Private
  */
-router.get('/recommendations', 
+router.get('/recommendations',
   authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
   asyncHandler(recommendationController.getPersonalizedRecommendations.bind(recommendationController))
 );
@@ -32,7 +33,7 @@ router.get('/recommendations',
  * @desc Advanced search with AI-powered relevance scoring
  * @access Private
  */
-router.get('/search', 
+router.get('/search',
   authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
   asyncHandler(recommendationController.advancedSearch.bind(recommendationController))
 );
@@ -42,7 +43,7 @@ router.get('/search',
  * @desc Get search suggestions for autocomplete
  * @access Private
  */
-router.get('/search/suggestions', 
+router.get('/search/suggestions',
   authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
   asyncHandler(recommendationController.getSearchSuggestions.bind(recommendationController))
 );
@@ -52,7 +53,7 @@ router.get('/search/suggestions',
  * @desc Get recommendations by category
  * @access Private
  */
-router.get('/recommendations/category/:category', 
+router.get('/recommendations/category/:category',
   authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
   asyncHandler(recommendationController.getRecommendationsByCategory.bind(recommendationController))
 );
@@ -62,7 +63,7 @@ router.get('/recommendations/category/:category',
  * @desc Get trending products
  * @access Private
  */
-router.get('/recommendations/trending', 
+router.get('/recommendations/trending',
   authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
   asyncHandler(recommendationController.getTrendingProducts.bind(recommendationController))
 );
@@ -72,7 +73,7 @@ router.get('/recommendations/trending',
  * @desc Get similar products
  * @access Private
  */
-router.get('/recommendations/similar/:productId', 
+router.get('/recommendations/similar/:productId',
   authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
   asyncHandler(recommendationController.getSimilarProducts.bind(recommendationController))
 );
@@ -82,7 +83,7 @@ router.get('/recommendations/similar/:productId',
  * @desc Get recommendations for specific RFQ
  * @access Private
  */
-router.get('/recommendations/rfq/:rfqId', 
+router.get('/recommendations/rfq/:rfqId',
   authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
   asyncHandler(recommendationController.getRecommendationsForRFQ.bind(recommendationController))
 );
@@ -92,7 +93,7 @@ router.get('/recommendations/rfq/:rfqId',
  * @desc Get seasonal recommendations
  * @access Private
  */
-router.get('/recommendations/seasonal', 
+router.get('/recommendations/seasonal',
   authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
   asyncHandler(recommendationController.getSeasonalRecommendations.bind(recommendationController))
 );
@@ -102,7 +103,7 @@ router.get('/recommendations/seasonal',
  * @desc Get location-based recommendations
  * @access Private
  */
-router.get('/recommendations/location', 
+router.get('/recommendations/location',
   authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
   asyncHandler(recommendationController.getLocationBasedRecommendations.bind(recommendationController))
 );
@@ -112,7 +113,7 @@ router.get('/recommendations/location',
  * @desc Track recommendation interaction
  * @access Private
  */
-router.post('/recommendations/track', 
+router.post('/recommendations/track',
   authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
   asyncHandler(recommendationController.trackRecommendationInteraction.bind(recommendationController))
 );

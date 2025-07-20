@@ -1,9 +1,12 @@
-﻿const Seller = require('../models/seller/Seller');
-const Product = require('../models/seller/Product');
+﻿const path = require('path');
+
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
-const path = require('path');
+
+const Product = require('../models/seller/Product');
+const Seller = require('../models/seller/Seller');
+
 
 // Configure file upload
 const storage = multer.diskStorage({
@@ -17,24 +20,24 @@ const storage = multer.diskStorage({
     cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    const uniqueSuffix = `${Date.now()  }-${  Math.round(Math.random() * 1E9)}`;
+    cb(null, `${file.fieldname  }-${  uniqueSuffix  }${path.extname(file.originalname)}`);
   }
 });
 
-const upload = multer({ 
+const upload = multer({
   storage,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|pdf|doc|docx/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
-    
+
     if (mimetype && extname) {
       return cb(null, true);
-    } else {
-      cb(new Error('Invalid file type'));
     }
+    cb(new Error('Invalid file type'));
+
   }
 });
 
@@ -68,13 +71,13 @@ class SellerController {
 
       // Generate unique auto number
       const lastSeller = await Seller.findOne().sort({ autoNumber: -1 });
-      const nextNumber = lastSeller 
+      const nextNumber = lastSeller
         ? (parseInt(lastSeller.autoNumber) + 1).toString().padStart(6, '0')
         : '100001';
 
       // Parse categories if sent as JSON string
-      const categories = typeof productCategories === 'string' 
-        ? JSON.parse(productCategories) 
+      const categories = typeof productCategories === 'string'
+        ? JSON.parse(productCategories)
         : productCategories;
 
       // Create new seller
@@ -155,8 +158,8 @@ class SellerController {
       const { email, password } = req.body;
 
       // Find seller
-      const seller = await Seller.findOne({ 
-        $or: [{ email }, { companyEmail: email }] 
+      const seller = await Seller.findOne({
+        $or: [{ email }, { companyEmail: email }]
       });
 
       if (!seller) {
@@ -189,10 +192,10 @@ class SellerController {
 
       // Generate JWT token
       const token = jwt.sign(
-        { 
-          sellerId: seller._id, 
+        {
+          sellerId: seller._id,
           email: seller.email,
-          companyName: seller.companyName 
+          companyName: seller.companyName
         },
         process.env.JWT_SECRET || 'your-secret-key',
         { expiresIn: '7d' }
@@ -224,8 +227,8 @@ class SellerController {
   // Get seller dashboard data
   async getDashboard(req, res) {
     try {
-      const sellerId = req.seller.sellerId;
-      
+      const {sellerId} = req.seller;
+
       const seller = await Seller.findById(sellerId)
         .populate('products', 'productName status')
         .populate('proposals', 'status createdAt')
@@ -243,26 +246,26 @@ class SellerController {
         categories: { $in: seller.categories },
         status: { $in: ['active', 'new'] }
       })
-      .populate('buyer', 'companyName country')
-      .sort({ createdAt: -1 })
-      .limit(5);
+        .populate('buyer', 'companyName country')
+        .sort({ createdAt: -1 })
+        .limit(5);
 
       // Get recent orders
-      const recentOrders = await Order.find({ 
-        supplier: sellerId 
+      const recentOrders = await Order.find({
+        supplier: sellerId
       })
-      .populate('buyer', 'companyName')
-      .populate('items.product', 'productName')
-      .sort({ createdAt: -1 })
-      .limit(5);
+        .populate('buyer', 'companyName')
+        .populate('items.product', 'productName')
+        .sort({ createdAt: -1 })
+        .limit(5);
 
       // Get notifications
       const notifications = await Notification.find({
         recipient: sellerId,
         read: false
       })
-      .sort({ createdAt: -1 })
-      .limit(10);
+        .sort({ createdAt: -1 })
+        .limit(10);
 
       // Calculate stats
       const stats = {
@@ -362,7 +365,7 @@ class SellerController {
   // Update seller profile
   async updateProfile(req, res) {
     try {
-      const sellerId = req.seller.sellerId;
+      const {sellerId} = req.seller;
       const updates = req.body;
 
       // Remove sensitive fields
@@ -372,7 +375,7 @@ class SellerController {
 
       const seller = await Seller.findByIdAndUpdate(
         sellerId,
-        { 
+        {
           ...updates,
           updatedAt: new Date()
         },
@@ -405,7 +408,7 @@ class SellerController {
   // Upload documents
   async uploadDocuments(req, res) {
     try {
-      const sellerId = req.seller.sellerId;
+      const {sellerId} = req.seller;
       const { documentType } = req.body;
 
       if (!req.files || req.files.length === 0) {
@@ -452,23 +455,23 @@ class SellerController {
 // Helper function for time ago
 function getTimeAgo(date) {
   const seconds = Math.floor((new Date() - date) / 1000);
-  
+
   let interval = seconds / 31536000;
-  if (interval > 1) return Math.floor(interval) + " years ago";
-  
+  if (interval > 1) return `${Math.floor(interval)  } years ago`;
+
   interval = seconds / 2592000;
-  if (interval > 1) return Math.floor(interval) + " months ago";
-  
+  if (interval > 1) return `${Math.floor(interval)  } months ago`;
+
   interval = seconds / 86400;
-  if (interval > 1) return Math.floor(interval) + " days ago";
-  
+  if (interval > 1) return `${Math.floor(interval)  } days ago`;
+
   interval = seconds / 3600;
-  if (interval > 1) return Math.floor(interval) + " hours ago";
-  
+  if (interval > 1) return `${Math.floor(interval)  } hours ago`;
+
   interval = seconds / 60;
-  if (interval > 1) return Math.floor(interval) + " minutes ago";
-  
-  return Math.floor(seconds) + " seconds ago";
+  if (interval > 1) return `${Math.floor(interval)  } minutes ago`;
+
+  return `${Math.floor(seconds)  } seconds ago`;
 }
 
 module.exports = new SellerController();

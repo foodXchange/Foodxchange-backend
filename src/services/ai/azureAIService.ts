@@ -1,6 +1,6 @@
+const { FormRecognizerClient } = require('@azure/ai-form-recognizer');
 const { TextAnalyticsClient, AzureKeyCredential } = require('@azure/ai-text-analytics');
 const { ComputerVisionClient } = require('@azure/cognitiveservices-computervision');
-const { FormRecognizerClient } = require('@azure/ai-form-recognizer');
 const { SearchClient } = require('@azure/search-documents');
 
 class AzureAIService {
@@ -49,7 +49,7 @@ class AzureAIService {
 
       this.initialized = true;
       console.log('✅ Azure AI Services initialized successfully');
-      
+
     } catch (error) {
       console.error('❌ Failed to initialize Azure AI services:', error);
       throw error;

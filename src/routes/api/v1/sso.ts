@@ -1,7 +1,8 @@
 import { Router } from 'express';
+
 import { SSOController } from '../../../controllers/sso/SSOController';
-import { responseFormatterMiddleware } from '../../../middleware/responseFormatter';
 import { asyncHandler } from '../../../core/errors';
+import { responseFormatterMiddleware } from '../../../middleware/responseFormatter';
 import { rateLimiters } from '../../../middleware/validation';
 
 const router = Router();
@@ -43,7 +44,7 @@ router.use(responseFormatterMiddleware);
  *                           icon:
  *                             type: string
  */
-router.get('/providers', 
+router.get('/providers',
   asyncHandler(ssoController.getProviders.bind(ssoController))
 );
 
@@ -65,7 +66,7 @@ router.get('/providers',
  *       400:
  *         description: Invalid request
  */
-router.get('/google/auth', 
+router.get('/google/auth',
   rateLimiters.auth,
   asyncHandler(ssoController.initiateGoogleAuth.bind(ssoController))
 );
@@ -111,7 +112,7 @@ router.get('/google/auth',
  *       400:
  *         description: Authentication failed
  */
-router.get('/google/callback', 
+router.get('/google/callback',
   rateLimiters.auth,
   asyncHandler(ssoController.handleGoogleCallback.bind(ssoController))
 );
@@ -134,7 +135,7 @@ router.get('/google/callback',
  *       400:
  *         description: Invalid request
  */
-router.get('/microsoft/auth', 
+router.get('/microsoft/auth',
   rateLimiters.auth,
   asyncHandler(ssoController.initiateMicrosoftAuth.bind(ssoController))
 );
@@ -164,7 +165,7 @@ router.get('/microsoft/auth',
  *       400:
  *         description: Authentication failed
  */
-router.get('/microsoft/callback', 
+router.get('/microsoft/callback',
   rateLimiters.auth,
   asyncHandler(ssoController.handleMicrosoftCallback.bind(ssoController))
 );
@@ -187,7 +188,7 @@ router.get('/microsoft/callback',
  *       400:
  *         description: Invalid request
  */
-router.get('/linkedin/auth', 
+router.get('/linkedin/auth',
   rateLimiters.auth,
   asyncHandler(ssoController.initiateLinkedInAuth.bind(ssoController))
 );
@@ -217,7 +218,7 @@ router.get('/linkedin/auth',
  *       400:
  *         description: Authentication failed
  */
-router.get('/linkedin/callback', 
+router.get('/linkedin/callback',
   rateLimiters.auth,
   asyncHandler(ssoController.handleLinkedInCallback.bind(ssoController))
 );
@@ -236,7 +237,7 @@ router.get('/linkedin/callback',
  *             schema:
  *               type: string
  */
-router.get('/saml/metadata', 
+router.get('/saml/metadata',
   asyncHandler(ssoController.getSAMLMetadata.bind(ssoController))
 );
 
@@ -265,7 +266,7 @@ router.get('/saml/metadata',
  *       400:
  *         description: Invalid request
  */
-router.post('/saml/login', 
+router.post('/saml/login',
   rateLimiters.auth,
   asyncHandler(ssoController.initiateSAMLLogin.bind(ssoController))
 );
@@ -295,7 +296,7 @@ router.post('/saml/login',
  *       400:
  *         description: Authentication failed
  */
-router.post('/saml/callback', 
+router.post('/saml/callback',
   rateLimiters.auth,
   asyncHandler(ssoController.handleSAMLCallback.bind(ssoController))
 );

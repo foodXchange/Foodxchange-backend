@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+
 import { Logger } from '../core/logging/logger';
 
 const logger = new Logger('APIOptimizationMiddleware');
@@ -61,11 +62,11 @@ export const pagination = (defaultLimit: number = 20, maxLimit: number = 100) =>
  */
 export const fieldSelection = (req: Request, res: Response, next: NextFunction) => {
   const fields = req.query.fields as string;
-  
+
   if (fields) {
     req.fields = fields.split(',').map(f => f.trim());
   }
-  
+
   next();
 };
 
@@ -75,15 +76,15 @@ export const fieldSelection = (req: Request, res: Response, next: NextFunction) 
 export const filtering = (allowedFilters: string[] = []) => {
   return (req: Request, res: Response, next: NextFunction) => {
     const filters: FilterParams = {};
-    
+
     // Parse filter query parameters
     Object.keys(req.query).forEach(key => {
       if (key.startsWith('filter.')) {
         const filterKey = key.substring(7);
-        
+
         if (allowedFilters.length === 0 || allowedFilters.includes(filterKey)) {
           const value = req.query[key];
-          
+
           // Handle different filter operators
           if (typeof value === 'string') {
             if (value.startsWith('gte:')) {
@@ -109,7 +110,7 @@ export const filtering = (allowedFilters: string[] = []) => {
         }
       }
     });
-    
+
     // Handle date range filters
     if (req.query.dateFrom || req.query.dateTo) {
       filters.createdAt = {};
@@ -120,7 +121,7 @@ export const filtering = (allowedFilters: string[] = []) => {
         filters.createdAt.$lte = new Date(req.query.dateTo as string);
       }
     }
-    
+
     req.filters = filters;
     next();
   };
@@ -132,26 +133,26 @@ export const filtering = (allowedFilters: string[] = []) => {
 export const responseOptimization = (req: Request, res: Response, next: NextFunction) => {
   // Store original json method
   const originalJson = res.json;
-  
+
   // Override json method
   res.json = function(data: any) {
     // Apply field selection if requested
     if (req.fields && data) {
       if (Array.isArray(data)) {
-        data = data.map(item => selectFields(item, req.fields!));
+        data = data.map(item => selectFields(item, req.fields));
       } else if (data.data && Array.isArray(data.data)) {
-        data.data = data.data.map((item: any) => selectFields(item, req.fields!));
+        data.data = data.data.map((item: any) => selectFields(item, req.fields));
       } else if (data.data) {
-        data.data = selectFields(data.data, req.fields!);
+        data.data = selectFields(data.data, req.fields);
       } else {
-        data = selectFields(data, req.fields!);
+        data = selectFields(data, req.fields);
       }
     }
-    
+
     // Call original json method
     return originalJson.call(this, data);
   };
-  
+
   next();
 };
 
@@ -160,22 +161,22 @@ export const responseOptimization = (req: Request, res: Response, next: NextFunc
  */
 export const etag = (req: Request, res: Response, next: NextFunction) => {
   const originalJson = res.json;
-  
+
   res.json = function(data: any) {
     const crypto = require('crypto');
     const hash = crypto.createHash('md5').update(JSON.stringify(data)).digest('hex');
     const etag = `"${hash}"`;
-    
+
     res.setHeader('ETag', etag);
-    
+
     if (req.headers['if-none-match'] === etag) {
       res.status(304).end();
       return res;
     }
-    
+
     return originalJson.call(this, data);
   };
-  
+
   next();
 };
 
@@ -188,10 +189,10 @@ export const cacheResponse = (ttl: number = 300) => {
     if (req.method !== 'GET') {
       return next();
     }
-    
+
     const { optimizedCache } = await import('../services/cache/OptimizedCacheService');
     const cacheKey = `api:${req.originalUrl}`;
-    
+
     // Try to get from cache
     const cached = await optimizedCache.get(cacheKey, { parse: false });
     if (cached) {
@@ -199,24 +200,24 @@ export const cacheResponse = (ttl: number = 300) => {
       res.setHeader('Content-Type', 'application/json');
       return res.send(cached);
     }
-    
+
     // Store original send method
     const originalSend = res.send;
-    
+
     // Override send method to cache response
     res.send = function(data: any) {
       res.setHeader('X-Cache', 'MISS');
-      
+
       // Cache successful responses
       if (res.statusCode >= 200 && res.statusCode < 300) {
         optimizedCache.set(cacheKey, data, { ttl }).catch(error => {
           logger.error('Failed to cache response:', error);
         });
       }
-      
+
       return originalSend.call(this, data);
     };
-    
+
     next();
   };
 };
@@ -228,16 +229,16 @@ export const batchRequests = async (req: Request, res: Response, next: NextFunct
   if (req.path !== '/batch' || req.method !== 'POST') {
     return next();
   }
-  
+
   const { requests } = req.body;
-  
+
   if (!Array.isArray(requests)) {
     return res.status(400).json({
       success: false,
       error: 'Requests must be an array'
     });
   }
-  
+
   const results = await Promise.all(
     requests.map(async (request: any) => {
       try {
@@ -250,7 +251,7 @@ export const batchRequests = async (req: Request, res: Response, next: NextFunct
           body: request.body || {},
           params: request.params || {}
         };
-        
+
         // Process the request through your router
         // This is a simplified example - you'd need to properly route these
         return {
@@ -267,7 +268,7 @@ export const batchRequests = async (req: Request, res: Response, next: NextFunct
       }
     })
   );
-  
+
   res.json({
     success: true,
     results
@@ -287,16 +288,16 @@ function parseValue(value: string): any {
 
 function selectFields(obj: any, fields: string[]): any {
   if (!obj || typeof obj !== 'object') return obj;
-  
+
   const result: any = {};
-  
+
   fields.forEach(field => {
     if (field.includes('.')) {
       // Handle nested fields
       const parts = field.split('.');
       let source = obj;
       let target = result;
-      
+
       for (let i = 0; i < parts.length - 1; i++) {
         const part = parts[i];
         if (source[part] !== undefined) {
@@ -309,7 +310,7 @@ function selectFields(obj: any, fields: string[]): any {
           break;
         }
       }
-      
+
       const lastPart = parts[parts.length - 1];
       if (source && source[lastPart] !== undefined) {
         target[lastPart] = source[lastPart];
@@ -321,10 +322,10 @@ function selectFields(obj: any, fields: string[]): any {
       }
     }
   });
-  
+
   // Always include id if present
   if (obj._id && !result._id) result._id = obj._id;
   if (obj.id && !result.id) result.id = obj.id;
-  
+
   return result;
 }

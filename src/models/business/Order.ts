@@ -7,27 +7,27 @@ const orderSchema = new mongoose.Schema({
   legacyId: { type: String, unique: true, sparse: true },
   orderNumber: { type: String, unique: true, required: true },
   purchaseOrderNumber: String,
-  
+
   // Parties
-  buyer: { 
-    type: mongoose.Schema.Types.ObjectId, 
+  buyer: {
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'Company',
     required: true,
     index: true
   },
-  supplier: { 
-    type: mongoose.Schema.Types.ObjectId, 
+  supplier: {
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'Company',
     required: true,
     index: true
   },
-  
+
   // Origin (if from RFQ/Proposal)
   originatedFrom: {
     request: { type: mongoose.Schema.Types.ObjectId, ref: 'Request' },
     proposal: { type: mongoose.Schema.Types.ObjectId, ref: 'Proposal' }
   },
-  
+
   // Order Items
   items: [{
     lineNumber: Number,
@@ -38,7 +38,7 @@ const orderSchema = new mongoose.Schema({
       specifications: mongoose.Schema.Types.Mixed,
       supplierProductCode: String
     },
-    
+
     // Quantities
     quantity: {
       ordered: { type: Number, required: true },
@@ -48,14 +48,14 @@ const orderSchema = new mongoose.Schema({
       rejected: Number,
       unit: String
     },
-    
+
     // Packaging
     packaging: {
       unitsPerCarton: Number,
       cartonsOrdered: Number,
       cartonsShipped: Number
     },
-    
+
     // Pricing
     pricing: {
       unitPrice: { type: Decimal128, required: true },
@@ -68,14 +68,14 @@ const orderSchema = new mongoose.Schema({
         reason: String
       }
     },
-    
+
     // Product Details
     specifications: [{
       attribute: String,
       value: String,
       verified: Boolean
     }],
-    
+
     // Compliance
     compliance: {
       certificates: [String],
@@ -87,11 +87,11 @@ const orderSchema = new mongoose.Schema({
         documents: [String]
       }]
     },
-    
+
     // Status
     status: {
-      stage: { 
-        type: String, 
+      stage: {
+        type: String,
         enum: ['pending', 'confirmed', 'production', 'ready', 'shipped', 'delivered', 'completed'],
         default: 'pending'
       },
@@ -99,7 +99,7 @@ const orderSchema = new mongoose.Schema({
       lastUpdated: Date
     }
   }],
-  
+
   // Order Summary
   summary: {
     totalItems: Number,
@@ -135,7 +135,7 @@ const orderSchema = new mongoose.Schema({
       currency: { type: String, default: 'USD' }
     }
   },
-  
+
   // Delivery Information
   delivery: {
     address: {
@@ -173,7 +173,7 @@ const orderSchema = new mongoose.Schema({
       liftGateRequired: Boolean
     }
   },
-  
+
   // Payment Information
   payment: {
     terms: {
@@ -203,7 +203,7 @@ const orderSchema = new mongoose.Schema({
       documentUrl: String // Azure URL
     }]
   },
-  
+
   // Shipping & Logistics
   shipping: [{
     shipmentId: String,
@@ -212,14 +212,14 @@ const orderSchema = new mongoose.Schema({
     containerSize: String,
     vesselName: String,
     voyageNumber: String,
-    
+
     // Quantities
     quantities: {
       cartons: Number,
       units: Number,
       weight: Number
     },
-    
+
     // Dates
     schedule: {
       loadingDate: Date,
@@ -227,14 +227,14 @@ const orderSchema = new mongoose.Schema({
       estimatedArrival: Date,
       actualArrival: Date
     },
-    
+
     // Documentation
     documents: [{
       type: { type: String, enum: ['bill_of_lading', 'packing_list', 'invoice', 'certificate'] },
       url: String, // Azure URL
       uploadedAt: Date
     }],
-    
+
     // Status
     status: String,
     trackingUpdates: [{
@@ -244,7 +244,7 @@ const orderSchema = new mongoose.Schema({
       description: String
     }]
   }],
-  
+
   // Status & Workflow
   status: {
     stage: {
@@ -261,7 +261,7 @@ const orderSchema = new mongoose.Schema({
     lastUpdated: Date,
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
   },
-  
+
   // Timeline & History
   timeline: [{
     stage: String,
@@ -271,7 +271,7 @@ const orderSchema = new mongoose.Schema({
     isAutomatic: Boolean,
     metadata: mongoose.Schema.Types.Mixed
   }],
-  
+
   // Quality Control
   quality: {
     inspections: [{
@@ -284,7 +284,7 @@ const orderSchema = new mongoose.Schema({
       correctionRequired: Boolean,
       followUpDate: Date
     }],
-    
+
     // Issues & Complaints
     issues: [{
       type: String,
@@ -298,7 +298,7 @@ const orderSchema = new mongoose.Schema({
       documents: [String]
     }]
   },
-  
+
   // Financial Tracking
   financial: {
     commissions: [{
@@ -320,7 +320,7 @@ const orderSchema = new mongoose.Schema({
       percentage: Number
     }
   },
-  
+
   // Communications
   communications: [{
     type: { type: String, enum: ['email', 'call', 'meeting', 'system'] },
@@ -333,12 +333,12 @@ const orderSchema = new mongoose.Schema({
     timestamp: { type: Date, default: Date.now },
     isImportant: Boolean
   }],
-  
+
   // Documents & Media
   documents: [{
     name: String,
-    type: { 
-      type: String, 
+    type: {
+      type: String,
       enum: [
         'purchase_order', 'invoice', 'packing_list', 'bill_of_lading',
         'certificate', 'inspection_report', 'customs_docs', 'insurance',
@@ -351,7 +351,7 @@ const orderSchema = new mongoose.Schema({
     version: { type: Number, default: 1 },
     isLatest: { type: Boolean, default: true }
   }],
-  
+
   // Analytics & Metrics
   analytics: {
     leadTime: {
@@ -372,7 +372,7 @@ const orderSchema = new mongoose.Schema({
       additionalCosts: Decimal128
     }
   },
-  
+
   // Comments & Notes
   comments: [{
     type: { type: String, enum: ['note', 'issue', 'milestone', 'feedback'] },
@@ -384,7 +384,7 @@ const orderSchema = new mongoose.Schema({
     attachments: [String],
     createdAt: { type: Date, default: Date.now }
   }],
-  
+
   // System Fields
   metadata: {
     source: String, // 'manual', 'rfq', 'recurring', 'api'
@@ -396,7 +396,7 @@ const orderSchema = new mongoose.Schema({
       reason: String
     }]
   },
-  
+
   // Original Data Preservation
   originalData: {
     orderId: String,
@@ -404,16 +404,16 @@ const orderSchema = new mongoose.Schema({
     importedAt: Date,
     rawData: mongoose.Schema.Types.Mixed
   }
-}, { 
+}, {
   timestamps: true,
-  toJSON: { 
+  toJSON: {
     virtuals: true,
-    transform: function(doc, ret) {
+    transform(doc, ret) {
       // Convert Decimal128 fields for JSON output
       const convertDecimal = (obj) => {
         if (obj && typeof obj === 'object') {
           Object.keys(obj).forEach(key => {
-            if (obj[key] && obj[key].constructor && obj[key].constructor.name === 'Decimal128') {
+            if (obj[key]?.constructor && obj[key].constructor.name === 'Decimal128') {
               obj[key] = parseFloat(obj[key].toString());
             } else if (typeof obj[key] === 'object') {
               convertDecimal(obj[key]);
@@ -445,7 +445,7 @@ orderSchema.virtual('ageInDays').get(function() {
 orderSchema.virtual('deliveryStatus').get(function() {
   const now = new Date();
   const requested = this.delivery?.schedule?.requestedDate;
-  
+
   if (!requested) return 'no_date';
   if (this.delivery?.schedule?.actualDeliveryDate) return 'delivered';
   if (now > requested) return 'overdue';
@@ -459,11 +459,11 @@ orderSchema.pre('save', function(next) {
   if (this.isNew && !this.orderNumber) {
     this.orderNumber = `ORD-${Date.now().toString().slice(-8)}`;
   }
-  
+
   // Update status timestamp
   if (this.isModified('status.stage')) {
     this.status.lastUpdated = new Date();
-    
+
     // Add to timeline
     this.timeline.push({
       stage: this.status.stage,
@@ -472,7 +472,7 @@ orderSchema.pre('save', function(next) {
       isAutomatic: true
     });
   }
-  
+
   next();
 });
 

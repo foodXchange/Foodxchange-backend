@@ -1,10 +1,11 @@
 import express from 'express';
+import asyncHandler from 'express-async-handler';
+
 import { HACCPController } from '../../controllers/HACCPController';
 import { requireAuth } from '../../middleware/auth';
-import { enforceTenantIsolation } from '../../middleware/tenantIsolation';
-import { createCustomRateLimiter } from '../../middleware/rateLimiter';
 import { authorize } from '../../middleware/authorize';
-import asyncHandler from 'express-async-handler';
+import { createCustomRateLimiter } from '../../middleware/rateLimiter';
+import { enforceTenantIsolation } from '../../middleware/tenantIsolation';
 
 const router = express.Router();
 const haccpController = new HACCPController();
@@ -22,7 +23,7 @@ router.use(haccpRateLimiter);
  * @desc Get HACCP dashboard data
  * @access Private
  */
-router.get('/dashboard', 
+router.get('/dashboard',
   authorize(['admin', 'manager', 'compliance']),
   asyncHandler(haccpController.getDashboard.bind(haccpController))
 );
@@ -32,7 +33,7 @@ router.get('/dashboard',
  * @desc Create a new Critical Control Point
  * @access Private
  */
-router.post('/ccp', 
+router.post('/ccp',
   authorize(['admin', 'manager', 'compliance']),
   asyncHandler(haccpController.createCCP.bind(haccpController))
 );
@@ -42,7 +43,7 @@ router.post('/ccp',
  * @desc Record a CCP measurement
  * @access Private
  */
-router.post('/measurements', 
+router.post('/measurements',
   authorize(['admin', 'manager', 'compliance', 'operator']),
   asyncHandler(haccpController.recordMeasurement.bind(haccpController))
 );
@@ -52,7 +53,7 @@ router.post('/measurements',
  * @desc Get CCP measurements
  * @access Private
  */
-router.get('/measurements', 
+router.get('/measurements',
   authorize(['admin', 'manager', 'compliance', 'operator']),
   asyncHandler(haccpController.getMeasurements.bind(haccpController))
 );
@@ -62,7 +63,7 @@ router.get('/measurements',
  * @desc Get compliance alerts
  * @access Private
  */
-router.get('/alerts', 
+router.get('/alerts',
   authorize(['admin', 'manager', 'compliance']),
   asyncHandler(haccpController.getAlerts.bind(haccpController))
 );
@@ -72,7 +73,7 @@ router.get('/alerts',
  * @desc Acknowledge compliance alert
  * @access Private
  */
-router.post('/alerts/:id/acknowledge', 
+router.post('/alerts/:id/acknowledge',
   authorize(['admin', 'manager', 'compliance']),
   asyncHandler(haccpController.acknowledgeAlert.bind(haccpController))
 );
@@ -82,7 +83,7 @@ router.post('/alerts/:id/acknowledge',
  * @desc Resolve compliance alert
  * @access Private
  */
-router.post('/alerts/:id/resolve', 
+router.post('/alerts/:id/resolve',
   authorize(['admin', 'manager', 'compliance']),
   asyncHandler(haccpController.resolveAlert.bind(haccpController))
 );
@@ -92,7 +93,7 @@ router.post('/alerts/:id/resolve',
  * @desc Generate compliance report
  * @access Private
  */
-router.get('/reports', 
+router.get('/reports',
   authorize(['admin', 'manager', 'compliance']),
   asyncHandler(haccpController.generateReport.bind(haccpController))
 );

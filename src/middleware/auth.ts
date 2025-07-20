@@ -1,9 +1,16 @@
-import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
+
 import { User } from '../models/User';
+import logger from '../utils/logger';
 
 interface AuthenticatedRequest extends Request {
-  user?: any;
+  user?: {
+    id: string;
+    email: string;
+    role: string;
+    company?: string;
+  };
   userId?: string;
 }
 
@@ -25,7 +32,12 @@ class AuthorizationError extends Error {
 declare global {
   namespace Express {
     interface Request {
-      user?: any;
+      user?: {
+        id: string;
+        email: string;
+        role: string;
+        company?: string;
+      };
       userId?: string;
     }
   }
@@ -44,9 +56,9 @@ export const protect = async (req: AuthenticatedRequest, res: Response, next: Ne
       }
 
       // Verify token
-      const JWT_SECRET = process.env.JWT_SECRET;
+      const {JWT_SECRET} = process.env;
       if (!JWT_SECRET) {
-        console.error('JWT_SECRET is not defined');
+        logger.error('JWT_SECRET is not defined');
         return res.status(500).json({ error: 'Server configuration error' });
       }
 
@@ -56,7 +68,7 @@ export const protect = async (req: AuthenticatedRequest, res: Response, next: Ne
       const user = await User.findById(decoded.userId).select('-password -refreshToken');
 
       if (!user) {
-        console.warn('Authentication failed: User not found', {
+        logger.warn('Authentication failed: User not found', {
           userId: decoded.userId
         });
         return res.status(401).json({ error: 'User not found' });
@@ -64,7 +76,7 @@ export const protect = async (req: AuthenticatedRequest, res: Response, next: Ne
 
       // Check if account is active
       if (user.accountStatus !== 'active') {
-        console.warn('Authentication failed: Account not active', {
+        logger.warn('Authentication failed: Account not active', {
           userId: user._id.toString(),
           accountStatus: user.accountStatus
         });
@@ -73,7 +85,7 @@ export const protect = async (req: AuthenticatedRequest, res: Response, next: Ne
 
       // Check if account is locked (if method exists)
       if (user.isAccountLocked && user.isAccountLocked()) {
-        console.warn('Authentication failed: Account locked', {
+        logger.warn('Authentication failed: Account locked', {
           userId: user._id.toString()
         });
         return res.status(401).json({ error: 'Account is locked' });
@@ -86,14 +98,14 @@ export const protect = async (req: AuthenticatedRequest, res: Response, next: Ne
       return res.status(401).json({ error: 'Not authorized, no token' });
     }
   } catch (error: any) {
-    console.error('Authentication error:', error);
+    logger.error('Authentication error:', error);
     if (error instanceof jwt.TokenExpiredError) {
       return res.status(401).json({ error: 'Token expired' });
     } else if (error instanceof jwt.JsonWebTokenError) {
       return res.status(401).json({ error: 'Invalid token' });
-    } else {
-      return res.status(401).json({ error: 'Not authorized' });
     }
+    return res.status(401).json({ error: 'Not authorized' });
+
   }
 };
 
@@ -114,13 +126,13 @@ export const authorize = (...roles: string[]) => {
     }
 
     if (!roles.includes(req.user.role)) {
-      console.warn('Authorization failed: Insufficient role', {
+      logger.warn('Authorization failed: Insufficient role', {
         userId: req.user._id.toString(),
         userRole: req.user.role,
         requiredRoles: roles
       });
-      return res.status(403).json({ 
-        error: `User role ${req.user.role} is not authorized to access this route` 
+      return res.status(403).json({
+        error: `User role ${req.user.role} is not authorized to access this route`
       });
     }
 
@@ -135,19 +147,19 @@ export const optionalAuth = async (req: AuthenticatedRequest, res: Response, nex
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     try {
       token = req.headers.authorization.split(' ')[1];
-      const JWT_SECRET = process.env.JWT_SECRET;
+      const {JWT_SECRET} = process.env;
       if (JWT_SECRET) {
         const decoded = jwt.verify(token, JWT_SECRET) as any;
         const user = await User.findById(decoded.userId).select('-password -refreshToken');
-        
-        if (user && user.accountStatus === 'active' && (!user.isAccountLocked || !user.isAccountLocked())) {
+
+        if (user && user.accountStatus === 'active' && (!user.isAccountLocked?.())) {
           req.user = user;
           req.userId = user._id.toString();
         }
       }
     } catch (error) {
       // Silently fail for optional auth
-      console.debug('Optional auth failed:', error);
+      logger.debug('Optional auth failed:', error);
     }
   }
 
@@ -182,3 +194,6 @@ export const requireCompanyVerification = (req: AuthenticatedRequest, res: Respo
 
 // Alias for protect middleware
 export const requireAuth = protect;
+export const auth = protect;
+export const authenticateToken = protect;
+export const authenticate = protect;

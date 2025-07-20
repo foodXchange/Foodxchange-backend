@@ -67,25 +67,25 @@ export interface ISample extends Document {
   buyerName: string;
   requestedBy: Types.ObjectId;
   requestedByName: string;
-  
+
   // Workflow
   currentStage: SampleWorkflowStage;
   priority: SamplePriority;
   timeline: ITimelineEvent[];
-  
+
   // Sample Details
   quantity: number;
   unit: string;
   batchNumber?: string;
   productionDate?: Date;
   expiryDate?: Date;
-  
+
   // Tracking
   trackingNumber?: string;
   carrier?: string;
   estimatedDeliveryDate?: Date;
   actualDeliveryDate?: Date;
-  
+
   // Quality & Testing
   qualityMetrics?: IQualityMetrics;
   labTestResults?: {
@@ -95,10 +95,10 @@ export interface ISample extends Document {
     laboratory: string;
     certificate?: string;
   }[];
-  
+
   // AI Insights
   aiInsights?: IAIInsights;
-  
+
   // Documents
   documents: {
     type: string;
@@ -107,12 +107,12 @@ export interface ISample extends Document {
     uploadedAt: Date;
     uploadedBy: Types.ObjectId;
   }[];
-  
+
   // Additional Info
   specialInstructions?: string;
   internalNotes?: string;
   tags?: string[];
-  
+
   // Compliance
   complianceCertificates?: {
     type: string;
@@ -122,12 +122,12 @@ export interface ISample extends Document {
     issuingAuthority: string;
     document?: string;
   }[];
-  
+
   // Timestamps
   requestedAt: Date;
   completedAt?: Date;
   cancelledAt?: Date;
-  
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -236,7 +236,7 @@ const SampleSchema = new Schema<ISample>({
     type: String,
     required: true
   },
-  
+
   currentStage: {
     type: String,
     enum: Object.values(SampleWorkflowStage),
@@ -254,7 +254,7 @@ const SampleSchema = new Schema<ISample>({
     type: [TimelineEventSchema],
     default: []
   },
-  
+
   quantity: {
     type: Number,
     required: true,
@@ -267,7 +267,7 @@ const SampleSchema = new Schema<ISample>({
   batchNumber: String,
   productionDate: Date,
   expiryDate: Date,
-  
+
   trackingNumber: {
     type: String,
     index: true
@@ -275,7 +275,7 @@ const SampleSchema = new Schema<ISample>({
   carrier: String,
   estimatedDeliveryDate: Date,
   actualDeliveryDate: Date,
-  
+
   qualityMetrics: QualityMetricsSchema,
   labTestResults: [{
     testType: { type: String, required: true },
@@ -284,9 +284,9 @@ const SampleSchema = new Schema<ISample>({
     laboratory: { type: String, required: true },
     certificate: String
   }],
-  
+
   aiInsights: AIInsightsSchema,
-  
+
   documents: [{
     type: { type: String, required: true },
     name: { type: String, required: true },
@@ -294,11 +294,11 @@ const SampleSchema = new Schema<ISample>({
     uploadedAt: { type: Date, default: Date.now },
     uploadedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true }
   }],
-  
+
   specialInstructions: String,
   internalNotes: String,
   tags: [String],
-  
+
   complianceCertificates: [{
     type: { type: String, required: true },
     number: { type: String, required: true },
@@ -307,7 +307,7 @@ const SampleSchema = new Schema<ISample>({
     issuingAuthority: { type: String, required: true },
     document: String
   }],
-  
+
   requestedAt: {
     type: Date,
     default: Date.now,
@@ -335,7 +335,7 @@ SampleSchema.virtual('age').get(function() {
 // Virtual for isOverdue
 SampleSchema.virtual('isOverdue').get(function() {
   if (!this.estimatedDeliveryDate) return false;
-  return Date.now() > this.estimatedDeliveryDate.getTime() && 
+  return Date.now() > this.estimatedDeliveryDate.getTime() &&
          this.currentStage !== SampleWorkflowStage.COMPLETED &&
          this.currentStage !== SampleWorkflowStage.CANCELLED;
 });
@@ -345,8 +345,8 @@ SampleSchema.methods.addTimelineEvent = function(event: Partial<ITimelineEvent>)
   this.timeline.push({
     stage: event.stage || this.currentStage,
     timestamp: event.timestamp || new Date(),
-    performedBy: event.performedBy!,
-    performedByName: event.performedByName!,
+    performedBy: event.performedBy,
+    performedByName: event.performedByName,
     notes: event.notes,
     location: event.location,
     attachments: event.attachments,
@@ -356,14 +356,14 @@ SampleSchema.methods.addTimelineEvent = function(event: Partial<ITimelineEvent>)
 };
 
 SampleSchema.methods.updateStage = async function(
-  newStage: SampleWorkflowStage, 
-  userId: Types.ObjectId, 
-  userName: string, 
+  newStage: SampleWorkflowStage,
+  userId: Types.ObjectId,
+  userName: string,
   notes?: string
 ) {
   const previousStage = this.currentStage;
   this.currentStage = newStage;
-  
+
   // Add to timeline
   await this.addTimelineEvent({
     stage: newStage,
@@ -372,14 +372,14 @@ SampleSchema.methods.updateStage = async function(
     notes: notes || `Stage updated from ${previousStage} to ${newStage}`,
     metadata: { previousStage }
   });
-  
+
   // Update completion/cancellation dates
   if (newStage === SampleWorkflowStage.COMPLETED) {
     this.completedAt = new Date();
   } else if (newStage === SampleWorkflowStage.CANCELLED) {
     this.cancelledAt = new Date();
   }
-  
+
   return this.save();
 };
 
@@ -393,7 +393,7 @@ SampleSchema.pre('save', function(next) {
     const random = Math.random().toString(36).substr(2, 5).toUpperCase();
     this.sampleId = `SMP-${year}${month}-${random}`;
   }
-  
+
   // Add initial timeline event if new
   if (this.isNew && this.timeline.length === 0) {
     this.timeline.push({
@@ -404,7 +404,7 @@ SampleSchema.pre('save', function(next) {
       notes: 'Sample request created'
     } as ITimelineEvent);
   }
-  
+
   next();
 });
 
@@ -416,8 +416,8 @@ SampleSchema.statics.findByStage = function(stage: SampleWorkflowStage) {
 SampleSchema.statics.findOverdue = function() {
   return this.find({
     estimatedDeliveryDate: { $lt: new Date() },
-    currentStage: { 
-      $nin: [SampleWorkflowStage.COMPLETED, SampleWorkflowStage.CANCELLED] 
+    currentStage: {
+      $nin: [SampleWorkflowStage.COMPLETED, SampleWorkflowStage.CANCELLED]
     }
   });
 };

@@ -1,6 +1,7 @@
 // File: C:\Users\foodz\Documents\GitHub\Development\Foodxchange-backend\src\models\marketplace\ProductEnhanced.ts
 
 import mongoose, { Schema, Model, Types } from 'mongoose';
+
 import {
   ProductDocument,
   ProductPrice,
@@ -56,10 +57,10 @@ const supplierSchema = new Schema<Supplier>({
   id: { type: Schema.Types.ObjectId, ref: 'Company', required: true },
   name: { type: String, required: true },
   country: { type: String, required: true },
-  verificationLevel: { 
-    type: String, 
-    enum: ['bronze', 'silver', 'gold'] as VerificationLevel[], 
-    default: 'bronze' 
+  verificationLevel: {
+    type: String,
+    enum: ['bronze', 'silver', 'gold'] as VerificationLevel[],
+    default: 'bronze'
   },
   rating: { type: Number, min: 0, max: 5, default: 0 },
   totalReviews: { type: Number, default: 0 },
@@ -109,10 +110,10 @@ const complianceDocumentSchema = new Schema<ComplianceDocument>({
 
 // Product Availability Schema
 const availabilitySchema = new Schema<ProductAvailability>({
-  status: { 
-    type: String, 
-    enum: ['InStock', 'LimitedStock', 'OutOfStock', 'Pre-Order'] as AvailabilityStatus[], 
-    default: 'InStock' 
+  status: {
+    type: String,
+    enum: ['InStock', 'LimitedStock', 'OutOfStock', 'Pre-Order'] as AvailabilityStatus[],
+    default: 'InStock'
   },
   quantity: { type: Number, default: 0 },
   lastUpdated: { type: Date, default: Date.now },
@@ -127,14 +128,14 @@ const productEnhancedSchema = new Schema<ProductDocument>({
   description: { type: String, required: true },
   category: { type: String, required: true, index: true },
   subcategory: { type: String },
-  
+
   // Pricing Information
   price: { type: priceSchema, required: true },
   bulkPricingTiers: [bulkPricingTierSchema],
-  
+
   // Supplier Information
   supplier: { type: supplierSchema, required: true },
-  
+
   // Product Media
   images: [productImageSchema],
   videos: [{ type: String }],
@@ -143,58 +144,58 @@ const productEnhancedSchema = new Schema<ProductDocument>({
     url: { type: String },
     type: { type: String, enum: ['specification', 'certificate', 'safety'] }
   }],
-  
+
   // Certifications and Compliance
   certifications: [{ type: String }],
   complianceDocuments: [complianceDocumentSchema],
-  
+
   // Order Information
   minOrder: { type: minOrderSchema, required: true },
   availability: { type: availabilitySchema, required: true },
-  
+
   // Product Details
   nutritionHighlights: [{ type: String }],
   shelfLife: { type: String, required: true },
   packaging: [{ type: String }],
   specifications: productSpecificationsSchema,
-  
+
   // Marketing and Visibility
   featured: { type: Boolean, default: false },
   promoted: { type: Boolean, default: false },
   tags: [{ type: String }],
   keywords: [{ type: String }],
-  
+
   // Analytics and Performance
   viewCount: { type: Number, default: 0 },
   inquiryCount: { type: Number, default: 0 },
   sampleRequestCount: { type: Number, default: 0 },
   orderCount: { type: Number, default: 0 },
-  
+
   // SEO and Metadata
   seoTitle: { type: String },
   seoDescription: { type: String },
   metaTags: [{ type: String }],
-  
+
   // Quality and Reviews
   averageRating: { type: Number, min: 0, max: 5, default: 0 },
   totalReviews: { type: Number, default: 0 },
   qualityGrade: { type: String, enum: ['A', 'B', 'C', 'D'], default: 'B' },
-  
+
   // Status and Lifecycle
-  status: { 
-    type: String, 
-    enum: ['active', 'inactive', 'pending', 'discontinued'] as ProductStatus[], 
-    default: 'active' 
+  status: {
+    type: String,
+    enum: ['active', 'inactive', 'pending', 'discontinued'] as ProductStatus[],
+    default: 'active'
   },
   approvalStatus: {
     type: String,
     enum: ['pending', 'approved', 'rejected'] as ApprovalStatus[],
     default: 'pending'
   },
-  
+
   // Timestamps
   lastViewedAt: { type: Date },
-  
+
   // Additional dynamic fields for CSV imports
   dynamicFields: { type: Schema.Types.Mixed }
 }, {
@@ -224,7 +225,7 @@ productEnhancedSchema.virtual('priceRange').get(function(this: ProductDocument) 
 // Pre-save middleware
 productEnhancedSchema.pre('save', function(this: ProductDocument, next) {
   this.updatedAt = new Date();
-  
+
   // Auto-generate SEO fields if not provided
   if (!this.seoTitle) {
     this.seoTitle = this.name;
@@ -232,24 +233,24 @@ productEnhancedSchema.pre('save', function(this: ProductDocument, next) {
   if (!this.seoDescription) {
     this.seoDescription = this.description.substring(0, 160);
   }
-  
+
   next();
 });
 
 // Instance methods
-productEnhancedSchema.methods.incrementViewCount = function(this: ProductDocument): Promise<ProductDocument> {
+productEnhancedSchema.methods.incrementViewCount = async function(this: ProductDocument): Promise<ProductDocument> {
   this.viewCount += 1;
   this.lastViewedAt = new Date();
   return this.save();
 };
 
-productEnhancedSchema.methods.updateRating = function(this: ProductDocument, newRating: number, reviewCount: number): Promise<ProductDocument> {
+productEnhancedSchema.methods.updateRating = async function(this: ProductDocument, newRating: number, reviewCount: number): Promise<ProductDocument> {
   this.averageRating = newRating;
   this.totalReviews = reviewCount;
   return this.save();
 };
 
-productEnhancedSchema.methods.checkAvailability = function(this: ProductDocument): Promise<ProductDocument> {
+productEnhancedSchema.methods.checkAvailability = async function(this: ProductDocument): Promise<ProductDocument> {
   if (this.availability.quantity <= 0) {
     this.availability.status = 'OutOfStock';
   } else if (this.availability.quantity <= 10) {
@@ -265,8 +266,8 @@ interface ProductEnhancedModel extends Model<ProductDocument> {
   findByCategory(category: string, limit?: number): Promise<ProductDocument[]>;
   findFeatured(limit?: number): Promise<ProductDocument[]>;
   searchProducts(
-    searchTerm?: string, 
-    filters?: Partial<MarketplaceFilters>, 
+    searchTerm?: string,
+    filters?: Partial<MarketplaceFilters>,
     options?: {
       page?: number;
       limit?: number;
@@ -276,9 +277,9 @@ interface ProductEnhancedModel extends Model<ProductDocument> {
 }
 
 // Static methods
-productEnhancedSchema.statics.findByCategory = function(
+productEnhancedSchema.statics.findByCategory = async function(
   this: ProductEnhancedModel,
-  category: string, 
+  category: string,
   limit: number = 20
 ): Promise<ProductDocument[]> {
   return this.find({ category, status: 'active' })
@@ -287,7 +288,7 @@ productEnhancedSchema.statics.findByCategory = function(
     .sort({ featured: -1, averageRating: -1 });
 };
 
-productEnhancedSchema.statics.findFeatured = function(
+productEnhancedSchema.statics.findFeatured = async function(
   this: ProductEnhancedModel,
   limit: number = 10
 ): Promise<ProductDocument[]> {
@@ -297,36 +298,36 @@ productEnhancedSchema.statics.findFeatured = function(
     .sort({ averageRating: -1, viewCount: -1 });
 };
 
-productEnhancedSchema.statics.searchProducts = function(
+productEnhancedSchema.statics.searchProducts = async function(
   this: ProductEnhancedModel,
-  searchTerm?: string, 
-  filters: Partial<MarketplaceFilters> = {}, 
+  searchTerm?: string,
+  filters: Partial<MarketplaceFilters> = {},
   options: { page?: number; limit?: number; sortBy?: string } = {}
 ): Promise<ProductDocument[]> {
   const query: any = { status: 'active' };
-  
+
   // Text search
   if (searchTerm) {
     query.$text = { $search: searchTerm };
   }
-  
+
   // Apply filters
   if (filters.category) query.category = filters.category;
   if (filters.certification) query.certifications = { $in: [filters.certification] };
   if (filters.location) query['supplier.country'] = filters.location;
   if (filters.verificationLevel) query['supplier.verificationLevel'] = filters.verificationLevel;
   if (filters.availability) query['availability.status'] = filters.availability;
-  
+
   // Price range filter
   if (filters.priceRange) {
     const [minPrice, maxPrice] = filters.priceRange.split('-').map(Number);
     if (minPrice) query['price.min'] = { $gte: minPrice };
     if (maxPrice && maxPrice !== 0) query['price.max'] = { $lte: maxPrice };
   }
-  
+
   const { page = 1, limit = 20, sortBy = 'relevance' } = options;
   const skip = (page - 1) * limit;
-  
+
   let sort: any = {};
   switch (sortBy) {
     case 'price_asc':
@@ -347,7 +348,7 @@ productEnhancedSchema.statics.searchProducts = function(
     default:
       sort = searchTerm ? { score: { $meta: 'textScore' } } : { featured: -1, averageRating: -1 };
   }
-  
+
   return this.find(query)
     .populate('supplier.id')
     .sort(sort)

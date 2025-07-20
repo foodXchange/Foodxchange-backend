@@ -4,14 +4,14 @@ import { z } from 'zod';
 
 // Color validation rules for food products
 export const FoodColorSpecification = z.object({
-  colorName: z.string().min(1, "Color name is required"),
+  colorName: z.string().min(1, 'Color name is required'),
   pantoneCode: z.string().optional(),
   rgbValue: z.object({
     r: z.number().min(0).max(255),
     g: z.number().min(0).max(255),
     b: z.number().min(0).max(255)
   }).optional(),
-  hexCode: z.string().regex(/^#[0-9A-F]{6}$/i, "Invalid hex color code").optional(),
+  hexCode: z.string().regex(/^#[0-9A-F]{6}$/i, 'Invalid hex color code').optional(),
   labValue: z.object({
     l: z.number(),
     a: z.number(),
@@ -124,7 +124,7 @@ export async function validateProductSpecification(
     // Product-specific color validation
     if (ProductColorRules[productType]) {
       const rules = ProductColorRules[productType];
-      const primaryColor = validatedSpec.specifications.visual.primaryColor;
+      const {primaryColor} = validatedSpec.specifications.visual;
 
       // Check allowed colors
       if (rules.allowedColors && !rules.allowedColors.includes(primaryColor.colorName.toLowerCase())) {
@@ -138,7 +138,7 @@ export async function validateProductSpecification(
       }
 
       // Check prohibited colors
-      if (rules.prohibitedColors && rules.prohibitedColors.includes(primaryColor.colorName.toLowerCase())) {
+      if (rules.prohibitedColors?.includes(primaryColor.colorName.toLowerCase())) {
         errors.push({
           field: 'specifications.visual.primaryColor',
           message: `Color "${primaryColor.colorName}" is prohibited for ${productType}`,
@@ -218,15 +218,15 @@ export async function validateProductSpecification(
 // Helper function to get required certifications
 function getRequiredCertifications(productType: string, specifications: any): string[] {
   const certs: string[] = [];
-  
+
   if (specifications.specifications?.ingredients?.some((i: any) => i.name.toLowerCase().includes('organic'))) {
     certs.push('USDA Organic');
   }
-  
+
   if (productType === 'cornflakes' || productType === 'cereals') {
     certs.push('FDA Food Safety', 'HACCP');
   }
-  
+
   return certs;
 }
 
@@ -266,13 +266,13 @@ export async function validateFieldRealTime(
 
 // Export validation history tracker
 export class ValidationHistory {
-  private history: Map<string, any[]> = new Map();
+  private readonly history: Map<string, any[]> = new Map();
 
   addValidation(productId: string, validation: any) {
     if (!this.history.has(productId)) {
       this.history.set(productId, []);
     }
-    this.history.get(productId)!.push({
+    this.history.get(productId).push({
       ...validation,
       timestamp: new Date(),
       id: crypto.randomUUID()

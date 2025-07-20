@@ -1,9 +1,11 @@
+const mongoose = require('mongoose');
+
 const Agent = require('../models/Agent');
-const AgentLead = require('../models/AgentLead');
 const AgentActivity = require('../models/AgentActivity');
+const AgentLead = require('../models/AgentLead');
 const RFQ = require('../models/RFQ');
 const SampleRequest = require('../models/SampleRequest');
-const mongoose = require('mongoose');
+
 const agentWebSocketService = require('./websocket/agentWebSocketService');
 
 class LeadDistributionService {
@@ -84,16 +86,16 @@ class LeadDistributionService {
 
       // Get eligible agents
       const eligibleAgents = await this.findEligibleAgents(lead);
-      
+
       // Score and rank agents
       const scoredAgents = await this.scoreAgents(eligibleAgents, lead);
-      
+
       // Select top agents
       const selectedAgents = scoredAgents.slice(0, maxAgents);
-      
+
       // Assign agents to lead
       await this.assignAgentsToLead(lead, selectedAgents);
-      
+
       return selectedAgents;
     } catch (error) {
       throw new Error(`Failed to match agents to lead: ${error.message}`);
@@ -153,13 +155,13 @@ class LeadDistributionService {
       // Check if agent is currently active (logged in recently)
       const lastActivity = new Date(agent.lastActivity);
       const hoursSinceActivity = (Date.now() - lastActivity) / (1000 * 60 * 60);
-      
+
       if (hoursSinceActivity > 48) return false; // Not active in last 48 hours
-      
+
       // Check current workload
       const currentLeads = agent.performance.stats.acceptedLeads - agent.performance.stats.closedDeals;
       const maxLeads = this.getMaxLeadsForTier(agent.performance.tier);
-      
+
       return currentLeads < maxLeads;
     });
 
@@ -228,9 +230,9 @@ class LeadDistributionService {
    */
   calculateExpertiseScore(agent, lead) {
     let score = 0;
-    
+
     // Category match
-    const categoryMatch = agent.expertise.categories.some(cat => 
+    const categoryMatch = agent.expertise.categories.some(cat =>
       cat._id.toString() === lead.leadInfo.category.toString()
     );
     if (categoryMatch) score += 40;
@@ -238,14 +240,14 @@ class LeadDistributionService {
     // Specialization match
     const specs = agent.expertise.specializations || [];
     const leadValue = lead.leadInfo.estimatedValue.amount;
-    
+
     // High-value leads get premium specialists
     if (leadValue > 50000 && specs.includes('premium')) score += 20;
     if (leadValue > 100000 && specs.includes('enterprise')) score += 30;
 
     // Certification match
     const certifications = agent.expertise.certifications || [];
-    const activeCerts = certifications.filter(cert => 
+    const activeCerts = certifications.filter(cert =>
       !cert.expiryDate || new Date(cert.expiryDate) > new Date()
     );
     score += Math.min(activeCerts.length * 5, 30);
@@ -258,8 +260,8 @@ class LeadDistributionService {
    */
   calculateTerritoryScore(agent, lead) {
     let score = 0;
-    const territory = agent.territory;
-    const deliveryLocation = lead.leadInfo.requirements.deliveryLocation;
+    const {territory} = agent;
+    const {deliveryLocation} = lead.leadInfo.requirements;
 
     if (territory.type === 'geographic' || territory.type === 'hybrid') {
       // Country match
@@ -283,7 +285,7 @@ class LeadDistributionService {
           territory.geographic.radius.center,
           deliveryLocation.coordinates
         );
-        
+
         if (distance <= territory.geographic.radius.distance) {
           score += 25;
         }
@@ -291,7 +293,7 @@ class LeadDistributionService {
     }
 
     if (territory.type === 'category' || territory.type === 'hybrid') {
-      const categoryMatch = territory.categories.some(cat => 
+      const categoryMatch = territory.categories.some(cat =>
         cat._id.toString() === lead.leadInfo.category.toString()
       );
       if (categoryMatch) score += 40;
@@ -309,7 +311,7 @@ class LeadDistributionService {
    * Calculate performance score
    */
   calculatePerformanceScore(agent) {
-    const stats = agent.performance.stats;
+    const {stats} = agent.performance;
     let score = 0;
 
     // Conversion rate (0-40 points)
@@ -337,17 +339,17 @@ class LeadDistributionService {
    * Calculate availability score
    */
   calculateAvailabilityScore(agent) {
-    const stats = agent.performance.stats;
+    const {stats} = agent.performance;
     const maxLeads = this.getMaxLeadsForTier(agent.performance.tier);
     const currentLeads = stats.acceptedLeads - stats.closedDeals;
-    
+
     // Availability percentage
     const availabilityPercent = ((maxLeads - currentLeads) / maxLeads) * 100;
-    
+
     // Recent activity bonus
     const lastActivity = new Date(agent.lastActivity);
     const hoursSinceActivity = (Date.now() - lastActivity) / (1000 * 60 * 60);
-    
+
     let activityScore = 0;
     if (hoursSinceActivity < 2) activityScore = 20;
     else if (hoursSinceActivity < 8) activityScore = 15;
@@ -362,18 +364,18 @@ class LeadDistributionService {
    */
   calculateExperienceScore(agent, lead) {
     let score = 0;
-    
+
     // Years of experience
     const experience = agent.professionalInfo.yearsOfExperience || 0;
     score += Math.min(experience * 5, 40);
 
     // Industry experience
     const industryExp = agent.expertise.industryExperience || [];
-    const relevantExp = industryExp.find(exp => 
-      exp.industry.toLowerCase().includes('food') || 
+    const relevantExp = industryExp.find(exp =>
+      exp.industry.toLowerCase().includes('food') ||
       exp.industry.toLowerCase().includes('agriculture')
     );
-    
+
     if (relevantExp) {
       score += Math.min(relevantExp.years * 3, 30);
     }
@@ -390,7 +392,7 @@ class LeadDistributionService {
    */
   calculateResponseTimeScore(agent) {
     const avgResponseTime = agent.performance.stats.averageResponseTime || 60;
-    
+
     // Score based on response time (lower is better)
     let score = 0;
     if (avgResponseTime <= 15) score = 100;
@@ -419,7 +421,7 @@ class LeadDistributionService {
     lead.assignment.assignedAgents = assignments;
     lead.assignment.method = 'auto_match';
     lead.status = 'assigned';
-    
+
     await lead.save();
 
     // Log activities for each assigned agent
@@ -453,7 +455,7 @@ class LeadDistributionService {
         }
       }).save();
     }
-    
+
     // Send real-time notifications to matched agents
     await agentWebSocketService.notifyNewLead(lead, assignments);
 
@@ -467,15 +469,15 @@ class LeadDistributionService {
     const reasons = [];
 
     // Expertise reasons
-    const categoryMatch = agent.expertise.categories.some(cat => 
+    const categoryMatch = agent.expertise.categories.some(cat =>
       cat._id.toString() === lead.leadInfo.category.toString()
     );
     if (categoryMatch) reasons.push('Category expertise match');
 
     // Territory reasons
-    const territory = agent.territory;
-    const deliveryLocation = lead.leadInfo.requirements.deliveryLocation;
-    
+    const {territory} = agent;
+    const {deliveryLocation} = lead.leadInfo.requirements;
+
     if (territory.geographic.countries.includes(deliveryLocation.country)) {
       reasons.push('Geographic territory match');
     }
@@ -492,7 +494,7 @@ class LeadDistributionService {
     // Availability reasons
     const lastActivity = new Date(agent.lastActivity);
     const hoursSinceActivity = (Date.now() - lastActivity) / (1000 * 60 * 60);
-    
+
     if (hoursSinceActivity < 2) {
       reasons.push('Currently active');
     }
@@ -507,10 +509,10 @@ class LeadDistributionService {
     const now = new Date();
     const deadline = new Date(rfq.deadlineDate);
     const deliveryDate = new Date(rfq.requirements.deliveryDate);
-    
+
     const timeToDeadline = (deadline - now) / (1000 * 60 * 60 * 24); // days
     const timeToDelivery = (deliveryDate - now) / (1000 * 60 * 60 * 24); // days
-    
+
     if (timeToDeadline <= 1 || timeToDelivery <= 7) return 'urgent';
     if (timeToDeadline <= 3 || timeToDelivery <= 14) return 'high';
     if (timeToDeadline <= 7 || timeToDelivery <= 30) return 'medium';
@@ -519,42 +521,42 @@ class LeadDistributionService {
 
   calculateLeadScore(rfq) {
     let score = 50; // Base score
-    
+
     // Value score
     const value = rfq.requirements.budgetRange?.max || rfq.requirements.targetPrice?.amount || 0;
     if (value > 100000) score += 20;
     else if (value > 50000) score += 15;
     else if (value > 10000) score += 10;
     else if (value > 5000) score += 5;
-    
+
     // Completeness score
     if (rfq.requirements.targetPrice) score += 10;
     if (rfq.requirements.deliveryDate) score += 10;
     if (rfq.specifications && rfq.specifications.length > 0) score += 10;
-    
+
     return Math.min(score, 100);
   }
 
   calculateQualityScore(rfq) {
     let score = 0;
-    
+
     // Description quality
     if (rfq.description && rfq.description.length > 100) score += 20;
-    
+
     // Specifications provided
     if (rfq.specifications && rfq.specifications.length > 0) {
       score += Math.min(rfq.specifications.length * 5, 30);
     }
-    
+
     // Attachments provided
     if (rfq.attachments && rfq.attachments.length > 0) {
       score += Math.min(rfq.attachments.length * 10, 20);
     }
-    
+
     // Complete delivery information
     if (rfq.requirements.deliveryLocation.address) score += 15;
     if (rfq.requirements.deliveryLocation.coordinates) score += 15;
-    
+
     return Math.min(score, 100);
   }
 
@@ -571,7 +573,7 @@ class LeadDistributionService {
 
   calculateValueScore(rfq) {
     const value = rfq.requirements.budgetRange?.max || rfq.requirements.targetPrice?.amount || 0;
-    
+
     if (value >= 500000) return 100;
     if (value >= 100000) return 80;
     if (value >= 50000) return 60;

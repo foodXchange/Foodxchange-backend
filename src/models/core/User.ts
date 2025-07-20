@@ -1,11 +1,11 @@
-const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
   // Authentication
-  email: { 
-    type: String, 
-    required: true, 
+  email: {
+    type: String,
+    required: true,
     unique: true,
     lowercase: true,
     trim: true
@@ -13,7 +13,7 @@ const userSchema = new mongoose.Schema({
   password: String,
   tempPassword: String,
   mustChangePassword: { type: Boolean, default: true },
-  
+
   // Personal Information
   profile: {
     firstName: String,
@@ -23,7 +23,7 @@ const userSchema = new mongoose.Schema({
     department: String,
     avatar: String // Azure CDN URL
   },
-  
+
   // Contact Information
   contact: {
     phone: String,
@@ -33,10 +33,10 @@ const userSchema = new mongoose.Schema({
     linkedIn: String,
     timezone: { type: String, default: 'UTC' }
   },
-  
+
   // Role & Permissions
-  role: { 
-    type: String, 
+  role: {
+    type: String,
     enum: ['buyer', 'supplier', 'admin', 'agent', 'contractor', 'super_admin'],
     required: true,
     index: true
@@ -45,15 +45,15 @@ const userSchema = new mongoose.Schema({
     module: String, // 'products', 'orders', 'rfqs', etc.
     actions: [String] // 'read', 'write', 'delete', 'approve'
   }],
-  
+
   // Company Association
-  company: { 
-    type: mongoose.Schema.Types.ObjectId, 
+  company: {
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'Company',
     required: true,
     index: true
   },
-  
+
   // User Preferences
   preferences: {
     language: { type: String, default: 'en' },
@@ -70,7 +70,7 @@ const userSchema = new mongoose.Schema({
       defaultView: String
     }
   },
-  
+
   // Security & Sessions
   security: {
     lastLogin: Date,
@@ -88,7 +88,7 @@ const userSchema = new mongoose.Schema({
       isActive: Boolean
     }]
   },
-  
+
   // Activity Tracking
   activity: {
     lastActivityAt: Date,
@@ -96,7 +96,7 @@ const userSchema = new mongoose.Schema({
     pageViews: { type: Number, default: 0 },
     actionsPerformed: { type: Number, default: 0 }
   },
-  
+
   // Status & Verification
   status: {
     isActive: { type: Boolean, default: true },
@@ -106,7 +106,7 @@ const userSchema = new mongoose.Schema({
     verificationToken: String,
     verificationExpires: Date
   },
-  
+
   // Original Data Preservation
   originalData: {
     contactId: String,
@@ -116,7 +116,7 @@ const userSchema = new mongoose.Schema({
     importedAt: Date,
     rawData: mongoose.Schema.Types.Mixed
   },
-  
+
   // Comments & Notes
   comments: [{
     content: String,
@@ -125,11 +125,11 @@ const userSchema = new mongoose.Schema({
     isInternal: Boolean,
     createdAt: { type: Date, default: Date.now }
   }]
-}, { 
+}, {
   timestamps: true,
-  toJSON: { 
+  toJSON: {
     virtuals: true,
-    transform: function(doc, ret) {
+    transform(doc, ret) {
       delete ret.password;
       delete ret.tempPassword;
       delete ret.security.twoFactorSecret;
@@ -153,16 +153,16 @@ userSchema.virtual('isLocked').get(function() {
 // Hash password before saving
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password') && !this.isModified('tempPassword')) return next();
-  
+
   if (this.isModified('password') && this.password) {
     this.password = await bcrypt.hash(this.password, 12);
     this.security.passwordChangedAt = new Date();
   }
-  
+
   if (this.isModified('tempPassword') && this.tempPassword) {
     this.tempPassword = await bcrypt.hash(this.tempPassword, 12);
   }
-  
+
   next();
 });
 
@@ -185,13 +185,13 @@ userSchema.methods.incLoginAttempts = function() {
       $unset: { 'security.loginAttempts': 1, 'security.lockUntil': 1 }
     });
   }
-  
+
   const updates = { $inc: { 'security.loginAttempts': 1 } };
-  
+
   if (this.security.loginAttempts + 1 >= 5 && !this.isLocked) {
     updates.$set = { 'security.lockUntil': Date.now() + 2 * 60 * 60 * 1000 }; // 2 hours
   }
-  
+
   return this.updateOne(updates);
 };
 

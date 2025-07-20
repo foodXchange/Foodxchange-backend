@@ -1,8 +1,10 @@
-import { Logger } from '../../core/logging/logger';
-import { CacheService } from '../../infrastructure/cache/CacheService';
-import { MetricsService } from '../../core/monitoring/metrics';
 import { EventEmitter } from 'events';
+
 import mongoose from 'mongoose';
+
+import { Logger } from '../../core/logging/logger';
+import { MetricsService } from '../../core/monitoring/metrics';
+import { CacheService } from '../../infrastructure/cache/CacheService';
 
 const logger = new Logger('AuditService');
 const metrics = metricsService;
@@ -48,7 +50,7 @@ export interface AuditReport {
 
 export class AuditService extends EventEmitter {
   private static instance: AuditService;
-  private cache: CacheService;
+  private readonly cache: CacheService;
 
   private constructor() {
     super();
@@ -68,7 +70,7 @@ export class AuditService extends EventEmitter {
         id: new mongoose.Types.ObjectId().toString(),
         ...auditData,
         severity: this.determineSeverity(auditData.action),
-        category: this.determineCategory(auditData.action),
+        category: this.determineCategory(auditData.action)
       };
 
       // Save to database
@@ -78,11 +80,11 @@ export class AuditService extends EventEmitter {
       this.emit('audit:logged', auditLog);
 
       metrics.increment('audit_logs_created');
-      
-      logger.debug('Audit log created', { 
-        id: auditLog.id, 
+
+      logger.debug('Audit log created', {
+        id: auditLog.id,
         action: auditLog.action,
-        entityType: auditLog.entityType 
+        entityType: auditLog.entityType
       });
     } catch (error) {
       logger.error('Failed to create audit log', { auditData, error });
@@ -126,7 +128,7 @@ export class AuditService extends EventEmitter {
       logs: [],
       total: 0,
       page: pagination?.page,
-      pages: pagination ? Math.ceil(0 / pagination.limit) : undefined,
+      pages: pagination ? Math.ceil(0 / pagination.limit) : undefined
     };
   }
 }

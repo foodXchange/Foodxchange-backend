@@ -1,5 +1,12 @@
 import jwt from 'jsonwebtoken';
 import { ObjectId } from 'mongodb';
+import mongoose from 'mongoose';
+
+import { Company } from '../../models/Company';
+import { Order } from '../../models/Order';
+import { Product } from '../../models/Product';
+import { RFQ } from '../../models/RFQ';
+import { User } from '../../models/User';
 
 /**
  * Generate a test JWT token
@@ -139,7 +146,7 @@ export const createTestRFQData = (overrides = {}) => {
 /**
  * Wait for a specified amount of time
  */
-export const wait = (ms: number): Promise<void> => {
+export const wait = async (ms: number): Promise<void> => {
   return new Promise(resolve => setTimeout(resolve, ms));
 };
 
@@ -363,14 +370,14 @@ export const cleanupTestDatabase = async () => {
  */
 export const createTestCSVContent = (data: any[]): string => {
   if (data.length === 0) return '';
-  
+
   const headers = Object.keys(data[0]).join(',');
-  const rows = data.map(row => 
-    Object.values(row).map(value => 
+  const rows = data.map(row =>
+    Object.values(row).map(value =>
       typeof value === 'string' ? `"${value}"` : value
     ).join(',')
   );
-  
+
   return [headers, ...rows].join('\n');
 };
 
@@ -390,10 +397,10 @@ export const validateResponseStructure = (response: any, expectedStructure: any)
   const validateObject = (obj: any, structure: any): boolean => {
     for (const key in structure) {
       if (!(key in obj)) return false;
-      
+
       const expectedType = structure[key];
       const actualValue = obj[key];
-      
+
       if (typeof expectedType === 'string') {
         if (typeof actualValue !== expectedType) return false;
       } else if (typeof expectedType === 'object' && expectedType !== null) {
@@ -403,7 +410,7 @@ export const validateResponseStructure = (response: any, expectedStructure: any)
     }
     return true;
   };
-  
+
   return validateObject(response, expectedStructure);
 };
 
@@ -417,7 +424,7 @@ export const createTestMiddleware = (mockImplementation?: any) => {
 /**
  * Sleep utility for testing
  */
-export const sleep = (ms: number): Promise<void> => {
+export const sleep = async (ms: number): Promise<void> => {
   return new Promise(resolve => setTimeout(resolve, ms));
 };
 
@@ -428,7 +435,7 @@ export const generateTestDateRange = (daysAgo: number = 30): { startDate: Date; 
   const endDate = new Date();
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - daysAgo);
-  
+
   return { startDate, endDate };
 };
 
@@ -457,3 +464,355 @@ export const assertAsyncThrows = async (
     }
   }
 };
+
+// Enhanced test utilities for notification and blockchain testing
+
+export interface TestUser {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  company?: string;
+  token: string;
+}
+
+export interface TestCompany {
+  id: string;
+  name: string;
+  type: string;
+  email: string;
+}
+
+export interface TestProduct {
+  id: string;
+  name: string;
+  supplier: string;
+  price: number;
+  category: string;
+}
+
+export class TestDataFactory {
+  /**
+   * Create a test company with enhanced fields
+   */
+  static async createTestCompany(overrides: Partial<any> = {}): Promise<TestCompany> {
+    const companyData = {
+      name: 'Test Company',
+      type: 'BUYER',
+      email: 'test@company.com',
+      address: {
+        street: '123 Test St',
+        city: 'Test City',
+        state: 'TS',
+        zipCode: '12345',
+        country: 'TestLand'
+      },
+      verified: true,
+      active: true,
+      ...overrides
+    };
+
+    const company = await Company.create(companyData);
+
+    return {
+      id: company._id.toString(),
+      name: company.name,
+      type: company.type,
+      email: (company as any).email
+    };
+  }
+
+  /**
+   * Create a test user with token generation
+   */
+  static async createTestUser(overrides: Partial<any> = {}): Promise<TestUser> {
+    const userData = {
+      firstName: 'Test',
+      lastName: 'User',
+      email: 'test@example.com',
+      password: 'hashedpassword',
+      role: 'BUYER',
+      verified: true,
+      active: true,
+      ...overrides
+    };
+
+    const user = await User.create(userData);
+
+    const token = jwt.sign(
+      {
+        id: user._id,
+        role: user.role,
+        company: user.company
+      },
+      process.env.JWT_SECRET || 'test-secret',
+      { expiresIn: '1h' }
+    );
+
+    return {
+      id: user._id.toString(),
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      company: user.company?.toString(),
+      token
+    };
+  }
+
+  /**
+   * Create a test product
+   */
+  static async createTestProduct(supplierId: string, overrides: Partial<any> = {}): Promise<TestProduct> {
+    const productData = {
+      name: 'Test Product',
+      description: 'A test product',
+      category: 'vegetables',
+      supplier: supplierId,
+      price: 10.99,
+      unit: 'kg',
+      inventory: {
+        current: 100,
+        lowStockThreshold: 10
+      },
+      status: 'ACTIVE',
+      ...overrides
+    };
+
+    const product = await Product.create(productData);
+
+    return {
+      id: product._id.toString(),
+      name: product.name,
+      supplier: product.supplier.toString(),
+      price: (product as any).price,
+      category: product.category
+    };
+  }
+
+  /**
+   * Create a complete test scenario
+   */
+  static async createCompleteTestScenario() {
+    const buyerCompany = await this.createTestCompany({
+      name: 'Buyer Company',
+      type: 'BUYER',
+      email: 'buyer@company.com'
+    });
+
+    const sellerCompany = await this.createTestCompany({
+      name: 'Seller Company',
+      type: 'SELLER',
+      email: 'seller@company.com'
+    });
+
+    const buyer = await this.createTestUser({
+      firstName: 'Buyer',
+      lastName: 'User',
+      email: 'buyer@test.com',
+      role: 'BUYER',
+      company: buyerCompany.id
+    });
+
+    const seller = await this.createTestUser({
+      name: 'Seller User',
+      email: 'seller@test.com',
+      role: 'SELLER',
+      company: sellerCompany.id
+    });
+
+    const admin = await this.createTestUser({
+      name: 'Admin User',
+      email: 'admin@test.com',
+      role: 'ADMIN'
+    });
+
+    const product = await this.createTestProduct(sellerCompany.id);
+
+    return {
+      companies: { buyer: buyerCompany, seller: sellerCompany },
+      users: { buyer, seller, admin },
+      product
+    };
+  }
+}
+
+export class TestAssertions {
+  /**
+   * Assert that a notification has the expected structure
+   */
+  static expectValidNotification(notification: any) {
+    expect(notification).toHaveProperty('id');
+    expect(notification).toHaveProperty('userId');
+    expect(notification).toHaveProperty('title');
+    expect(notification).toHaveProperty('body');
+    expect(notification).toHaveProperty('priority');
+    expect(notification).toHaveProperty('category');
+    expect(notification.priority).toMatch(/^(low|normal|high)$/);
+  }
+
+  /**
+   * Assert that user preferences have the expected structure
+   */
+  static expectValidUserPreferences(preferences: any) {
+    expect(preferences).toHaveProperty('enabled');
+    expect(preferences).toHaveProperty('categories');
+    expect(preferences).toHaveProperty('quietHours');
+    expect(typeof preferences.enabled).toBe('boolean');
+    expect(typeof preferences.categories).toBe('object');
+
+    if (preferences.quietHours) {
+      expect(preferences.quietHours).toHaveProperty('start');
+      expect(preferences.quietHours).toHaveProperty('end');
+      expect(preferences.quietHours.start).toMatch(/^\d{2}:\d{2}$/);
+      expect(preferences.quietHours.end).toMatch(/^\d{2}:\d{2}$/);
+    }
+  }
+
+  /**
+   * Assert that notification statistics have the expected structure
+   */
+  static expectValidNotificationStats(stats: any) {
+    expect(stats).toHaveProperty('sent');
+    expect(stats).toHaveProperty('delivered');
+    expect(stats).toHaveProperty('opened');
+    expect(stats).toHaveProperty('failed');
+    expect(stats).toHaveProperty('platform');
+    expect(stats).toHaveProperty('categories');
+
+    expect(typeof stats.sent).toBe('number');
+    expect(typeof stats.delivered).toBe('number');
+    expect(typeof stats.opened).toBe('number');
+    expect(typeof stats.failed).toBe('number');
+    expect(typeof stats.platform).toBe('object');
+    expect(typeof stats.categories).toBe('object');
+  }
+
+  /**
+   * Assert that blockchain batch has the expected structure
+   */
+  static expectValidBlockchainBatch(batch: any) {
+    expect(batch).toHaveProperty('id');
+    expect(batch).toHaveProperty('productId');
+    expect(batch).toHaveProperty('supplierId');
+    expect(batch).toHaveProperty('quantity');
+    expect(batch).toHaveProperty('harvestDate');
+    expect(batch).toHaveProperty('hash');
+    expect(batch).toHaveProperty('verified');
+    expect(batch).toHaveProperty('events');
+
+    expect(typeof batch.quantity).toBe('number');
+    expect(typeof batch.verified).toBe('boolean');
+    expect(Array.isArray(batch.events)).toBe(true);
+  }
+}
+
+export class TestPerformance {
+  /**
+   * Measure execution time of an async function
+   */
+  static async measureExecutionTime<T>(
+    operation: () => Promise<T>,
+    label?: string
+  ): Promise<{ result: T; duration: number }> {
+    const startTime = Date.now();
+    const result = await operation();
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+
+    if (label) {
+      console.log(`${label}: ${duration}ms`);
+    }
+
+    return { result, duration };
+  }
+
+  /**
+   * Run a performance benchmark
+   */
+  static async runBenchmark(
+    operation: () => Promise<any>,
+    iterations: number = 100,
+    label?: string
+  ): Promise<{
+    averageDuration: number;
+    minDuration: number;
+    maxDuration: number;
+    totalDuration: number;
+  }> {
+    const durations: number[] = [];
+
+    for (let i = 0; i < iterations; i++) {
+      const { duration } = await this.measureExecutionTime(operation);
+      durations.push(duration);
+    }
+
+    const totalDuration = durations.reduce((sum, d) => sum + d, 0);
+    const averageDuration = totalDuration / iterations;
+    const minDuration = Math.min(...durations);
+    const maxDuration = Math.max(...durations);
+
+    if (label) {
+      console.log(`${label} Benchmark - Avg: ${averageDuration.toFixed(2)}ms, Min: ${minDuration}ms, Max: ${maxDuration}ms`);
+    }
+
+    return {
+      averageDuration,
+      minDuration,
+      maxDuration,
+      totalDuration
+    };
+  }
+
+  /**
+   * Check memory usage
+   */
+  static getMemoryUsage(): {
+    heapUsed: number;
+    heapTotal: number;
+    external: number;
+    } {
+    const usage = process.memoryUsage();
+    return {
+      heapUsed: Math.round(usage.heapUsed / 1024 / 1024 * 100) / 100, // MB
+      heapTotal: Math.round(usage.heapTotal / 1024 / 1024 * 100) / 100, // MB
+      external: Math.round(usage.external / 1024 / 1024 * 100) / 100 // MB
+    };
+  }
+}
+
+export class TestValidation {
+  /**
+   * Validate MongoDB ObjectId
+   */
+  static isValidObjectId(id: string): boolean {
+    return mongoose.Types.ObjectId.isValid(id);
+  }
+
+  /**
+   * Validate notification priority
+   */
+  static isValidNotificationPriority(priority: string): boolean {
+    return ['low', 'normal', 'high'].includes(priority);
+  }
+
+  /**
+   * Validate device token format by platform
+   */
+  static isValidDeviceToken(token: string, platform: string): boolean {
+    switch (platform) {
+      case 'ios':
+        return /^[a-f0-9]{64}$/.test(token);
+      case 'android':
+        return token.length > 100 && token.includes(':');
+      case 'web':
+        try {
+          const parsed = JSON.parse(token);
+          return parsed.endpoint && parsed.keys;
+        } catch {
+          return false;
+        }
+      default:
+        return false;
+    }
+  }
+}

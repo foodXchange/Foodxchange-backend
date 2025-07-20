@@ -91,8 +91,8 @@ export interface MatchResult {
 }
 
 export class MatchingAlgorithms {
-  private logger: Logger;
-  private defaultWeights: MatchingWeights;
+  private readonly logger: Logger;
+  private readonly defaultWeights: MatchingWeights;
 
   constructor() {
     this.logger = new Logger('MatchingAlgorithms');
@@ -136,7 +136,7 @@ export class MatchingAlgorithms {
         return supplier && this.isBasicMatch(product, supplier, requirements);
       })
       .map(product => {
-        const supplier = supplierMap.get(product.supplierId)!;
+        const supplier = supplierMap.get(product.supplierId);
         return {
           ...product,
           supplier,
@@ -205,7 +205,7 @@ export class MatchingAlgorithms {
       criterion: 'Location Proximity',
       score: locationScore,
       weight: weights.locationProximity.weight,
-      details: `Distance-based delivery feasibility score`
+      details: 'Distance-based delivery feasibility score'
     });
 
     // Supplier reliability
@@ -299,7 +299,7 @@ export class MatchingAlgorithms {
     });
 
     // Price match
-    const priceScore = requirements.maxBudget 
+    const priceScore = requirements.maxBudget
       ? this.calculateProductPriceMatch(product.basePrice, requirements.quantity, requirements.maxBudget)
       : 1.0;
     breakdown.push({
@@ -410,7 +410,7 @@ export class MatchingAlgorithms {
   private calculatePriceScore(priceCompetitiveness: number, maxBudget?: number): number {
     // If no budget constraint, use price competitiveness directly
     if (!maxBudget) return priceCompetitiveness;
-    
+
     // Factor in budget constraint
     return Math.min(priceCompetitiveness, 1.0);
   }
@@ -418,7 +418,7 @@ export class MatchingAlgorithms {
   private calculateProductPriceMatch(unitPrice: number, quantity: number, maxBudget: number): number {
     const totalCost = unitPrice * quantity;
     if (totalCost <= maxBudget) return 1.0;
-    
+
     // Soft penalty for exceeding budget
     const overage = (totalCost - maxBudget) / maxBudget;
     return Math.max(0, 1 - overage);
@@ -426,15 +426,15 @@ export class MatchingAlgorithms {
 
   private calculateCertificationMatch(supplierCerts: string[], requiredCerts: string[]): number {
     if (requiredCerts.length === 0) return 1.0;
-    
+
     const matches = this.getMatchingCertifications(supplierCerts, requiredCerts);
     return matches.length / requiredCerts.length;
   }
 
   private getMatchingCertifications(supplierCerts: string[], requiredCerts: string[]): string[] {
-    return requiredCerts.filter(cert => 
-      supplierCerts.some(sCert => 
-        sCert.toLowerCase().includes(cert.toLowerCase()) || 
+    return requiredCerts.filter(cert =>
+      supplierCerts.some(sCert =>
+        sCert.toLowerCase().includes(cert.toLowerCase()) ||
         cert.toLowerCase().includes(sCert.toLowerCase())
       )
     );
@@ -448,7 +448,7 @@ export class MatchingAlgorithms {
       supplierLocation.lat, supplierLocation.lng,
       deliveryLocation.lat, deliveryLocation.lng
     );
-    
+
     // Score decreases with distance, max useful distance = 5000km
     const maxDistance = 5000;
     return Math.max(0, 1 - (distance / maxDistance));
@@ -469,45 +469,45 @@ export class MatchingAlgorithms {
     const ratingScore = supplier.averageRating / 5; // Normalize to 0-1
     const fulfillmentScore = supplier.fulfillmentRate;
     const responseScore = Math.max(0, 1 - (supplier.responseTime / 72)); // 72 hours = 0 score
-    
+
     return (ratingScore * 0.4 + fulfillmentScore * 0.4 + responseScore * 0.2);
   }
 
   private calculateDeliveryScore(supplier: SupplierProfile, requirements: BuyerRequirements): number {
     const avgDelivery = supplier.deliveryCapabilities.averageDeliveryTime;
     const maxDelivery = requirements.maxDeliveryTime;
-    
+
     if (avgDelivery <= maxDelivery) {
       // Bonus for faster delivery
       return Math.min(1.0, 1 + (maxDelivery - avgDelivery) / maxDelivery * 0.2);
-    } else {
-      // Penalty for slower delivery
-      const penalty = (avgDelivery - maxDelivery) / maxDelivery;
-      return Math.max(0, 1 - penalty);
     }
+    // Penalty for slower delivery
+    const penalty = (avgDelivery - maxDelivery) / maxDelivery;
+    return Math.max(0, 1 - penalty);
+
   }
 
   private calculateQuantityCapability(supplier: SupplierProfile, requirements: BuyerRequirements): number {
-    const relevantTier = supplier.capacityTiers.find(tier => 
+    const relevantTier = supplier.capacityTiers.find(tier =>
       tier.category === requirements.productCategory || tier.category === 'general'
     );
-    
+
     if (!relevantTier) return 0.5; // Assume medium capability if no data
-    
-    return requirements.quantity <= relevantTier.maxQuantity ? 1.0 : 
-           Math.max(0, 1 - (requirements.quantity - relevantTier.maxQuantity) / relevantTier.maxQuantity);
+
+    return requirements.quantity <= relevantTier.maxQuantity ? 1.0 :
+      Math.max(0, 1 - (requirements.quantity - relevantTier.maxQuantity) / relevantTier.maxQuantity);
   }
 
   private calculateCategoryExpertise(supplierCategories: string[], requiredCategory: string): number {
     // Exact match
     if (supplierCategories.includes(requiredCategory)) return 1.0;
-    
+
     // Partial match based on category hierarchy or similarity
-    const partialMatches = supplierCategories.filter(cat => 
+    const partialMatches = supplierCategories.filter(cat =>
       cat.toLowerCase().includes(requiredCategory.toLowerCase()) ||
       requiredCategory.toLowerCase().includes(cat.toLowerCase())
     );
-    
+
     return partialMatches.length > 0 ? 0.7 : 0.3; // Some credit for related categories
   }
 
@@ -520,7 +520,7 @@ export class MatchingAlgorithms {
   private calculateSpecificationMatch(productSpecs: Record<string, any>, requiredSpecs: Record<string, any>): number {
     const requiredKeys = Object.keys(requiredSpecs);
     if (requiredKeys.length === 0) return 1.0;
-    
+
     let matches = 0;
     requiredKeys.forEach(key => {
       if (productSpecs[key] !== undefined) {
@@ -529,7 +529,7 @@ export class MatchingAlgorithms {
         }
       }
     });
-    
+
     return matches / requiredKeys.length;
   }
 
@@ -551,7 +551,7 @@ export class MatchingAlgorithms {
       'standard': 0.6,
       'basic': 0.4
     };
-    
+
     return qualityMap[product.qualityGrade.toLowerCase()] || 0.5;
   }
 
@@ -563,48 +563,48 @@ export class MatchingAlgorithms {
     // Basic filters
     if (requirements.blacklistedSuppliers.includes(supplier.id)) return false;
     if (!this.isQuantityFeasible(product, requirements.quantity)) return false;
-    
+
     // Must have at least some required certifications
     const certMatch = this.calculateCertificationMatch(
       [...product.certifications, ...supplier.certifications],
       requirements.requiredCertifications
     );
-    
+
     return certMatch >= 0.5; // At least 50% cert match
   }
 
   private calculateConfidence(supplier: SupplierProfile, requirements: BuyerRequirements): number {
     let confidence = 0.5; // Base confidence
-    
+
     // More data = higher confidence
     if (supplier.averageRating > 0) confidence += 0.1;
     if (supplier.fulfillmentRate > 0) confidence += 0.1;
     if (supplier.categories.length > 0) confidence += 0.1;
     if (supplier.certifications.length > 0) confidence += 0.1;
     if (supplier.capacityTiers.length > 0) confidence += 0.1;
-    
+
     return Math.min(1.0, confidence);
   }
 
   private calculateProductConfidence(product: ProductProfile, supplier: SupplierProfile, requirements: BuyerRequirements): number {
     let confidence = 0.4; // Lower base for products
-    
+
     if (Object.keys(product.specifications).length > 0) confidence += 0.15;
     if (product.certifications.length > 0) confidence += 0.15;
     if (product.qualityGrade) confidence += 0.1;
     if (supplier.averageRating > 0) confidence += 0.1;
     if (product.seasonality) confidence += 0.1;
-    
+
     return Math.min(1.0, confidence);
   }
 
   private calculateSetOverlap(set1: string[], set2: string[]): number {
     if (set1.length === 0 && set2.length === 0) return 1.0;
     if (set1.length === 0 || set2.length === 0) return 0.0;
-    
+
     const intersection = set1.filter(item => set2.includes(item));
     const union = [...new Set([...set1, ...set2])];
-    
+
     return intersection.length / union.length;
   }
 

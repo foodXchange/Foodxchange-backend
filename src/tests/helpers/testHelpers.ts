@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import { User } from '../../models/User';
 import { Types } from 'mongoose';
+
+import { User } from '../../models/User';
 
 export const createMockRequest = (overrides: Partial<Request> = {}): Partial<Request> => ({
   body: {},
@@ -9,7 +10,7 @@ export const createMockRequest = (overrides: Partial<Request> = {}): Partial<Req
   query: {},
   headers: {},
   user: undefined,
-  ...overrides,
+  ...overrides
 });
 
 export const createMockResponse = (): Partial<Response> => {
@@ -18,7 +19,7 @@ export const createMockResponse = (): Partial<Response> => {
     json: jest.fn().mockReturnThis(),
     send: jest.fn().mockReturnThis(),
     cookie: jest.fn().mockReturnThis(),
-    clearCookie: jest.fn().mockReturnThis(),
+    clearCookie: jest.fn().mockReturnThis()
   };
   return res;
 };
@@ -34,7 +35,7 @@ export const createTestUser = async (overrides: Partial<any> = {}) => {
     role: 'buyer',
     isEmailVerified: true,
     accountStatus: 'active',
-    ...overrides,
+    ...overrides
   };
 
   const user = new User(userData);
@@ -43,22 +44,27 @@ export const createTestUser = async (overrides: Partial<any> = {}) => {
 };
 
 export const createTestJWT = (userId: string | Types.ObjectId) => {
-  return jwt.sign({ _id: userId }, process.env.JWT_SECRET || 'test-secret', {
-    expiresIn: '1h',
+  return jwt.sign({ _id: userId.toString() }, process.env.JWT_SECRET || 'test-secret', {
+    expiresIn: '1h'
   });
 };
 
 export const createAuthenticatedRequest = async (userOverrides: Partial<any> = {}) => {
   const user = await createTestUser(userOverrides);
   const token = createTestJWT(user._id);
-  
+
   return {
     user,
     token,
     request: createMockRequest({
       headers: { authorization: `Bearer ${token}` },
-      user: user,
-    }),
+      user: {
+        id: user._id.toString(),
+        email: user.email,
+        role: user.role,
+        company: user.company?.toString()
+      }
+    })
   };
 };
 
@@ -69,21 +75,21 @@ export const expectValidationError = (response: any, field?: string) => {
       success: false,
       error: expect.objectContaining({
         code: 'VAL_001',
-        message: expect.stringContaining('Validation failed'),
-      }),
+        message: expect.stringContaining('Validation failed')
+      })
     })
   );
-  
+
   if (field) {
     expect(response.json).toHaveBeenCalledWith(
       expect.objectContaining({
         error: expect.objectContaining({
           validationErrors: expect.arrayContaining([
             expect.objectContaining({
-              field: field,
-            }),
-          ]),
-        }),
+              field
+            })
+          ])
+        })
       })
     );
   }
@@ -96,8 +102,8 @@ export const expectNotFoundError = (response: any, resource: string) => {
       success: false,
       error: expect.objectContaining({
         code: 'BUS_001',
-        message: expect.stringContaining(`${resource} not found`),
-      }),
+        message: expect.stringContaining(`${resource} not found`)
+      })
     })
   );
 };
@@ -108,8 +114,8 @@ export const expectAuthError = (response: any) => {
     expect.objectContaining({
       success: false,
       error: expect.objectContaining({
-        code: expect.stringMatching(/AUTH_\d+/),
-      }),
+        code: expect.stringMatching(/AUTH_\d+/)
+      })
     })
   );
 };
@@ -119,14 +125,14 @@ export const expectSuccessResponse = (response: any, data?: any) => {
   expect(response.json).toHaveBeenCalledWith(
     expect.objectContaining({
       success: true,
-      data: data || expect.anything(),
+      data: data || expect.anything()
     })
   );
 };
 
 export const generateObjectId = () => new Types.ObjectId();
 
-export const waitFor = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+export const waitFor = async (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const mockRedis = {
   get: jest.fn(),
@@ -134,12 +140,12 @@ export const mockRedis = {
   del: jest.fn(),
   expire: jest.fn(),
   setex: jest.fn(),
-  flushall: jest.fn(),
+  flushall: jest.fn()
 };
 
 export const mockAzureService = {
   analyzeDocument: jest.fn(),
   processImage: jest.fn(),
   extractText: jest.fn(),
-  recognizeForm: jest.fn(),
+  recognizeForm: jest.fn()
 };

@@ -1,9 +1,10 @@
 import { Router } from 'express';
+
 import { AuthController } from '../../../controllers/auth/AuthController';
-import { validate } from '../../../middleware/validation';
-import { responseFormatterMiddleware } from '../../../middleware/responseFormatter';
 import { asyncHandler } from '../../../core/errors';
 import { rateLimitPresets } from '../../../middleware/rateLimiting';
+import { responseFormatterMiddleware } from '../../../middleware/responseFormatter';
+import { validate } from '../../../middleware/validation';
 
 const router = Router();
 const authController = new AuthController();
@@ -71,9 +72,9 @@ router.use(responseFormatterMiddleware);
  *       429:
  *         description: Too many login attempts
  */
-router.post('/login', 
-  rateLimitPresets.auth.login, 
-  validate.userLogin, 
+router.post('/login',
+  rateLimitPresets.auth.login,
+  validate.userLogin,
   asyncHandler(authController.login.bind(authController))
 );
 
@@ -128,9 +129,9 @@ router.post('/login',
  *       409:
  *         description: Email already exists
  */
-router.post('/signup', 
-  rateLimitPresets.auth.register, 
-  validate.userRegister, 
+router.post('/signup',
+  rateLimitPresets.auth.register,
+  validate.userRegister,
   asyncHandler(authController.signup.bind(authController))
 );
 
@@ -160,8 +161,8 @@ router.post('/signup',
  *       429:
  *         description: Too many requests
  */
-router.post('/forgot-password', 
-  rateLimitPresets.auth.passwordReset, 
+router.post('/forgot-password',
+  rateLimitPresets.auth.passwordReset,
   asyncHandler(authController.forgotPassword.bind(authController))
 );
 
@@ -192,8 +193,8 @@ router.post('/forgot-password',
  *       400:
  *         description: Invalid or expired token
  */
-router.post('/reset-password', 
-  rateLimiters.auth, 
+router.post('/reset-password',
+  rateLimiters.auth,
   asyncHandler(authController.resetPassword.bind(authController))
 );
 
@@ -220,7 +221,7 @@ router.post('/reset-password',
  *       401:
  *         description: Invalid refresh token
  */
-router.post('/refresh', 
+router.post('/refresh',
   asyncHandler(authController.refreshToken.bind(authController))
 );
 
@@ -238,7 +239,7 @@ router.post('/refresh',
  *       401:
  *         description: Unauthorized
  */
-router.post('/logout', 
+router.post('/logout',
   asyncHandler(authController.logout.bind(authController))
 );
 
@@ -265,7 +266,7 @@ router.post('/logout',
  *       400:
  *         description: Invalid or expired token
  */
-router.post('/verify-email', 
+router.post('/verify-email',
   asyncHandler(authController.verifyEmail.bind(authController))
 );
 

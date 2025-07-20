@@ -4,46 +4,48 @@
  */
 
 import 'reflect-metadata';
-import express, { Express, Request, Response } from 'express';
 import { createServer } from 'http';
-import { Server as SocketIOServer } from 'socket.io';
+
+import cors from 'cors';
+import express, { Express, Request, Response } from 'express';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import cors from 'cors';
-import { 
-  rateLimit, 
-  tierRateLimit, 
-  ipRateLimit, 
+import { Server as SocketIOServer } from 'socket.io';
+
+import { databaseManager } from './config/database';
+import { configManager } from './core/config/ConfigManager';
+import { container } from './core/container/Container';
+import { Logger } from './core/logging/logger';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import { httpOptimizationMiddleware } from './middleware/httpOptimization';
+import {
+  rateLimit,
+  tierRateLimit,
+  ipRateLimit,
   adaptiveRateLimit,
-  rateLimitPresets 
+  rateLimitPresets
 } from './middleware/rateLimiting';
 
 // Core optimizations
-import { configManager } from './core/config/ConfigManager';
-import { Logger } from './core/logging/logger';
-import { container } from './core/container/Container';
-import { databaseManager } from './config/database';
+import { securitySanitizationMiddleware } from './middleware/security/inputSanitizer';
+import apiRoutes from './routes/api/v1';
 import { cacheManager } from './services/cache/CacheManager';
-import { jobProcessor } from './services/queue/JobProcessor';
 import { healthCheckService, setupGracefulShutdown } from './services/health/HealthCheckService';
+import { jobProcessor } from './services/queue/JobProcessor';
 
 // Enhanced middleware
-import { httpOptimizationMiddleware } from './middleware/httpOptimization';
-import { securitySanitizationMiddleware } from './middleware/security/inputSanitizer';
-import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
 // API routes
-import apiRoutes from './routes/api/v1';
 
 // Initialize logger
 const logger = new Logger('Server');
 
 export class OptimizedServer {
-  private app: Express;
-  private httpServer: any;
-  private io: SocketIOServer;
-  private port: number;
-  private host: string;
+  private readonly app: Express;
+  private readonly httpServer: any;
+  private readonly io: SocketIOServer;
+  private readonly port: number;
+  private readonly host: string;
   private isInitialized = false;
 
   constructor() {
@@ -51,7 +53,7 @@ export class OptimizedServer {
     this.httpServer = createServer(this.app);
     this.port = configManager.get('PORT');
     this.host = configManager.get('HOST');
-    
+
     // Initialize Socket.IO with CORS
     this.io = new SocketIOServer(this.httpServer, {
       cors: {
@@ -157,12 +159,12 @@ export class OptimizedServer {
     this.app.use(httpOptimizationMiddleware);
 
     // Body parsing with size limits
-    this.app.use(express.json({ 
+    this.app.use(express.json({
       limit: configManager.get('API_MAX_REQUEST_SIZE'),
       type: ['application/json', 'application/vnd.api+json']
     }));
-    this.app.use(express.urlencoded({ 
-      extended: true, 
+    this.app.use(express.urlencoded({
+      extended: true,
       limit: configManager.get('API_MAX_REQUEST_SIZE')
     }));
 
@@ -194,9 +196,9 @@ export class OptimizedServer {
     this.app.get('/health', async (req: Request, res: Response) => {
       try {
         const healthStatus = await healthCheckService.runHealthCheck();
-        const statusCode = healthStatus.status === 'healthy' ? 200 : 
-                          healthStatus.status === 'degraded' ? 200 : 503;
-        
+        const statusCode = healthStatus.status === 'healthy' ? 200 :
+          healthStatus.status === 'degraded' ? 200 : 503;
+
         res.status(statusCode).json({
           success: true,
           data: healthStatus,
@@ -227,9 +229,9 @@ export class OptimizedServer {
     // Readiness probe (for Kubernetes)
     this.app.get('/health/ready', async (req: Request, res: Response) => {
       try {
-        const isReady = databaseManager.isConnectionActive() && 
+        const isReady = databaseManager.isConnectionActive() &&
                        databaseManager.isSystemInitialized();
-        
+
         if (isReady) {
           res.json({
             status: 'ready',
@@ -298,7 +300,7 @@ export class OptimizedServer {
     this.io.use((socket, next) => {
       try {
         const token = socket.handshake.auth.token || socket.handshake.headers.authorization;
-        
+
         if (!token) {
           return next(new Error('Authentication required'));
         }
@@ -306,9 +308,9 @@ export class OptimizedServer {
         // Verify JWT token
         const jwt = require('jsonwebtoken');
         const jwtSecret = configManager.get('JWT_SECRET') || process.env.JWT_SECRET || 'secret';
-        
+
         try {
-          const decoded = jwt.verify(token, jwtSecret) as any;
+          const decoded = jwt.verify(token, jwtSecret);
           socket.data.userId = decoded.userId || decoded.id;
           socket.data.userRole = decoded.role;
           socket.data.tenantId = decoded.tenantId;
@@ -326,9 +328,9 @@ export class OptimizedServer {
 
     // WebSocket connection handling
     this.io.on('connection', (socket) => {
-      const userId = socket.data.userId;
-      logger.info('WebSocket client connected', { 
-        socketId: socket.id, 
+      const {userId} = socket.data;
+      logger.info('WebSocket client connected', {
+        socketId: socket.id,
         userId,
         remoteAddress: socket.handshake.address
       });
@@ -363,10 +365,10 @@ export class OptimizedServer {
       });
 
       socket.on('disconnect', (reason) => {
-        logger.info('WebSocket client disconnected', { 
-          socketId: socket.id, 
-          userId, 
-          reason 
+        logger.info('WebSocket client disconnected', {
+          socketId: socket.id,
+          userId,
+          reason
         });
       });
 
@@ -396,7 +398,7 @@ export class OptimizedServer {
       // Apply startup optimizations
       const { applyStartupOptimizations, tunePerformance, startHealthMonitoring } = await import('./startup/optimizations');
       tunePerformance();
-      
+
       // Initialize services
       await this.initializeServices();
 
@@ -424,11 +426,11 @@ export class OptimizedServer {
         logger.info(`📊 Monitoring: http://${this.host}:${this.port}/api/v1/monitoring`);
         logger.info(`🔌 WebSocket: ws://${this.host}:${this.port}`);
         logger.info(`🌍 Environment: ${configManager.get('NODE_ENV')}`);
-        logger.info(`📘 TypeScript: Active & Optimized`);
-        logger.info(`🔐 Security: Enhanced with Input Sanitization`);
-        logger.info(`🚀 Performance: Multi-level Caching & Optimization`);
-        logger.info(`🗄️ Database: Optimized with Indexing & Monitoring`);
-        logger.info(`⚡ Features: Background Jobs, Health Checks, Graceful Shutdown`);
+        logger.info('📘 TypeScript: Active & Optimized');
+        logger.info('🔐 Security: Enhanced with Input Sanitization');
+        logger.info('🚀 Performance: Multi-level Caching & Optimization');
+        logger.info('🗄️ Database: Optimized with Indexing & Monitoring');
+        logger.info('⚡ Features: Background Jobs, Health Checks, Graceful Shutdown');
         logger.info('='.repeat(80));
         logger.info('✅ All optimizations active:');
         logger.info('   • HTTP Compression & Optimization');
@@ -457,15 +459,15 @@ export class OptimizedServer {
    */
   public async stop(): Promise<void> {
     logger.info('Stopping server...');
-    
+
     if (this.httpServer) {
       this.httpServer.close();
     }
-    
+
     if (this.io) {
       this.io.close();
     }
-    
+
     await healthCheckService.gracefulShutdown();
     logger.info('Server stopped successfully');
   }
@@ -479,7 +481,7 @@ export class OptimizedServer {
     isInitialized: boolean;
     environment: string;
     features: Record<string, boolean>;
-  } {
+    } {
     return {
       port: this.port,
       host: this.host,

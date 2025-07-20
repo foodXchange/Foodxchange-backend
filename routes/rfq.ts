@@ -2,11 +2,12 @@ import express, { Router, Request, Response } from 'express';
 import { authenticateToken } from '../middleware/auth';
 import RFQ from '../models/RFQ';
 import { AuthenticatedRequest } from '../types';
+import { auditData } from '../src/middleware/audit';
 
 const router: Router = express.Router();
 
 // Get all RFQs
-router.get('/', authenticateToken, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/', authenticateToken, auditData('rfq_list_accessed', 'rfq', false), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const rfqs = await RFQ.find({ buyerId: req.userId })
       .populate('buyerId', 'name email')
@@ -28,7 +29,7 @@ router.get('/', authenticateToken, async (req: AuthenticatedRequest, res: Respon
 });
 
 // Create new RFQ
-router.post('/', authenticateToken, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/', authenticateToken, auditData('rfq_created', 'rfq'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const {
       title,
@@ -81,7 +82,7 @@ router.post('/', authenticateToken, async (req: AuthenticatedRequest, res: Respo
 });
 
 // Get single RFQ by ID
-router.get('/:id', authenticateToken, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/:id', authenticateToken, auditData('rfq_accessed', 'rfq', false), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const rfq = await RFQ.findById(req.params.id)
       .populate('buyerId', 'name email company');
@@ -118,7 +119,7 @@ router.get('/:id', authenticateToken, async (req: AuthenticatedRequest, res: Res
 });
 
 // Update RFQ
-router.put('/:id', authenticateToken, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.put('/:id', authenticateToken, auditData('rfq_updated', 'rfq'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const rfq = await RFQ.findById(req.params.id);
     

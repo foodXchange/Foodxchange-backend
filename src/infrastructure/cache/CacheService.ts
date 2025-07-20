@@ -3,13 +3,15 @@
  * Supports Redis and in-memory caching with automatic fallback
  */
 
-import Redis from 'ioredis';
-import NodeCache from 'node-cache';
 import { promisify } from 'util';
 import { gzip, gunzip } from 'zlib';
+
+import Redis from 'ioredis';
+import NodeCache from 'node-cache';
+
 import { config } from '../../core/config';
-import { Logger } from '../../core/logging/logger';
 import { ExternalServiceError } from '../../core/errors';
+import { Logger } from '../../core/logging/logger';
 
 const logger = new Logger('CacheService');
 
@@ -22,19 +24,19 @@ interface CacheOptions {
 export class CacheService {
   private static instance: CacheService;
   private redisClient?: Redis;
-  private memoryCache: NodeCache;
+  private readonly memoryCache: NodeCache;
   private isRedisConnected = false;
   private readonly defaultTTL = 3600; // 1 hour
   private readonly keyPrefix = 'fdx:'; // FoodXchange prefix
-  private gzipAsync = promisify(gzip);
-  private gunzipAsync = promisify(gunzip);
+  private readonly gzipAsync = promisify(gzip);
+  private readonly gunzipAsync = promisify(gunzip);
 
   private constructor() {
     // Initialize in-memory cache as fallback
     this.memoryCache = new NodeCache({
       stdTTL: this.defaultTTL,
       checkperiod: 600, // Check for expired keys every 10 minutes
-      useClones: false, // Better performance
+      useClones: false // Better performance
     });
 
     // Initialize Redis if configured
@@ -67,7 +69,7 @@ export class CacheService {
         },
         maxRetriesPerRequest: 3,
         enableReadyCheck: true,
-        enableOfflineQueue: true,
+        enableOfflineQueue: true
       });
 
       this.redisClient.on('connect', () => {
@@ -146,7 +148,7 @@ export class CacheService {
 
       // Always set in memory cache as backup
       this.memoryCache.set(fullKey, serialized, finalTTL);
-      
+
       return true;
     } catch (error) {
       logger.error('Cache set error', error, { key: fullKey });
@@ -165,7 +167,7 @@ export class CacheService {
 
       // Delete from memory cache
       this.memoryCache.del(fullKey);
-      
+
       logger.debug('Cache delete', { key: fullKey });
       return true;
     } catch (error) {
@@ -232,7 +234,7 @@ export class CacheService {
       try {
         const compressed = await this.gzipAsync(json);
         // Return base64 encoded compressed data with a prefix to identify compressed content
-        return 'gzip:' + compressed.toString('base64');
+        return `gzip:${  compressed.toString('base64')}`;
       } catch (error) {
         logger.warn('Failed to compress cache data, storing uncompressed', { error });
         return json;
@@ -327,7 +329,7 @@ export class CacheService {
     return {
       healthy: memoryHealthy || redisHealthy,
       redis: redisHealthy,
-      memory: memoryHealthy,
+      memory: memoryHealthy
     };
   }
 
@@ -341,16 +343,16 @@ export class CacheService {
     redis: {
       connected: boolean;
     };
-  } {
+    } {
     return {
       memory: {
         keys: this.memoryCache.keys().length,
         hits: this.memoryCache.getStats().hits,
-        misses: this.memoryCache.getStats().misses,
+        misses: this.memoryCache.getStats().misses
       },
       redis: {
-        connected: this.isRedisConnected,
-      },
+        connected: this.isRedisConnected
+      }
     };
   }
 }

@@ -28,8 +28,8 @@ export const createOrderFromRFQ = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Find the accepted proposal
-    const proposal = rfq.proposals.find(p => p._id.toString() === proposalId);
+    // Find the accepted quote/proposal
+    const proposal = rfq.quotes.find(q => q._id?.toString() === proposalId);
     if (!proposal || proposal.status !== 'accepted') {
       return res.status(400).json({
         success: false,
@@ -45,9 +45,9 @@ export const createOrderFromRFQ = async (req: AuthRequest, res: Response) => {
       proposal: proposal._id,
       items: proposal.items || [{
         name: rfq.title,
-        quantity: rfq.quantity,
-        unit: rfq.unit,
-        price: proposal.totalPrice / rfq.quantity,
+        quantity: rfq.items[0]?.quantity || 1,
+        unit: rfq.items[0]?.unit || 'unit',
+        price: proposal.totalAmount / (rfq.items[0]?.quantity || 1),
         totalPrice: proposal.totalPrice
       }],
       totalAmount: proposal.totalPrice,
@@ -61,8 +61,8 @@ export const createOrderFromRFQ = async (req: AuthRequest, res: Response) => {
     });
 
     // Update RFQ status
-    rfq.status = 'converted';
-    rfq.order = order._id;
+    rfq.status = 'awarded';
+    // Link the order to the RFQ
     await rfq.save();
 
     res.status(201).json({
@@ -252,15 +252,17 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response) => {
         break;
     }
 
-    Object.assign(order.timeline, timelineUpdate);
+    // Update order dates based on status
+    if (status === 'shipped' && timelineUpdate.shippedAt) {
+      order.shippingDate = timelineUpdate.shippedAt;
+    } else if (status === 'delivered' && timelineUpdate.deliveredAt) {
+      order.deliveryDate = timelineUpdate.deliveredAt;
+    }
 
-    // Add status history
-    order.statusHistory.push({
-      status,
-      timestamp: new Date(),
-      updatedBy: req.userId,
-      notes
-    });
+    // Update order notes if provided
+    if (notes) {
+      order.notes = (order.notes || '') + `\n[${new Date().toISOString()}] Status changed to ${status}: ${notes}`;
+    }
 
     await order.save();
 
@@ -307,7 +309,7 @@ export const addShipmentTracking = async (req: AuthRequest, res: Response) => {
 
     order.shipments.push(shipment);
     order.status = 'shipped';
-    order.timeline.shipped = new Date();
+    order.shippingDate = new Date();
 
     await order.save();
 

@@ -1,11 +1,10 @@
-﻿const path = require('path');
+import * as path from 'path';
+import * as bcrypt from 'bcryptjs';
+import * as jwt from 'jsonwebtoken';
+import * as multer from 'multer';
 
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const multer = require('multer');
-
-const Product = require('../models/seller/Product');
-const Seller = require('../models/seller/Seller');
+import { Product } from '../../models/seller/Product';
+import { Seller } from '../../models/seller/Seller';
 
 
 // Configure file upload
@@ -25,7 +24,7 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({
+export const upload = multer({
   storage,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
   fileFilter: (req, file, cb) => {

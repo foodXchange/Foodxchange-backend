@@ -6,6 +6,7 @@
 import { ApiError } from '../core/errors';
 import { Logger } from '../core/logging/logger';
 import { CacheService } from '../infrastructure/cache/CacheService';
+import { cacheService } from '../config/redis';
 
 // Import models (these would be your actual Mongoose models)
 import { Company } from '../models/Company';

@@ -183,34 +183,35 @@ export const submitProposal = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Check if RFQ is still open
-    if (rfq.status !== 'open') {
+    // Check if RFQ is still accepting quotes
+    if (rfq.status !== 'published') {
       return res.status(400).json({
         success: false,
         error: 'RFQ is not accepting proposals'
       });
     }
 
-    // Check if supplier already submitted a proposal
-    const existingProposal = rfq.proposals.find(
-      p => p.supplier.toString() === req.userId
+    // Check if supplier already submitted a quote
+    const existingQuote = rfq.quotes.find(
+      q => q.supplier.toString() === req.userId
     );
 
-    if (existingProposal) {
+    if (existingQuote) {
       return res.status(400).json({
         success: false,
-        error: 'You have already submitted a proposal'
+        error: 'You have already submitted a quote'
       });
     }
 
-    // Add proposal
-    const proposal = {
+    // Add quote
+    const quote = {
       supplier: req.userId,
       ...req.body,
-      submittedAt: new Date()
+      submittedAt: new Date(),
+      status: 'submitted'
     };
 
-    rfq.proposals.push(proposal);
+    rfq.quotes.push(quote);
     await rfq.save();
 
     res.json({
@@ -249,22 +250,22 @@ export const acceptProposal = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Find proposal
-    const proposal = rfq.proposals.find(
-      p => p._id.toString() === req.params.proposalId
+    // Find quote
+    const quote = rfq.quotes.find(
+      q => q._id?.toString() === req.params.proposalId
     );
 
-    if (!proposal) {
+    if (!quote) {
       return res.status(404).json({
         success: false,
-        error: 'Proposal not found'
+        error: 'Quote not found'
       });
     }
 
-    // Update proposal status
-    proposal.status = 'accepted';
-    rfq.status = 'closed';
-    rfq.acceptedProposal = proposal._id;
+    // Update quote status
+    quote.status = 'accepted';
+    rfq.status = 'awarded';
+    // Store the accepted quote ID
 
     await rfq.save();
 

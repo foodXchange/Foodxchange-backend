@@ -72,7 +72,10 @@
       "Bash(timeout:*)",
       "Bash(copy .env.development .env)",
       "Bash(set DISABLE_REDIS=true)",
-      "Bash(del nul)"
+      "Bash(del nul)",
+      "Bash(npm run:*)",
+      "Bash(PORT=5002 npm run dev)",
+      "Bash(tasklist)"
     ],
     "deny": []
   }

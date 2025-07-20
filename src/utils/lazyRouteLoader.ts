@@ -70,7 +70,12 @@ export class LazyRouteLoader {
 
     try {
       const startTime = Date.now();
-      const routeModule = await import(config.modulePath);
+      // Fix import path to use absolute path from src directory
+      const importPath = config.modulePath.startsWith('.') 
+        ? `../${config.modulePath.substring(2)}` 
+        : config.modulePath;
+      
+      const routeModule = await import(importPath);
       const router = routeModule.default || routeModule;
 
       this.app.use(config.path, router);
@@ -85,7 +90,7 @@ export class LazyRouteLoader {
     } catch (error) {
       this.logger.error(`❌ Failed to load route: ${config.path}`, {
         modulePath: config.modulePath,
-        error
+        error: error instanceof Error ? error.message : String(error)
       });
 
       // Create fallback route for failed loads
@@ -103,7 +108,10 @@ export class LazyRouteLoader {
           await this.loadRoute(config);
 
           // Re-route the request to the newly loaded route
-          const routeModule = await import(config.modulePath);
+          const importPath = config.modulePath.startsWith('.') 
+            ? `../${config.modulePath.substring(2)}` 
+            : config.modulePath;
+          const routeModule = await import(importPath);
           const router = routeModule.default || routeModule;
           router(req, res, next);
         } catch (error) {

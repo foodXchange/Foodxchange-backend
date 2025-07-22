@@ -523,7 +523,7 @@ OrderSchema.methods.updateOrderStatus = async function() {
   }
 };
 
-OrderSchema.methods.addShipment = async function(shipmentData: Partial<IShipment>) {
+OrderSchema.methods.addShipment = async function(shipmentData: Partial<IShipment> & { createdBy?: Types.ObjectId }) {
   const shipmentId = `SHP-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
 
   this.shipments.push({

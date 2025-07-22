@@ -43,7 +43,7 @@ export class MetricsService extends EventEmitter {
   private readonly histograms: Map<string, Histogram> = new Map();
   private readonly timers: Map<string, Timer> = new Map();
 
-  private flushInterval: NodeJS.Timer | null = null;
+  private flushInterval: NodeJS.Timeout | null = null;
   private readonly flushIntervalMs = 60000; // 1 minute
   private readonly histogramMaxSize = 1000;
 

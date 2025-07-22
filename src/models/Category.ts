@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const categorySchema = new mongoose.Schema({
   name: {
@@ -67,9 +67,9 @@ const categorySchema = new mongoose.Schema({
 });
 
 // Virtual for full category path
-categorySchema.virtual('fullPath').get(function() {
+categorySchema.virtual('fullPath').get(function(this: any) {
   // This would need to be populated to work properly
-  return this.parent ? `${this.parent.name} > ${this.name}` : this.name;
+  return this.parent && this.parent.name ? `${this.parent.name} > ${this.name}` : this.name;
 });
 
 // Pre-save middleware to generate slug
@@ -88,4 +88,5 @@ categorySchema.index({ slug: 1 });
 categorySchema.index({ parent: 1, isActive: 1 });
 categorySchema.index({ name: 'text', description: 'text' });
 
-module.exports = mongoose.model('Category', categorySchema);
+export const Category = mongoose.model('Category', categorySchema);
+export default Category;

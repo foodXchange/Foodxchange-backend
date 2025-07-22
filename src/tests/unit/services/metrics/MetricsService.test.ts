@@ -1,4 +1,4 @@
-import { MetricsService } from '../../../../services/metrics/MetricsService';
+import { MetricsService } from '../../../../core/monitoring/metrics';
 
 describe('MetricsService', () => {
   let metricsService: MetricsService;

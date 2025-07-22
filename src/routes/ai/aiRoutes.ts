@@ -1,7 +1,7 @@
-const express = require('express');
+import express from 'express';
+import aiController from '../../controllers/ai/aiController';
 
 const router = express.Router();
-const aiController = require('../controllers/ai/aiController');
 
 // AI service health check
 router.get('/status', aiController.getAIStatus.bind(aiController));
@@ -28,4 +28,4 @@ router.post('/search/semantic', (req, res) => {
   });
 });
 
-module.exports = router;
+export default router;

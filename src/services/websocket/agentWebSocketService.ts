@@ -6,10 +6,17 @@ const AgentActivity = require('../../models/AgentActivity');
 const whatsappService = require('../whatsappService');
 
 class AgentWebSocketService {
+  private agentConnections: Map<string, any>;
+  private leadRooms: Map<string, Set<string>>;
+  private userToAgent: Map<string, string>;
+  private leadTimers: Map<string, NodeJS.Timeout>;
+  private io: any;
+
   constructor() {
     this.agentConnections = new Map(); // agentId -> websocket connection
     this.leadRooms = new Map(); // leadId -> Set of agentIds
     this.userToAgent = new Map(); // userId -> agentId mapping
+    this.leadTimers = new Map(); // leadId -> timeout timer
   }
 
   /**

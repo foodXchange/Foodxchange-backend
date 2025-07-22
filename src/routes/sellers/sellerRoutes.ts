@@ -1,15 +1,23 @@
-const express = require('express');
-
-const router = express.Router();
-const {
+import express from 'express';
+import {
   registerSeller,
   getDashboard,
+  getSellerProfile,
   updateProfile,
   getSellerProducts,
   getSellerOrders,
-  getAnalytics
-} = require('../../controllers/sellers/sellerController');
-const { protect, sellerOnly } = require('../../middleware/auth');
+  getAnalytics,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+  updateOrderStatus,
+  getRevenue,
+  getNotifications,
+  markNotificationRead
+} from '../../controllers/sellers/sellerController';
+import { protect, sellerOnly } from '../../middleware/auth';
+
+const router = express.Router();
 
 // Public routes
 router.post('/register', registerSeller);
@@ -49,4 +57,4 @@ router.get('/messages', getSellerMessages);
 router.post('/messages', sendMessage);
 router.get('/messages/:conversationId', getConversation);
 
-module.exports = router;
+export default router;

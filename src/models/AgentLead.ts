@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const agentLeadSchema = new mongoose.Schema({
   leadNumber: {
@@ -442,5 +442,4 @@ agentLeadSchema.index({
 agentLeadSchema.index({ 'leadInfo.category': 1, status: 1, 'leadInfo.urgency': 1 });
 agentLeadSchema.index({ 'assignment.assignedAgents.status': 1, 'assignment.assignedAgents.assignedAt': 1 });
 
-module.exports = mongoose.model('AgentLead', agentLeadSchema);
 export default mongoose.model('AgentLead', agentLeadSchema);

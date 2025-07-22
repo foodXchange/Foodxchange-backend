@@ -1,5 +1,5 @@
 // AI-Powered Product Analysis Service
-const aiConfig = require('./config');
+import aiConfig from './config';
 
 class ProductAnalysisService {
   constructor() {
@@ -324,4 +324,4 @@ class ProductAnalysisService {
   }
 }
 
-module.exports = new ProductAnalysisService();
+export default new ProductAnalysisService();

@@ -1,5 +1,5 @@
 // AI-Powered Supplier Matching Service
-const aiConfig = require('./config');
+import aiConfig from './config';
 
 class SupplierMatchingService {
   constructor() {
@@ -87,8 +87,8 @@ class SupplierMatchingService {
   async searchSuppliers(requirements) {
     try {
       // Dynamic import to avoid circular dependencies
-      const { User } = require('../../models/User');
-      const { Product } = require('../../models/Product');
+      const { User } = await import('../../models/User');
+      const { Product } = await import('../../models/Product');
 
       // Build search query
       const query = {
@@ -352,4 +352,4 @@ Return a JSON array of suppliers ordered by best match, with match scores and re
   }
 }
 
-module.exports = new SupplierMatchingService();
+export default new SupplierMatchingService();

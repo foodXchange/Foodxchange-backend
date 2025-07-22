@@ -1,4 +1,4 @@
-﻿const mongoose = require('mongoose');
+﻿import mongoose from 'mongoose';
 
 const sellerSchema = new mongoose.Schema({
   // Basic Information
@@ -142,4 +142,4 @@ sellerSchema.methods.getProfileCompletion = function() {
   return Math.round((completed / requiredFields.length) * 100);
 };
 
-module.exports = mongoose.model('Seller', sellerSchema);
+export default mongoose.model('Seller', sellerSchema);

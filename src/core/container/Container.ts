@@ -346,7 +346,7 @@ export class ServiceScope {
         try {
           instance.dispose();
         } catch (error) {
-          logger.error('Error disposing scoped service', error, { name });
+          logger.error('Error disposing scoped service', { error, name });
         }
       }
     }

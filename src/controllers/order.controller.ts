@@ -48,15 +48,15 @@ export const createOrderFromRFQ = async (req: AuthRequest, res: Response) => {
         quantity: rfq.items[0]?.quantity || 1,
         unit: rfq.items[0]?.unit || 'unit',
         price: proposal.totalAmount / (rfq.items[0]?.quantity || 1),
-        totalPrice: proposal.totalPrice
+        totalPrice: proposal.totalAmount
       }],
-      totalAmount: proposal.totalPrice,
-      deliveryTerms: proposal.deliveryTerms,
-      paymentTerms: proposal.paymentTerms,
+      totalAmount: proposal.totalAmount,
+      deliveryTerms: proposal.terms || '',
+      paymentTerms: proposal.terms || '',
       status: 'pending',
       timeline: {
         created: new Date(),
-        expectedDelivery: proposal.deliveryDate
+        expectedDelivery: proposal.validUntil || new Date()
       }
     });
 
@@ -252,17 +252,41 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response) => {
         break;
     }
 
-    // Update order dates based on status
+    // Update delivery schedule based on status
     if (status === 'shipped' && timelineUpdate.shippedAt) {
-      order.shippingDate = timelineUpdate.shippedAt;
+      if (!order.deliverySchedule) {
+        order.deliverySchedule = {};
+      }
+      order.deliverySchedule.estimatedDate = timelineUpdate.shippedAt;
     } else if (status === 'delivered' && timelineUpdate.deliveredAt) {
-      order.deliveryDate = timelineUpdate.deliveredAt;
+      if (!order.deliverySchedule) {
+        order.deliverySchedule = {};
+      }
+      order.deliverySchedule.actualDate = timelineUpdate.deliveredAt;
     }
 
-    // Update order notes if provided
-    if (notes) {
-      order.notes = (order.notes || '') + `\n[${new Date().toISOString()}] Status changed to ${status}: ${notes}`;
+    // Add timeline event as a comment or activity log
+    // Note: Order model doesn't have a timeline field, so we'll add it to the notes
+    const timelineNote = `[${new Date().toISOString()}] Status changed from ${order.status} to ${status}${notes ? `: ${notes}` : ''} (by user: ${req.userId})`;
+    
+    // Append to any existing notes or metadata
+    const orderDoc = order as any;
+    if (!orderDoc.metadata) {
+      orderDoc.metadata = {};
     }
+    if (!orderDoc.metadata.activityLog) {
+      orderDoc.metadata.activityLog = [];
+    }
+    orderDoc.metadata.activityLog.push({
+      timestamp: new Date(),
+      event: `Status changed to ${status}`,
+      actor: req.userId,
+      details: {
+        previousStatus: order.status,
+        newStatus: status
+      },
+      notes: notes || undefined
+    });
 
     await order.save();
 
@@ -309,7 +333,12 @@ export const addShipmentTracking = async (req: AuthRequest, res: Response) => {
 
     order.shipments.push(shipment);
     order.status = 'shipped';
-    order.shippingDate = new Date();
+    
+    // Update delivery schedule
+    if (!order.deliverySchedule) {
+      order.deliverySchedule = {};
+    }
+    order.deliverySchedule.estimatedDate = new Date();
 
     await order.save();
 

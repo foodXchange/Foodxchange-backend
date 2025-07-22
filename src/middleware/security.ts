@@ -6,6 +6,16 @@ import mongoSanitize from 'express-mongo-sanitize';
 import helmet from 'helmet';
 import xss from 'xss';
 
+import { Logger } from '../core/logging/logger';
+
+// Extend Express Request type
+interface SecurityRequest extends Request {
+  session?: any;
+}
+
+const logger = new Logger('Security');
+const metricsService = { incrementCounter: (metric: string) => {} }; // TODO: Replace with actual metrics service
+
 
 // CORS configuration
 export const corsOptions = {
@@ -80,8 +90,7 @@ export const helmetConfig = {
   noSniff: true,
   originAgentCluster: true,
   permittedCrossDomainPolicies: false,
-  referrerPolicy: { policy: 'no-referrer' },
-  xssFilter: true
+  referrerPolicy: { policy: 'no-referrer' }
 };
 
 // Input sanitization middleware
@@ -371,7 +380,7 @@ export const generateCSRFToken = (): string => {
   return crypto.randomBytes(32).toString('hex');
 };
 
-export const csrfProtection = (req: Request, res: Response, next: NextFunction): void => {
+export const csrfProtection = (req: SecurityRequest, res: Response, next: NextFunction): void => {
   // Skip CSRF for certain methods
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
     return next();
@@ -417,9 +426,27 @@ export const fileUploadSecurity = (req: Request, res: Response, next: NextFuncti
 
     const maxFileSize = 10 * 1024 * 1024; // 10MB
 
-    const files = req.files ? (Array.isArray(req.files) ? req.files : [req.files]) : [req.file];
+    // Handle different file upload scenarios
+    let filesToCheck: Express.Multer.File[] = [];
+    
+    if (req.file) {
+      filesToCheck.push(req.file);
+    }
+    
+    if (req.files) {
+      if (Array.isArray(req.files)) {
+        filesToCheck.push(...req.files);
+      } else {
+        // req.files is an object with arrays of files
+        for (const fieldFiles of Object.values(req.files)) {
+          if (Array.isArray(fieldFiles)) {
+            filesToCheck.push(...fieldFiles);
+          }
+        }
+      }
+    }
 
-    for (const file of files.filter(Boolean)) {
+    for (const file of filesToCheck) {
       // Check MIME type
       if (!allowedMimeTypes.includes(file.mimetype)) {
         logger.warn('Invalid file type upload attempt', {
@@ -457,7 +484,9 @@ export const fileUploadSecurity = (req: Request, res: Response, next: NextFuncti
       }
 
       // Sanitize filename
-      file.originalname = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+      if (typeof file.originalname === 'string') {
+        file.originalname = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+      }
     }
   }
 

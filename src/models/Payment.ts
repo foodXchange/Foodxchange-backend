@@ -107,6 +107,12 @@ export interface IPayment extends Document {
   failureReason?: string;
   createdAt: Date;
   updatedAt: Date;
+  
+  // Virtual fields
+  totalRefunded: number;
+  
+  // Methods
+  addTimelineEvent(event: string, description?: string, metadata?: any): void;
 }
 
 const PaymentSchema = new Schema<IPayment>({

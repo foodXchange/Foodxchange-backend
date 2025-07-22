@@ -130,6 +130,13 @@ export interface ISample extends Document {
 
   createdAt: Date;
   updatedAt: Date;
+
+  // Virtual/computed fields
+  isOverdue: boolean;
+  age: number;
+
+  // Methods
+  updateStage(stage: SampleWorkflowStage, performedBy: Types.ObjectId, notes?: string): Promise<void>;
 }
 
 const TimelineEventSchema = new Schema<ITimelineEvent>({
@@ -317,7 +324,9 @@ const SampleSchema = new Schema<ISample>({
   cancelledAt: Date
 }, {
   timestamps: true,
-  collection: 'samples'
+  collection: 'samples',
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
 // Indexes for performance

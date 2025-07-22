@@ -49,7 +49,8 @@ export const validate = (schemas: ValidationSchemas) => {
           value: err.path.reduce((obj, key) => obj?.[key], req.body ?? req.query ?? req.params)
         }));
 
-        next(new ValidationError('Validation failed', validationErrors));
+        const errorMessage = validationErrors.map(e => `${e.field}: ${e.message}`).join(', ');
+        next(new ValidationError(errorMessage));
       } else {
         next(error);
       }
@@ -324,7 +325,8 @@ export const validateRequest = (validations: ValidationChain[]) => {
         value: err.type === 'field' ? err.value : undefined
       }));
 
-      return next(new ValidationError('Validation failed', validationErrors));
+      const errorMessage = validationErrors.map(e => `${e.field}: ${e.message}`).join(', ');
+      return next(new ValidationError(errorMessage));
     }
 
     next();

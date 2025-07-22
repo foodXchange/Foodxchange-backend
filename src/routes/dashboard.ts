@@ -1,10 +1,11 @@
-﻿const router = require('express').Router();
+﻿import express from 'express';
+import { protect } from '../middleware/auth';
+import Company from '../models/Company';
+import Product from '../models/Product';
+import Proposal from '../models/Proposal';
+import Request from '../models/Request';
 
-const { protect } = require('../middleware/auth');
-const Company = require('../models/Company');
-const Product = require('../models/Product');
-const Proposal = require('../models/Proposal');
-const Request = require('../models/Request');
+const router = express.Router();
 
 // Get dashboard stats
 router.get('/stats', protect, async (req, res) => {
@@ -93,4 +94,4 @@ router.get('/timeline', protect, async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

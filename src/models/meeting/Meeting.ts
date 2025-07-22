@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const meetingSchema = new mongoose.Schema({
   organizer: {
@@ -123,4 +123,4 @@ meetingSchema.virtual('joinLink').get(function() {
   return this.meetingUrl;
 });
 
-module.exports = mongoose.model('Meeting', meetingSchema);
+export default mongoose.model('Meeting', meetingSchema);

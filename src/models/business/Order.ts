@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 const { Decimal128 } = mongoose.Types;
 
 const orderSchema = new mongoose.Schema({
@@ -437,8 +437,8 @@ orderSchema.index({ 'payment.dueDate': 1 });
 orderSchema.index({ legacyId: 1 }, { sparse: true });
 
 // Virtual for order age
-orderSchema.virtual('ageInDays').get(function() {
-  return Math.floor((new Date() - this.createdAt) / (1000 * 60 * 60 * 24));
+orderSchema.virtual('ageInDays').get(function(this: any) {
+  return Math.floor((new Date().getTime() - new Date(this.createdAt).getTime()) / (1000 * 60 * 60 * 24));
 });
 
 // Virtual for delivery status
@@ -476,4 +476,4 @@ orderSchema.pre('save', function(next) {
   next();
 });
 
-module.exports = mongoose.model('Order', orderSchema);
+export default mongoose.model('Order', orderSchema);

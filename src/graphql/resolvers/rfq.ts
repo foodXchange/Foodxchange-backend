@@ -136,7 +136,7 @@ export const rfqResolvers = {
         throw new AuthenticationError('Not authorized to cancel this RFQ');
       }
 
-      rfq.status = 'CANCELLED';
+      rfq.status = 'cancelled';
       await rfq.save();
 
       return true;

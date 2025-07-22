@@ -24,7 +24,7 @@ router.use(analyticsRateLimiter);
  * @access Private
  */
 router.get('/dashboard',
-  authorize(['admin', 'manager', 'analyst']),
+  authorize('admin', 'manager', 'analyst'),
   asyncHandler(analyticsController.getDashboardMetrics.bind(analyticsController))
 );
 
@@ -34,7 +34,7 @@ router.get('/dashboard',
  * @access Private
  */
 router.get('/reports',
-  authorize(['admin', 'manager', 'analyst']),
+  authorize('admin', 'manager', 'analyst'),
   asyncHandler(analyticsController.generateReport.bind(analyticsController))
 );
 
@@ -44,7 +44,7 @@ router.get('/reports',
  * @access Private
  */
 router.get('/real-time',
-  authorize(['admin', 'manager', 'analyst']),
+  authorize('admin', 'manager', 'analyst'),
   asyncHandler(analyticsController.getRealTimeAnalytics.bind(analyticsController))
 );
 
@@ -54,7 +54,7 @@ router.get('/real-time',
  * @access Private
  */
 router.post('/track',
-  authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
+  authorize('admin', 'manager', 'user', 'supplier', 'buyer'),
   asyncHandler(analyticsController.trackEvent.bind(analyticsController))
 );
 
@@ -64,7 +64,7 @@ router.post('/track',
  * @access Private
  */
 router.get('/category/:category',
-  authorize(['admin', 'manager', 'analyst']),
+  authorize('admin', 'manager', 'analyst'),
   asyncHandler(analyticsController.getAnalyticsByCategory.bind(analyticsController))
 );
 
@@ -74,7 +74,7 @@ router.get('/category/:category',
  * @access Private
  */
 router.get('/products/top',
-  authorize(['admin', 'manager', 'analyst']),
+  authorize('admin', 'manager', 'analyst'),
   asyncHandler(analyticsController.getTopProducts.bind(analyticsController))
 );
 
@@ -84,7 +84,7 @@ router.get('/products/top',
  * @access Private
  */
 router.get('/revenue/trends',
-  authorize(['admin', 'manager', 'analyst']),
+  authorize('admin', 'manager', 'analyst'),
   asyncHandler(analyticsController.getRevenueTrends.bind(analyticsController))
 );
 
@@ -94,7 +94,7 @@ router.get('/revenue/trends',
  * @access Private
  */
 router.get('/users',
-  authorize(['admin', 'manager', 'analyst']),
+  authorize('admin', 'manager', 'analyst'),
   asyncHandler(analyticsController.getUserAnalytics.bind(analyticsController))
 );
 
@@ -104,7 +104,7 @@ router.get('/users',
  * @access Private
  */
 router.get('/export',
-  authorize(['admin', 'manager', 'analyst']),
+  authorize('admin', 'manager', 'analyst'),
   asyncHandler(analyticsController.getExportData.bind(analyticsController))
 );
 

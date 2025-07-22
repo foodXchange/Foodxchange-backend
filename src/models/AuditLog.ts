@@ -83,6 +83,9 @@ export interface IAuditLog extends Document {
     factors?: string[];
   };
   timestamp: Date;
+
+  // Methods
+  calculateRiskScore(): number;
 }
 
 const AuditLogSchema = new Schema<IAuditLog>({

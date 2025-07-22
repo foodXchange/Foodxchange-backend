@@ -349,12 +349,21 @@ export const complexRoleMiddleware = (roleConfig: {
       }
 
       // Custom check if specified
-      if (roleConfig.customCheck && !roleConfig.customCheck(req.user, req)) {
-        res.status(403).json({
-          success: false,
-          message: 'Access denied. Custom authorization check failed.'
-        });
-        return;
+      if (roleConfig.customCheck) {
+        // Map the user object to match the expected structure
+        const mappedUser = {
+          id: req.user._id.toString(),
+          email: req.user.email,
+          role: req.user.role,
+          company: req.user.company?._id?.toString()
+        };
+        if (!roleConfig.customCheck(mappedUser, req as Request)) {
+          res.status(403).json({
+            success: false,
+            message: 'Access denied. Custom authorization check failed.'
+          });
+          return;
+        }
       }
 
       next();

@@ -3,7 +3,7 @@ import { Request, Response } from 'express';
 
 import { databaseManager } from '../../../config/database';
 import { Logger } from '../../../core/logging/logger';
-import { MetricsService } from '../../../core/metrics/MetricsService';
+import { MetricsService } from '../../../core/monitoring/metrics';
 import { protect } from '../../../middleware/auth';
 import { authorize } from '../../../middleware/auth';
 
@@ -12,7 +12,7 @@ const logger = new Logger('MonitoringRoutes');
 const metricsService = new MetricsService();
 
 // Middleware to ensure admin access for monitoring endpoints
-const requireAdmin = [protect, authorize(['admin'])];
+const requireAdmin = [protect, authorize('admin')];
 
 // GET /api/v1/monitoring/health - Database health check
 router.get('/health', async (req: Request, res: Response) => {
@@ -59,7 +59,7 @@ router.get('/health', async (req: Request, res: Response) => {
 router.get('/metrics', async (req: Request, res: Response) => {
   try {
     const metrics = await metricsService.getMetrics();
-    res.set('Content-Type', metricsService.getContentType());
+    res.set('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
     res.send(metrics);
   } catch (error) {
     logger.error('Failed to get metrics:', error);

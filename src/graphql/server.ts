@@ -9,8 +9,8 @@ import { SubscriptionServer } from 'subscriptions-transport-ws';
 import { Logger } from '../core/logging/logger';
 
 import { createContext } from './context';
-import { authDirective } from './directives/authDirective';
-import { rateLimitDirective } from './directives/rateLimitDirective';
+import authDirective from './directives/authDirective';
+import rateLimitDirective from './directives/rateLimitDirective';
 import { resolvers } from './resolvers';
 import { typeDefs } from './schema/typeDefs';
 
@@ -27,16 +27,12 @@ export class GraphQLServerManager {
       // Create executable schema with directives
       let schema = makeExecutableSchema({
         typeDefs,
-        resolvers,
-        schemaDirectives: {
-          auth: authDirective,
-          rateLimit: rateLimitDirective
-        }
+        resolvers
       });
 
       // Apply directives
-      schema = authDirective(schema);
-      schema = rateLimitDirective(schema);
+      schema = authDirective(schema, 'auth');
+      schema = rateLimitDirective(schema, 'rateLimit');
 
       // Create Apollo Server
       this.apolloServer = new ApolloServer({
@@ -67,7 +63,7 @@ export class GraphQLServerManager {
         formatResponse: (response, requestContext) => {
           // Log slow queries
           if (requestContext.request.query) {
-            const executionTime = Date.now() - requestContext.request.startTime;
+            const executionTime = Date.now() - ((requestContext.request as any).startTime || Date.now());
             if (executionTime > 1000) { // Log queries taking more than 1 second
               logger.warn('Slow GraphQL query', {
                 query: requestContext.request.query,
@@ -82,12 +78,12 @@ export class GraphQLServerManager {
         plugins: [
           {
             requestDidStart() {
-              return {
+              return Promise.resolve({
                 didResolveOperation(requestContext) {
-                  requestContext.request.startTime = Date.now();
+                  (requestContext.request as any).startTime = Date.now();
                 },
                 willSendResponse(requestContext) {
-                  const executionTime = Date.now() - requestContext.request.startTime;
+                  const executionTime = Date.now() - ((requestContext.request as any).startTime || Date.now());
 
                   // Log all operations
                   logger.info('GraphQL Operation', {
@@ -97,7 +93,7 @@ export class GraphQLServerManager {
                     userRole: requestContext.context.user?.role
                   });
                 }
-              };
+              });
             }
           }
         ]

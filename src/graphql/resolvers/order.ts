@@ -136,7 +136,7 @@ export const orderResolvers = {
             throw new UserInputError('All products must be from the same supplier');
           }
 
-          if (product.status !== 'ACTIVE') {
+          if (product.status !== 'active') {
             throw new UserInputError(`Product ${product.name} is not available`);
           }
 
@@ -209,10 +209,10 @@ export const orderResolvers = {
             throw new AuthenticationError('Not authorized');
           }
           // Buyers can only cancel pending orders or confirm delivered orders
-          if (status === 'CANCELLED' && order.status !== 'PENDING') {
+          if (status === 'CANCELLED' && order.status !== 'pending_approval') {
             throw new UserInputError('Can only cancel pending orders');
           }
-          if (status === 'DELIVERED' && order.status !== 'SHIPPED') {
+          if (status === 'DELIVERED' && order.status !== 'shipped') {
             throw new UserInputError('Can only confirm delivery of shipped orders');
           }
         } else if (context.user.role === 'SELLER') {
@@ -286,7 +286,7 @@ export const orderResolvers = {
           throw new UserInputError(`Cannot cancel order with status: ${  order.status}`);
         }
 
-        order.status = 'CANCELLED';
+        order.status = 'cancelled';
         order.cancellationReason = reason;
         order.cancelledBy = context.user.id;
         order.cancelledAt = new Date();

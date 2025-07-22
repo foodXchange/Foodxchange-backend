@@ -5,7 +5,8 @@
 
 import { Logger } from '../../core/logging/logger';
 import { CacheService } from '../../infrastructure/cache/CacheService';
-import { MetricsService } from '../../infrastructure/monitoring/MetricsService';
+import { cacheService } from '../../infrastructure/cache/CacheService';
+import { MetricsService } from '../../core/monitoring/metrics';
 
 import { OpenAIWrapper } from './OpenAIWrapper';
 
@@ -73,7 +74,7 @@ export class RecommendationEngine {
     this.logger = new Logger('RecommendationEngine');
     this.cache = cacheService;
     this.openAI = OpenAIWrapper.getInstance().getService();
-    this.metrics = metricsService;
+    this.metrics = new MetricsService();
   }
 
   public static getInstance(): RecommendationEngine {

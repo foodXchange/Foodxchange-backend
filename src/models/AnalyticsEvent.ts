@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const analyticsEventSchema = new mongoose.Schema({
   eventType: {
@@ -92,4 +92,4 @@ analyticsEventSchema.index({ company: 1, timestamp: -1 });
 analyticsEventSchema.index({ sessionId: 1 });
 analyticsEventSchema.index({ processed: 1 });
 
-module.exports = mongoose.model('AnalyticsEvent', analyticsEventSchema);
+export default mongoose.model('AnalyticsEvent', analyticsEventSchema);

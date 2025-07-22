@@ -669,7 +669,9 @@ export class OrderController {
     const buyerCompany = await Company.findById(order.buyerCompany);
     if (!buyerCompany) return;
 
-    const approvalThresholds = buyerCompany.settings?.approvalThresholds || [
+    // Use default approval thresholds for now
+    // TODO: Add settings field to Company model to support custom approval thresholds
+    const approvalThresholds = [
       { amount: 5000, role: 'manager' },
       { amount: 25000, role: 'director' },
       { amount: 100000, role: 'ceo' }

@@ -292,7 +292,8 @@ app.get('/api', (req, res) => {
       demandForecast: '/api/forecast',
       streaming: '/api/streaming',
       abTesting: '/api/ab-testing',
-      rateLimiting: '/api/rate-limiting'
+      rateLimiting: '/api/rate-limiting',
+      upload: '/api/upload'
     },
     timestamp: new Date().toISOString()
   });
@@ -314,6 +315,7 @@ routeLoader.registerRoutes([
   { path: '/api/orders', modulePath: './routes/orders', priority: 'normal', description: 'Order management' },
   { path: '/api/compliance', modulePath: './routes/compliance/complianceRoutes', priority: 'normal', description: 'Compliance' },
   { path: '/api/tenant', modulePath: './routes/tenant', priority: 'normal', description: 'Tenant management' },
+  { path: '/api/upload', modulePath: './routes/upload-simple', priority: 'normal', description: 'CSV bulk upload' },
 
   // Lazy loading - load on first request
   { path: '/api/analytics', modulePath: './routes/analytics/analyticsRoutes', priority: 'lazy', description: 'Analytics' },

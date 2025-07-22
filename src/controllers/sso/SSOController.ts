@@ -145,11 +145,15 @@ export class SSOController {
       });
 
       // Track SSO login
-      await this.analyticsService.track('sso_login_success', {
-        userId: user._id.toString(),
-        email: user.email,
-        provider: 'google',
-        ip: req.ip
+      await this.analyticsService.trackEvent({
+        eventType: 'sso_login_success',
+        category: 'user',
+        userId: user._id,
+        data: {
+          email: user.email,
+          provider: 'google'
+        },
+        ipAddress: req.ip
       });
 
       res.success({
@@ -171,10 +175,14 @@ export class SSOController {
     } catch (error) {
       this.logger.error('Google callback error:', error);
 
-      await this.analyticsService.track('sso_login_failure', {
-        provider: 'google',
-        error: error.message,
-        ip: req.ip
+      await this.analyticsService.trackEvent({
+        eventType: 'sso_login_failure',
+        category: 'user',
+        data: {
+          provider: 'google',
+          error: error.message
+        },
+        ipAddress: req.ip
       });
 
       throw error;
@@ -256,11 +264,15 @@ export class SSOController {
       });
 
       // Track SSO login
-      await this.analyticsService.track('sso_login_success', {
-        userId: user._id.toString(),
-        email: user.email,
-        provider: 'microsoft',
-        ip: req.ip
+      await this.analyticsService.trackEvent({
+        eventType: 'sso_login_success',
+        category: 'user',
+        userId: user._id,
+        data: {
+          email: user.email,
+          provider: 'microsoft'
+        },
+        ipAddress: req.ip
       });
 
       res.success({
@@ -282,10 +294,14 @@ export class SSOController {
     } catch (error) {
       this.logger.error('Microsoft callback error:', error);
 
-      await this.analyticsService.track('sso_login_failure', {
-        provider: 'microsoft',
-        error: error.message,
-        ip: req.ip
+      await this.analyticsService.trackEvent({
+        eventType: 'sso_login_failure',
+        category: 'user',
+        data: {
+          provider: 'microsoft',
+          error: error.message
+        },
+        ipAddress: req.ip
       });
 
       throw error;
@@ -375,11 +391,15 @@ export class SSOController {
       });
 
       // Track SSO login
-      await this.analyticsService.track('sso_login_success', {
-        userId: user._id.toString(),
-        email: user.email,
-        provider: 'linkedin',
-        ip: req.ip
+      await this.analyticsService.trackEvent({
+        eventType: 'sso_login_success',
+        category: 'user',
+        userId: user._id,
+        data: {
+          email: user.email,
+          provider: 'linkedin'
+        },
+        ipAddress: req.ip
       });
 
       res.success({
@@ -401,10 +421,14 @@ export class SSOController {
     } catch (error) {
       this.logger.error('LinkedIn callback error:', error);
 
-      await this.analyticsService.track('sso_login_failure', {
-        provider: 'linkedin',
-        error: error.message,
-        ip: req.ip
+      await this.analyticsService.trackEvent({
+        eventType: 'sso_login_failure',
+        category: 'user',
+        data: {
+          provider: 'linkedin',
+          error: error.message
+        },
+        ipAddress: req.ip
       });
 
       throw error;
@@ -547,7 +571,7 @@ export class SSOController {
         role: user.role
       },
       process.env.JWT_SECRET || 'secret',
-      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' } as jwt.SignOptions
     );
   }
 
@@ -558,7 +582,7 @@ export class SSOController {
         type: 'refresh'
       },
       process.env.JWT_REFRESH_SECRET || 'refresh-secret',
-      { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d' }
+      { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d' } as jwt.SignOptions
     );
   }
 }

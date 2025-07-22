@@ -1,10 +1,11 @@
-const bcrypt = require('bcryptjs');
-const mongoose = require('mongoose');
-require('dotenv').config();
+import bcrypt from 'bcryptjs';
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+dotenv.config();
 
 // Import models
-const connectDB = require('../config/database');
-const {
+import connectDB from '../config/database';
+import {
   User,
   Company,
   Product,
@@ -16,7 +17,7 @@ const {
   Message,
   AnalyticsEvent,
   Notification
-} = require('../models');
+} from '../models';
 
 
 // Sample data
@@ -307,8 +308,8 @@ async function seedDatabase() {
 }
 
 // Run seeder if called directly
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   seedDatabase();
 }
 
-module.exports = seedDatabase;
+export default seedDatabase;

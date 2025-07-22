@@ -19,17 +19,17 @@ export interface IWorkflowStep {
     type: 'all' | 'any' | 'custom';
     rules: Array<{
       field: string;
-      operator: string;
+      operator: 'equals' | 'notEquals' | 'greater' | 'less' | 'contains' | 'in' | 'notIn';
       value: any;
     }>;
   };
   actions?: Array<{
-    type: string;
+    type: 'webhook' | 'email' | 'function' | 'update' | 'create';
     config: Record<string, any>;
   }>;
   timeout?: {
-    duration: number;
-    action: string;
+    duration: number; // in milliseconds
+    action: 'escalate' | 'auto-approve' | 'auto-reject' | 'notify';
     target?: string;
   };
   nextSteps?: {
@@ -37,7 +37,7 @@ export interface IWorkflowStep {
     rejected?: string;
     default?: string;
     conditional?: Array<{
-      condition: string;
+      condition: (context: any) => boolean;
       stepId: string;
     }>;
   };

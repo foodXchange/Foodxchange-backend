@@ -2,7 +2,7 @@ import Redis from 'ioredis';
 import NodeCache from 'node-cache';
 
 import { Logger } from '../../core/logging/logger';
-import { MetricsService } from '../../core/metrics/MetricsService';
+import { MetricsService } from '../../core/monitoring/metrics';
 
 const logger = new Logger('CacheManager');
 const metricsService = new MetricsService();

@@ -5,7 +5,6 @@
 
 import { ApiError } from '../core/errors';
 import { Logger } from '../core/logging/logger';
-import { CacheService } from '../infrastructure/cache/CacheService';
 import { cacheService } from '../config/redis';
 
 // Import models (these would be your actual Mongoose models)
@@ -22,7 +21,7 @@ export class RecommendationController {
   private readonly logger: Logger;
   private readonly recommendationEngine: RecommendationEngine;
   private readonly matchingAlgorithms: MatchingAlgorithms;
-  private readonly cache: CacheService;
+  private readonly cache: typeof cacheService;
 
   private constructor() {
     this.logger = new Logger('RecommendationController');
@@ -75,9 +74,9 @@ export class RecommendationController {
         recommendations: enrichedRecommendations,
         rfqContext: {
           id: rfq._id,
-          category: rfq.productCategory,
-          quantity: rfq.quantity,
-          urgency: rfq.urgency
+          category: rfq.category,
+          quantity: rfq.items?.[0]?.quantity || 0,
+          urgency: rfq.dueDate ? 'high' : 'normal' // Infer urgency from due date
         },
         metadata: {
           basedOnBehavior: !!userBehavior,
@@ -152,7 +151,7 @@ export class RecommendationController {
       const cacheKey = `trending_products:${category || 'all'}:${limit}`;
       const cached = await this.cache.get(cacheKey);
 
-      if (cached) {
+      if (cached && typeof cached === 'string') {
         return JSON.parse(cached);
       }
 
@@ -215,8 +214,8 @@ export class RecommendationController {
         product: {
           id: product._id,
           name: product.name,
-          currentPrice: product.basePrice,
-          supplier: product.supplier.name
+          currentPrice: product.pricing?.basePrice || 0,
+          supplier: (product.supplier as any)?.name || 'Unknown'
         },
         suggestions: aiSuggestions,
         marketContext: {
@@ -271,7 +270,7 @@ export class RecommendationController {
         supplier: {
           id: supplier._id,
           name: supplier.name,
-          location: supplier.location
+          location: supplier.address?.city || ''
         },
         riskProfile: riskAnalysis,
         mitigation: mitigationSuggestions,
@@ -374,16 +373,21 @@ export class RecommendationController {
       return suppliers.map(supplier => ({
         id: supplier._id.toString(),
         name: supplier.name,
-        location: supplier.location || { lat: 0, lng: 0, city: '', country: '' },
-        certifications: supplier.certifications?.map((cert: any) => cert.name) || [],
-        categories: supplier.capabilities?.categories || [],
-        averageRating: supplier.metrics?.averageRating || 0,
-        responseTime: supplier.metrics?.averageResponseTime || 24,
-        fulfillmentRate: supplier.metrics?.fulfillmentRate || 0.8,
-        qualityScore: supplier.metrics?.qualityScore || 0.7,
-        priceCompetitiveness: supplier.metrics?.priceCompetitiveness || 0.6,
-        capacityTiers: supplier.capabilities?.capacityTiers || [],
-        deliveryCapabilities: supplier.capabilities?.delivery || {
+        location: { 
+          lat: supplier.address?.coordinates?.lat || 0, 
+          lng: supplier.address?.coordinates?.lng || 0, 
+          city: supplier.address?.city || '', 
+          country: supplier.address?.country || '' 
+        },
+        certifications: (supplier as any).certifications?.map((cert: any) => cert.name) || [],
+        categories: [],
+        averageRating: 0, // Default value
+        responseTime: 24, // Default value
+        fulfillmentRate: 0.8, // Default value
+        qualityScore: 0.7, // Default value
+        priceCompetitiveness: 0.6, // Default value
+        capacityTiers: [],
+        deliveryCapabilities: {
           regions: [],
           averageDeliveryTime: 7,
           expeditedAvailable: false
@@ -486,12 +490,12 @@ export class RecommendationController {
       _id: { $ne: product._id }
     }).limit(20);
 
-    const prices = similarProducts.map(p => p.basePrice);
+    const prices = similarProducts.map(p => p.pricing?.basePrice || 0).filter(price => price > 0);
 
     return {
       averagePrice: prices.reduce((sum, price) => sum + price, 0) / prices.length,
       priceRange: { min: Math.min(...prices), max: Math.max(...prices) },
-      competitivePosition: this.calculateCompetitivePosition(product.basePrice, prices)
+      competitivePosition: this.calculateCompetitivePosition(product.pricing?.basePrice || 0, prices)
     };
   }
 

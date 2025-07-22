@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const notificationSchema = new mongoose.Schema({
   recipient: {
@@ -165,4 +165,4 @@ notificationSchema.index({ type: 1, createdAt: -1 });
 notificationSchema.index({ scheduledFor: 1, status: 1 });
 notificationSchema.index({ priority: 1, status: 1 });
 
-module.exports = mongoose.model('Notification', notificationSchema);
+export default mongoose.model('Notification', notificationSchema);

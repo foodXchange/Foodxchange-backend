@@ -5,13 +5,13 @@ import { WorkflowDefinition, WorkflowInstance, WorkflowTemplate } from '../model
 import { approvalService } from '../services/workflow/ApprovalService';
 import { workflowEngine } from '../services/workflow/WorkflowEngine';
 
-interface WorkflowRequest extends Request {
+type WorkflowRequest = Request & {
   user?: {
     id: string;
     role: string;
     companyId: string;
   };
-}
+};
 
 export class WorkflowController {
   private readonly logger: Logger;
@@ -48,11 +48,20 @@ export class WorkflowController {
 
       // Register with workflow engine
       await workflowEngine.registerWorkflow({
-        ...definition.toObject(),
         id: definition._id.toString(),
+        name: definition.name,
+        description: definition.description,
+        version: definition.version,
+        category: definition.category,
+        trigger: definition.trigger,
+        steps: definition.steps,
+        variables: definition.variables,
+        permissions: definition.permissions,
+        settings: definition.settings,
+        isActive: definition.isActive,
         createdBy: userId,
-        createdAt: definition.createdAt,
-        updatedAt: definition.updatedAt
+        createdAt: new Date(),
+        updatedAt: new Date()
       });
 
       res.status(201).json({
@@ -212,12 +221,21 @@ export class WorkflowController {
 
       // Re-register with workflow engine
       await workflowEngine.registerWorkflow({
-        ...definition.toObject(),
         id: definition._id.toString(),
+        name: definition.name,
+        description: definition.description,
+        version: definition.version,
+        category: definition.category,
+        trigger: definition.trigger,
+        steps: definition.steps,
+        variables: definition.variables,
+        permissions: definition.permissions,
+        settings: definition.settings,
+        isActive: definition.isActive,
         createdBy: definition.createdBy.toString(),
         updatedBy: req.user?.id,
-        createdAt: definition.createdAt,
-        updatedAt: definition.updatedAt
+        createdAt: new Date(),
+        updatedAt: new Date()
       });
 
       res.json({
@@ -415,8 +433,8 @@ export class WorkflowController {
           definitionVersion: dbInstance.definitionVersion,
           status: dbInstance.status,
           currentStep: dbInstance.currentStep,
-          context: dbInstance.context,
-          history: dbInstance.history,
+          context: dbInstance.context as any,
+          history: dbInstance.history as any,
           startedAt: dbInstance.startedAt,
           completedAt: dbInstance.completedAt,
           startedBy: dbInstance.startedBy.toString(),
@@ -473,12 +491,14 @@ export class WorkflowController {
       }
 
       const decision = {
+        stepId,
         approverId: userId,
-        action,
+        decision: action as 'approved' | 'rejected' | 'escalated',
         comment,
         attachments,
         delegatedTo,
-        timestamp: new Date()
+        timestamp: new Date(),
+        metadata: {}
       };
 
       await workflowEngine.submitApproval(instanceId, stepId, decision);
@@ -693,10 +713,7 @@ export class WorkflowController {
         endDate = new Date(end);
       }
 
-      const stats = await workflowEngine.getWorkflowStats(
-        definitionId as string,
-        startDate && endDate ? { start: startDate, end: endDate } : undefined
-      );
+      const stats = await workflowEngine.getWorkflowStats(definitionId as string);
 
       res.json({
         success: true,

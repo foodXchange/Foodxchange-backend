@@ -8,7 +8,7 @@ export const subscriptionResolvers = {
   Subscription: {
     newOrder: {
       subscribe: withFilter(
-        () => pubsub.asyncIterator(['NEW_ORDER']),
+        () => (pubsub as any).asyncIterator(['NEW_ORDER']),
         (payload: any, variables: any, context: Context) => {
           if (!context.isAuthenticated) {
             throw new AuthenticationError('Not authenticated');
@@ -27,7 +27,7 @@ export const subscriptionResolvers = {
 
     orderStatusUpdated: {
       subscribe: withFilter(
-        () => pubsub.asyncIterator(['ORDER_STATUS_UPDATED']),
+        () => (pubsub as any).asyncIterator(['ORDER_STATUS_UPDATED']),
         (payload: any, variables: any, context: Context) => {
           if (!context.isAuthenticated) {
             throw new AuthenticationError('Not authenticated');
@@ -44,7 +44,7 @@ export const subscriptionResolvers = {
 
     newRFQPosted: {
       subscribe: withFilter(
-        () => pubsub.asyncIterator(['NEW_RFQ']),
+        () => (pubsub as any).asyncIterator(['NEW_RFQ']),
         (payload: any, variables: any, context: Context) => {
           if (!context.isAuthenticated) {
             throw new AuthenticationError('Not authenticated');
@@ -67,7 +67,7 @@ export const subscriptionResolvers = {
 
     proposalReceived: {
       subscribe: withFilter(
-        () => pubsub.asyncIterator(['PROPOSAL_RECEIVED']),
+        () => (pubsub as any).asyncIterator(['PROPOSAL_RECEIVED']),
         (payload: any, variables: any, context: Context) => {
           if (!context.isAuthenticated) {
             throw new AuthenticationError('Not authenticated');
@@ -86,7 +86,7 @@ export const subscriptionResolvers = {
 
     proposalAccepted: {
       subscribe: withFilter(
-        () => pubsub.asyncIterator(['PROPOSAL_ACCEPTED']),
+        () => (pubsub as any).asyncIterator(['PROPOSAL_ACCEPTED']),
         (payload: any, variables: any, context: Context) => {
           if (!context.isAuthenticated) {
             throw new AuthenticationError('Not authenticated');
@@ -105,7 +105,7 @@ export const subscriptionResolvers = {
 
     newMessage: {
       subscribe: withFilter(
-        () => pubsub.asyncIterator(['NEW_MESSAGE']),
+        () => (pubsub as any).asyncIterator(['NEW_MESSAGE']),
         (payload: any, variables: any, context: Context) => {
           if (!context.isAuthenticated) {
             throw new AuthenticationError('Not authenticated');
@@ -119,7 +119,7 @@ export const subscriptionResolvers = {
 
     priceAlert: {
       subscribe: withFilter(
-        () => pubsub.asyncIterator(['PRICE_ALERT']),
+        () => (pubsub as any).asyncIterator(['PRICE_ALERT']),
         (payload: any, variables: any, context: Context) => {
           if (!context.isAuthenticated) {
             throw new AuthenticationError('Not authenticated');
@@ -138,7 +138,7 @@ export const subscriptionResolvers = {
 
     inventoryAlert: {
       subscribe: withFilter(
-        () => pubsub.asyncIterator(['INVENTORY_ALERT']),
+        () => (pubsub as any).asyncIterator(['INVENTORY_ALERT']),
         (payload: any, variables: any, context: Context) => {
           if (!context.isAuthenticated) {
             throw new AuthenticationError('Not authenticated');
@@ -156,7 +156,7 @@ export const subscriptionResolvers = {
 
     systemNotification: {
       subscribe: withFilter(
-        () => pubsub.asyncIterator(['SYSTEM_NOTIFICATION']),
+        () => (pubsub as any).asyncIterator(['SYSTEM_NOTIFICATION']),
         (payload: any, variables: any, context: Context) => {
           if (!context.isAuthenticated) {
             throw new AuthenticationError('Not authenticated');
@@ -183,7 +183,7 @@ export const subscriptionResolvers = {
 
     marketDataUpdate: {
       subscribe: withFilter(
-        () => pubsub.asyncIterator(['MARKET_DATA_UPDATE']),
+        () => (pubsub as any).asyncIterator(['MARKET_DATA_UPDATE']),
         (payload: any, variables: any, context: Context) => {
           if (!context.isAuthenticated) {
             throw new AuthenticationError('Not authenticated');
@@ -203,7 +203,7 @@ export const subscriptionResolvers = {
 
     complianceAlert: {
       subscribe: withFilter(
-        () => pubsub.asyncIterator(['COMPLIANCE_ALERT']),
+        () => (pubsub as any).asyncIterator(['COMPLIANCE_ALERT']),
         (payload: any, variables: any, context: Context) => {
           if (!context.isAuthenticated) {
             throw new AuthenticationError('Not authenticated');

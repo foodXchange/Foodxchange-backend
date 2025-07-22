@@ -216,85 +216,86 @@ router.get('/process',
  * @desc    Stream real-time memory metrics
  * @access  Admin
  */
-router.ws('/stream', (ws, req) => {
-  const adminId = (req).user?.id;
-
-  if (!adminId) {
-    ws.close(1008, 'Unauthorized');
-    return;
-  }
-
-  logger.info('WebSocket connection for memory monitoring', { adminId });
-
-  // Send current metrics immediately
-  const currentMetrics = memoryOptimizationService.getCurrentMetrics();
-  if (currentMetrics) {
-    ws.send(JSON.stringify({
-      type: 'metrics',
-      data: currentMetrics
-    }));
-  }
-
-  // Subscribe to metrics updates
-  const metricsHandler = (metrics: any) => {
-    if (ws.readyState === ws.OPEN) {
-      ws.send(JSON.stringify({
-        type: 'metrics',
-        data: metrics
-      }));
-    }
-  };
-
-  const gcHandler = (data: any) => {
-    if (ws.readyState === ws.OPEN) {
-      ws.send(JSON.stringify({
-        type: 'gc',
-        data
-      }));
-    }
-  };
-
-  const warningHandler = (metrics: any) => {
-    if (ws.readyState === ws.OPEN) {
-      ws.send(JSON.stringify({
-        type: 'warning',
-        data: metrics
-      }));
-    }
-  };
-
-  const criticalHandler = (metrics: any) => {
-    if (ws.readyState === ws.OPEN) {
-      ws.send(JSON.stringify({
-        type: 'critical',
-        data: metrics
-      }));
-    }
-  };
-
-  // Register handlers
-  memoryOptimizationService.on('metrics', metricsHandler);
-  memoryOptimizationService.on('gc', gcHandler);
-  memoryOptimizationService.on('warning', warningHandler);
-  memoryOptimizationService.on('critical', criticalHandler);
-
-  // Ping to keep connection alive
-  const pingInterval = setInterval(() => {
-    if (ws.readyState === ws.OPEN) {
-      ws.ping();
-    }
-  }, 30000);
-
-  // Cleanup on disconnect
-  ws.on('close', () => {
-    clearInterval(pingInterval);
-    memoryOptimizationService.off('metrics', metricsHandler);
-    memoryOptimizationService.off('gc', gcHandler);
-    memoryOptimizationService.off('warning', warningHandler);
-    memoryOptimizationService.off('critical', criticalHandler);
-    logger.info('WebSocket disconnected for memory monitoring', { adminId });
-  });
-});
+// TODO: Implement WebSocket support with express-ws or socket.io
+// router.ws('/stream', (ws, req) => {
+//   const adminId = (req).user?.id;
+//
+//   if (!adminId) {
+//     ws.close(1008, 'Unauthorized');
+//     return;
+//   }
+//
+//   logger.info('WebSocket connection for memory monitoring', { adminId });
+//
+//   // Send current metrics immediately
+//   const currentMetrics = memoryOptimizationService.getCurrentMetrics();
+//   if (currentMetrics) {
+//     ws.send(JSON.stringify({
+//       type: 'metrics',
+//       data: currentMetrics
+//     }));
+//   }
+//
+//   // Subscribe to metrics updates
+//   const metricsHandler = (metrics: any) => {
+//     if (ws.readyState === ws.OPEN) {
+//       ws.send(JSON.stringify({
+//         type: 'metrics',
+//         data: metrics
+//       }));
+//     }
+//   };
+//
+//   const gcHandler = (data: any) => {
+//     if (ws.readyState === ws.OPEN) {
+//       ws.send(JSON.stringify({
+//         type: 'gc',
+//         data
+//       }));
+//     }
+//   };
+//
+//   const warningHandler = (metrics: any) => {
+//     if (ws.readyState === ws.OPEN) {
+//       ws.send(JSON.stringify({
+//         type: 'warning',
+//         data: metrics
+//       }));
+//     }
+//   };
+//
+//   const criticalHandler = (metrics: any) => {
+//     if (ws.readyState === ws.OPEN) {
+//       ws.send(JSON.stringify({
+//         type: 'critical',
+//         data: metrics
+//       }));
+//     }
+//   };
+//
+//   // Register handlers
+//   memoryOptimizationService.on('metrics', metricsHandler);
+//   memoryOptimizationService.on('gc', gcHandler);
+//   memoryOptimizationService.on('warning', warningHandler);
+//   memoryOptimizationService.on('critical', criticalHandler);
+//
+//   // Ping to keep connection alive
+//   const pingInterval = setInterval(() => {
+//     if (ws.readyState === ws.OPEN) {
+//       ws.ping();
+//     }
+//   }, 30000);
+//
+//   // Cleanup on disconnect
+//   ws.on('close', () => {
+//     clearInterval(pingInterval);
+//     memoryOptimizationService.off('metrics', metricsHandler);
+//     memoryOptimizationService.off('gc', gcHandler);
+//     memoryOptimizationService.off('warning', warningHandler);
+//     memoryOptimizationService.off('critical', criticalHandler);
+//     logger.info('WebSocket disconnected for memory monitoring', { adminId });
+//   });
+// });
 
 // Helper function to format bytes
 function formatBytes(bytes: number): string {

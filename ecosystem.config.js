@@ -1,112 +1,76 @@
-module.exports = {
-  apps: [
-    {
-      name: 'foodxchange-backend-dev',
-      script: './dist/server.js',
-      instances: 2,
-      exec_mode: 'cluster',
-      env: {
-        NODE_ENV: 'development',
-        PORT: 5001
-      },
-      env_production: {
-        NODE_ENV: 'production',
-        PORT: 5000
-      },
-      
-      // Logging
-      error_file: './logs/pm2-error.log',
-      out_file: './logs/pm2-out.log',
-      log_file: './logs/pm2-combined.log',
-      time: true,
-      
-      // Advanced features
-      max_memory_restart: '1G',
-      exp_backoff_restart_delay: 100,
-      
-      // Development features
-      watch: false,
-      ignore_watch: ['node_modules', 'logs', '.git', 'dist'],
-      
-      // Graceful start/shutdown
-      wait_ready: true,
-      listen_timeout: 3000,
-      kill_timeout: 5000,
-      
-      // Auto restart
-      autorestart: true,
-      max_restarts: 10,
-      min_uptime: '10s',
-      
-      // Environment
-      instance_var: 'INSTANCE_ID',
-      
-      // Monitoring
-      pmx: true,
-      automation: true,
-      
-      // Node.js arguments
-      node_args: '--max-old-space-size=1024',
-      
-      // Interpreter
-      interpreter: 'node',
-      interpreter_args: '',
-      
-      // Working directory
-      cwd: './',
-      
-      // Source map support
-      source_map_support: true,
-      
-      // Merge logs
-      merge_logs: true,
-      
-      // Log date format
-      log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
-    }
-  ],
+/**
+ * PM2 Configuration for Production Deployment
+ * Usage: pm2 start ecosystem.config.js --env production
+ */
 
+module.exports = {
+  apps: [{
+    name: 'foodxchange-api',
+    script: './dist/server.js',
+    instances: 'max', // Use all available CPU cores
+    exec_mode: 'cluster',
+    
+    // Environment variables
+    env: {
+      NODE_ENV: 'development',
+      PORT: 5000
+    },
+    env_production: {
+      NODE_ENV: 'production',
+      PORT: process.env.PORT || 5000
+    },
+    
+    // Logging
+    error_file: './logs/error.log',
+    out_file: './logs/out.log',
+    log_file: './logs/combined.log',
+    time: true,
+    
+    // Advanced features
+    wait_ready: true,
+    listen_timeout: 10000,
+    kill_timeout: 5000,
+    max_memory_restart: '1G',
+    
+    // Monitoring
+    instance_var: 'INSTANCE_ID',
+    
+    // Graceful reload
+    watch: false,
+    ignore_watch: ['node_modules', 'logs', 'uploads', '.git'],
+    
+    // Health check
+    health_check: {
+      interval: 30000,
+      timeout: 5000,
+      max_consecutive_failures: 3
+    },
+    
+    // Auto restart
+    autorestart: true,
+    min_uptime: '10s',
+    max_restarts: 10,
+    
+    // Environment specific
+    env_production: {
+      NODE_ENV: 'production',
+      PORT: process.env.PORT || 5000,
+      instances: process.env.WEB_CONCURRENCY || 'max',
+      exec_mode: 'cluster'
+    }
+  }],
+  
+  // Deployment configuration
   deploy: {
-    development: {
-      user: process.env.DEV_USER || 'deploy',
-      host: process.env.DEV_HOST || 'localhost',
-      ref: 'origin/develop',
-      repo: 'git@github.com:your-org/foodxchange-backend.git',
-      path: '/var/www/foodxchange-backend',
-      'pre-deploy': 'git fetch --all',
-      'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env development',
-      'pre-setup': '',
-      ssh_options: 'StrictHostKeyChecking=no',
-      env: {
-        NODE_ENV: 'development'
-      }
-    },
-    
-    staging: {
-      user: process.env.STAGING_USER || 'deploy',
-      host: process.env.STAGING_HOST || 'localhost',
-      ref: 'origin/staging',
-      repo: 'git@github.com:your-org/foodxchange-backend.git',
-      path: '/var/www/foodxchange-backend',
-      'pre-deploy': 'git fetch --all',
-      'post-deploy': 'npm ci && npm run build && pm2 reload ecosystem.config.js --env production',
-      'pre-setup': '',
-      ssh_options: 'StrictHostKeyChecking=no',
-      env: {
-        NODE_ENV: 'staging'
-      }
-    },
-    
     production: {
-      user: process.env.PROD_USER || 'deploy',
-      host: process.env.PROD_HOST || 'localhost',
+      user: 'deploy',
+      host: process.env.DEPLOY_HOST,
       ref: 'origin/main',
-      repo: 'git@github.com:your-org/foodxchange-backend.git',
-      path: '/var/www/foodxchange-backend',
-      'pre-deploy': 'git fetch --all',
-      'post-deploy': 'npm ci --only=production && npm run build && pm2 reload ecosystem.config.js --env production',
+      repo: process.env.REPO_URL || 'git@github.com:yourusername/foodxchange-backend.git',
+      path: '/var/www/foodxchange',
+      'pre-deploy-local': '',
+      'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env production',
       'pre-setup': '',
-      ssh_options: 'StrictHostKeyChecking=no',
       env: {
         NODE_ENV: 'production'
       }

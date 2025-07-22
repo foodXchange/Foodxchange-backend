@@ -1,8 +1,8 @@
 // FoodXchange AI Services
-const aiConfig = require('./config');
-const documentProcessing = require('./document-processing');
-const productAnalysis = require('./product-analysis');
-const supplierMatching = require('./supplier-matching');
+import aiConfig from './config';
+import documentProcessing from './document-processing';
+import productAnalysis from './product-analysis';
+import supplierMatching from './supplier-matching';
 
 // Initialize all services
 async function initializeAIServices() {
@@ -27,7 +27,7 @@ async function initializeAIServices() {
 }
 
 // Export all services
-module.exports = {
+export {
   initializeAIServices,
   aiConfig,
   supplierMatching,

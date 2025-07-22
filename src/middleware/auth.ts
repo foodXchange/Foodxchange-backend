@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
 import { User } from '../models/User';
-import logger from '../utils/logger';
+import { logger } from '../utils/logger';
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -10,6 +10,8 @@ interface AuthenticatedRequest extends Request {
     email: string;
     role: string;
     company?: string;
+    isEmailVerified?: boolean;
+    companyVerified?: boolean;
   };
   userId?: string;
 }
@@ -127,7 +129,7 @@ export const authorize = (...roles: string[]) => {
 
     if (!roles.includes(req.user.role)) {
       logger.warn('Authorization failed: Insufficient role', {
-        userId: req.user._id.toString(),
+        userId: req.user.id,
         userRole: req.user.role,
         requiredRoles: roles
       });

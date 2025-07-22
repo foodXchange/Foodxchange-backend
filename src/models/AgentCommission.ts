@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const agentCommissionSchema = new mongoose.Schema({
   commissionId: {
@@ -495,5 +495,4 @@ agentCommissionSchema.index({ agentId: 1, type: 1, status: 1 });
 agentCommissionSchema.index({ agentId: 1, 'period.type': 1, 'lifecycle.calculatedAt': 1 });
 agentCommissionSchema.index({ status: 1, 'payment.schedule.dueDate': 1 });
 
-module.exports = mongoose.model('AgentCommission', agentCommissionSchema);
 export default mongoose.model('AgentCommission', agentCommissionSchema);

@@ -1,15 +1,33 @@
-const { FormRecognizerClient } = require('@azure/ai-form-recognizer');
-const { TextAnalyticsClient, AzureKeyCredential } = require('@azure/ai-text-analytics');
-const { ComputerVisionClient } = require('@azure/cognitiveservices-computervision');
-const { SearchClient } = require('@azure/search-documents');
+import { FormRecognizerClient } from '@azure/ai-form-recognizer';
+import { TextAnalyticsClient, AzureKeyCredential } from '@azure/ai-text-analytics';
+import { ComputerVisionClient } from '@azure/cognitiveservices-computervision';
+import { SearchClient } from '@azure/search-documents';
 
 class AzureAIService {
+  private textAnalyticsClient: TextAnalyticsClient | null;
+  private visionClient: ComputerVisionClient | null;
+  private formRecognizerClient: FormRecognizerClient | null;
+  private searchClient: SearchClient<any> | null;
+  private initialized: boolean;
+
   constructor() {
     this.textAnalyticsClient = null;
     this.visionClient = null;
     this.formRecognizerClient = null;
     this.searchClient = null;
     this.initialized = false;
+  }
+
+  get isAvailable(): boolean {
+    return this.initialized;
+  }
+
+  get textAnalytics(): TextAnalyticsClient | null {
+    return this.textAnalyticsClient;
+  }
+
+  get formRecognizer(): FormRecognizerClient | null {
+    return this.formRecognizerClient;
   }
 
   async initialize() {
@@ -91,4 +109,4 @@ class AzureAIService {
 
 // Export singleton instance
 const aiService = new AzureAIService();
-module.exports = aiService;
+export default aiService;

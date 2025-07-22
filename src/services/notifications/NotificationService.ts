@@ -4,11 +4,11 @@ import mongoose from 'mongoose';
 
 import { cacheService } from '../../config/redis';
 import { Logger } from '../../core/logging/logger';
-import { metricsService } from '../../core/metrics/MetricsService';
+import { MetricsService } from '../../core/monitoring/metrics';
 
 
 const logger = new Logger('NotificationService');
-const metrics = metricsService;
+const metrics = new MetricsService();
 
 export interface Notification {
   id: string;

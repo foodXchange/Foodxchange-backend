@@ -1,16 +1,17 @@
 // Models Index - Central export for all models
-const AnalyticsEvent = require('./AnalyticsEvent');
-const Category = require('./Category');
-const Company = require('./Company');
-const { Conversation, Message } = require('./Conversation');
-const Notification = require('./Notification');
-const Order = require('./Order');
-const Product = require('./Product');
-const Review = require('./Review');
-const RFQ = require('./RFQ');
-const User = require('./User');
+import AnalyticsEvent from './AnalyticsEvent';
+import Category from './Category';
+import Company from './Company';
+import Conversation from './Conversation';
+import Message from './Message';
+import Notification from './Notification';
+import Order from './Order';
+import Product from './Product';
+import Review from './Review';
+import RFQ from './RFQ';
+import User from './User';
 
-module.exports = {
+export {
   User,
   Company,
   Product,

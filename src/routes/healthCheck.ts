@@ -6,7 +6,9 @@ import mongoose from 'mongoose';
 
 import { redisClient } from '../config/redis';
 import { Logger } from '../core/logging/logger';
-import { metricsService } from '../core/metrics/MetricsService';
+import { MetricsService } from '../core/monitoring/metrics';
+
+const metricsService = new MetricsService();
 
 const router = express.Router();
 const logger = new Logger('HealthCheck');

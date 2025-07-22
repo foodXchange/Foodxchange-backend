@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const complianceSchema = new mongoose.Schema({
   user: {
@@ -139,4 +139,4 @@ complianceSchema.methods.calculateComplianceScore = function() {
   return this.complianceScore;
 };
 
-module.exports = mongoose.model('Compliance', complianceSchema);
+export default mongoose.model('Compliance', complianceSchema);

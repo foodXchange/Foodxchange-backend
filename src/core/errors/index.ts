@@ -97,3 +97,34 @@ export class ApiError extends BaseError {
     super(message, statusCode, true, code);
   }
 }
+
+// Additional error classes
+export class UnauthorizedError extends BaseError {
+  constructor(message: string = 'Unauthorized', code = 'UNAUTHORIZED') {
+    super(message, 401, true, code);
+  }
+}
+
+export class ForbiddenError extends BaseError {
+  constructor(message: string = 'Forbidden', code = 'FORBIDDEN') {
+    super(message, 403, true, code);
+  }
+}
+
+export class ExternalServiceError extends BaseError {
+  constructor(service: string, message: string, originalError?: Error) {
+    super(`${service}: ${message}`, 503, true, 'EXTERNAL_SERVICE_ERROR');
+    if (originalError) {
+      this.stack = originalError.stack;
+    }
+  }
+}
+
+export class SystemError extends BaseError {
+  constructor(message: string, originalError?: Error) {
+    super(message, 500, false, 'SYSTEM_ERROR');
+    if (originalError) {
+      this.stack = originalError.stack;
+    }
+  }
+}

@@ -1,7 +1,7 @@
-﻿const express = require('express');
+﻿import express from 'express';
+import { protect, admin } from '../middleware/auth';
 
 const router = express.Router();
-const { protect, admin } = require('../middleware/auth');
 
 // Placeholder controllers - we'll implement these next
 const getRequests = async (req, res) => {
@@ -34,4 +34,4 @@ router.route('/:id')
   .put(protect, updateRequest)
   .delete(protect, admin, deleteRequest);
 
-module.exports = router;
+export default router;

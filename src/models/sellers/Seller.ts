@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const sellerSchema = new mongoose.Schema({
   user: {
@@ -113,4 +113,4 @@ sellerSchema.pre('save', function(next) {
   next();
 });
 
-module.exports = mongoose.model('Seller', sellerSchema);
+export default mongoose.model('Seller', sellerSchema);

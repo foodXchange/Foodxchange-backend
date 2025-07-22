@@ -56,7 +56,7 @@ router.use(exportRateLimiter);
  * @access Private
  */
 router.get('/products',
-  authorize(['admin', 'manager', 'analyst']),
+  authorize('admin', 'manager', 'analyst'),
   asyncHandler(exportController.exportProducts.bind(exportController))
 );
 
@@ -66,7 +66,7 @@ router.get('/products',
  * @access Private
  */
 router.get('/orders',
-  authorize(['admin', 'manager', 'analyst']),
+  authorize('admin', 'manager', 'analyst'),
   asyncHandler(exportController.exportOrders.bind(exportController))
 );
 
@@ -76,7 +76,7 @@ router.get('/orders',
  * @access Private
  */
 router.get('/rfqs',
-  authorize(['admin', 'manager', 'analyst']),
+  authorize('admin', 'manager', 'analyst'),
   asyncHandler(exportController.exportRFQs.bind(exportController))
 );
 
@@ -86,7 +86,7 @@ router.get('/rfqs',
  * @access Private
  */
 router.get('/analytics',
-  authorize(['admin', 'manager', 'analyst']),
+  authorize('admin', 'manager', 'analyst'),
   asyncHandler(exportController.exportAnalytics.bind(exportController))
 );
 
@@ -96,7 +96,7 @@ router.get('/analytics',
  * @access Private
  */
 router.post('/import/products',
-  authorize(['admin', 'manager']),
+  authorize('admin', 'manager'),
   upload.single('file'),
   asyncHandler(exportController.importProducts.bind(exportController))
 );
@@ -107,7 +107,7 @@ router.post('/import/products',
  * @access Private
  */
 router.post('/import/orders',
-  authorize(['admin', 'manager']),
+  authorize('admin', 'manager'),
   upload.single('file'),
   asyncHandler(exportController.importOrders.bind(exportController))
 );
@@ -118,7 +118,7 @@ router.post('/import/orders',
  * @access Private
  */
 router.get('/template/:dataType/:format',
-  authorize(['admin', 'manager', 'analyst']),
+  authorize('admin', 'manager', 'analyst'),
   asyncHandler(exportController.getExportTemplate.bind(exportController))
 );
 
@@ -128,7 +128,7 @@ router.get('/template/:dataType/:format',
  * @access Private
  */
 router.get('/download/:fileName',
-  authorize(['admin', 'manager', 'analyst', 'user']),
+  authorize('admin', 'manager', 'analyst', 'user'),
   asyncHandler(exportController.downloadFile.bind(exportController))
 );
 
@@ -138,7 +138,7 @@ router.get('/download/:fileName',
  * @access Private
  */
 router.get('/history',
-  authorize(['admin', 'manager', 'analyst']),
+  authorize('admin', 'manager', 'analyst'),
   asyncHandler(exportController.getExportHistory.bind(exportController))
 );
 
@@ -148,7 +148,7 @@ router.get('/history',
  * @access Private
  */
 router.get('/options/:dataType',
-  authorize(['admin', 'manager', 'analyst']),
+  authorize('admin', 'manager', 'analyst'),
   asyncHandler(exportController.getExportOptions.bind(exportController))
 );
 

@@ -160,6 +160,19 @@ export interface IOrder extends Document {
   // Order Status and Workflow
   status: 'draft' | 'pending_approval' | 'approved' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'completed' | 'cancelled' | 'returned';
 
+  // Status History
+  statusHistory?: Array<{
+    status: string;
+    timestamp: Date;
+    updatedBy: mongoose.Types.ObjectId;
+    comment?: string;
+  }>;
+
+  // Cancellation properties
+  cancellationReason?: string;
+  cancelledBy?: mongoose.Types.ObjectId;
+  cancelledAt?: Date;
+
   // Approval Workflow
   approvalRequired: boolean;
   approvalChain: Array<{
@@ -273,6 +286,7 @@ export interface IOrder extends Document {
   canBeCancelled: boolean;
   estimatedDeliveryDate: Date;
   fulfillmentProgress: number;
+  total: number; // Virtual field - alias for totalAmount
 
   // Methods
   addToApprovalChain(approver: string, role: string, order: number): Promise<void>;
@@ -284,6 +298,8 @@ export interface IOrder extends Document {
   addActivityLog(action: string, userId: string, details?: any): Promise<void>;
   canBeModified(): boolean;
   getNextApprover(): any;
+  addTemperatureReading(data: any): Promise<void>;
+  updateLineItemStatus(itemId: string, status: string): Promise<void>;
 }
 
 const orderSchema = new Schema<IOrder>({
@@ -668,6 +684,36 @@ const orderSchema = new Schema<IOrder>({
     type: String,
     enum: ['draft', 'pending_approval', 'approved', 'confirmed', 'processing', 'shipped', 'delivered', 'completed', 'cancelled', 'returned'],
     default: 'draft'
+  },
+
+  // Status History
+  statusHistory: [{
+    status: {
+      type: String,
+      required: true
+    },
+    timestamp: {
+      type: Date,
+      default: Date.now
+    },
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    comment: String
+  }],
+
+  // Cancellation properties
+  cancellationReason: {
+    type: String
+  },
+  cancelledBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  cancelledAt: {
+    type: Date
   },
 
   // Approval Workflow
@@ -1097,6 +1143,29 @@ orderSchema.methods.getNextApprover = function(): any {
 
   return pendingApproval;
 };
+
+// Additional missing methods
+orderSchema.methods.addTemperatureReading = async function(data: any): Promise<void> {
+  if (!this.compliance.temperatureLog) {
+    this.compliance.temperatureLog = [];
+  }
+  this.compliance.temperatureLog.push(data);
+  await this.save();
+};
+
+orderSchema.methods.updateLineItemStatus = async function(itemId: string, status: string): Promise<void> {
+  const item = this.items.id(itemId);
+  if (!item) {
+    throw new Error('Line item not found');
+  }
+  item.status = status as any;
+  await this.save();
+};
+
+// Virtual field for total
+orderSchema.virtual('total').get(function() {
+  return this.totalAmount;
+});
 
 export const Order = mongoose.model<IOrder>('Order', orderSchema);
 export default Order;

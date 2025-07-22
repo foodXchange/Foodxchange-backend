@@ -238,6 +238,9 @@ export interface IStandingOrder extends Document {
   updatedAt: Date;
   createdBy: Types.ObjectId;
   lastModifiedBy: Types.ObjectId;
+
+  // Methods
+  calculateNextOrderDate(): Date | null;
 }
 
 const MLAlgorithmParametersSchema = new Schema<IMLAlgorithmParameters>({

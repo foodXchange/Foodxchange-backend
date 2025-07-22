@@ -7,6 +7,13 @@ const url = require('url');
 const WebSocket = require('ws');
 
 class FoodXchangeWebSocketServer {
+  private port: number;
+  private clients: Map<string, any>;
+  private rfqRooms: Map<string, Set<string>>;
+  private userActivity: Map<string, { lastActivity: Date; status: string }>;
+  private server: any;
+  private wss: any;
+
   constructor(port = 3001) {
     this.port = port;
     this.clients = new Map();

@@ -217,7 +217,7 @@ export const submitProposal = async (req: AuthRequest, res: Response) => {
     res.json({
       success: true,
       message: 'Proposal submitted successfully',
-      data: proposal
+      data: quote
     });
   } catch (error: any) {
     console.error('Submit proposal error:', error);

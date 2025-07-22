@@ -1,4 +1,4 @@
-﻿const mongoose = require('mongoose');
+﻿import mongoose from 'mongoose';
 
 const buyerContactSchema = new mongoose.Schema({
   buyerContactName: {
@@ -35,4 +35,4 @@ const buyerContactSchema = new mongoose.Schema({
 
 buyerContactSchema.index({ buyerCompany: 1, email: 1 });
 
-module.exports = mongoose.model('BuyerContact', buyerContactSchema);
+export default mongoose.model('BuyerContact', buyerContactSchema);

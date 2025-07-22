@@ -1,10 +1,11 @@
 import * as path from 'path';
 import * as bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
-import * as multer from 'multer';
+import multer from 'multer';
 
-import { Product } from '../../models/seller/Product';
-import { Seller } from '../../models/seller/Seller';
+const Product = require('../../models/seller/Product');
+const Seller = require('../../models/seller/Seller');
+const NotificationModel = require('../../models/Notification');
 
 
 // Configure file upload
@@ -259,7 +260,7 @@ class SellerController {
         .limit(5);
 
       // Get notifications
-      const notifications = await Notification.find({
+      const notifications = await NotificationModel.find({
         recipient: sellerId,
         read: false
       })
@@ -452,8 +453,8 @@ class SellerController {
 }
 
 // Helper function for time ago
-function getTimeAgo(date) {
-  const seconds = Math.floor((new Date() - date) / 1000);
+function getTimeAgo(date: Date): string {
+  const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
 
   let interval = seconds / 31536000;
   if (interval > 1) return `${Math.floor(interval)  } years ago`;

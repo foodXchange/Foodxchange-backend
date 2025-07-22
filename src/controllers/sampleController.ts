@@ -1,21 +1,22 @@
-﻿const Proposal = require('../models/Proposal');
-const RFQ = require('../models/RFQ');
-const SampleRequest = require('../models/SampleRequest');
+﻿import { Request, Response } from 'express';
+const ProposalModel = require('../models/Proposal');
+const RFQModel = require('../models/RFQ');
+const SampleRequestModel = require('../models/SampleRequest');
 
 // Request a sample
-const requestSample = async (req, res) => {
+export const requestSample = async (req: Request & { user?: any }, res: Response) => {
   try {
     const { rfqId, proposalId, supplierId, productDetails, notes } = req.body;
     const userId = req.user._id;
 
     // Verify RFQ ownership
-    const rfq = await RFQ.findOne({ rfqId, buyer: userId });
+    const rfq = await RFQModel.findOne({ rfqId, buyer: userId });
     if (!rfq) {
       return res.status(404).json({ error: 'RFQ not found' });
     }
 
     // Create sample request
-    const sampleRequest = new SampleRequest({
+    const sampleRequest = new SampleRequestModel({
       rfq: rfq._id,
       proposal: proposalId,
       buyer: userId,
@@ -40,14 +41,14 @@ const requestSample = async (req, res) => {
 };
 
 // Get all sample requests for buyer
-const getBuyerSamples = async (req, res) => {
+export const getBuyerSamples = async (req: Request & { user?: any }, res: Response) => {
   try {
     const userId = req.user._id;
     const { status, supplier, product } = req.query;
 
-    const query = { buyer: userId };
+    const query: any = { buyer: userId };
 
-    if (status && status !== 'All') {
+    if (status && status !== 'All' && typeof status === 'string') {
       query.status = status.toLowerCase().replace(' ', '_');
     }
 
@@ -55,7 +56,7 @@ const getBuyerSamples = async (req, res) => {
       query.supplier = supplier;
     }
 
-    const samples = await SampleRequest.find(query)
+    const samples = await SampleRequestModel.find(query)
       .populate('rfq', 'rfqId title')
       .populate('supplier', 'name')
       .populate('proposal', 'proposalId')
@@ -69,13 +70,13 @@ const getBuyerSamples = async (req, res) => {
 };
 
 // Update sample status
-const updateSampleStatus = async (req, res) => {
+export const updateSampleStatus = async (req: Request & { user?: any }, res: Response) => {
   try {
     const { id } = req.params;
     const { status, trackingInfo } = req.body;
     const userId = req.user._id;
 
-    const sample = await SampleRequest.findOne({
+    const sample = await SampleRequestModel.findOne({
       requestId: id,
       buyer: userId
     });
@@ -102,13 +103,13 @@ const updateSampleStatus = async (req, res) => {
 };
 
 // Review sample
-const reviewSample = async (req, res) => {
+export const reviewSample = async (req: Request & { user?: any }, res: Response) => {
   try {
     const { id } = req.params;
     const { rating, comments, decision } = req.body;
     const userId = req.user._id;
 
-    const sample = await SampleRequest.findOne({
+    const sample = await SampleRequestModel.findOne({
       requestId: id,
       buyer: userId
     });
@@ -136,11 +137,4 @@ const reviewSample = async (req, res) => {
     console.error('Review sample error:', error);
     res.status(400).json({ error: error.message });
   }
-};
-
-module.exports = {
-  requestSample,
-  getBuyerSamples,
-  updateSampleStatus,
-  reviewSample
 };

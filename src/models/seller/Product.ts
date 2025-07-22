@@ -1,4 +1,4 @@
-﻿const mongoose = require('mongoose');
+﻿import mongoose from 'mongoose';
 
 const productSchema = new mongoose.Schema({
   // Basic Information
@@ -146,4 +146,4 @@ productSchema.methods.calculateContainerCapacity = function(containerType) {
   return null;
 };
 
-module.exports = mongoose.model('Product', productSchema);
+export default mongoose.model('Product', productSchema);

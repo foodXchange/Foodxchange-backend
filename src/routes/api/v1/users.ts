@@ -5,6 +5,7 @@ import { asyncHandler } from '../../../core/errors';
 import { protect } from '../../../middleware/auth';
 import { responseFormatterMiddleware } from '../../../middleware/responseFormatter';
 import { validate } from '../../../middleware/validation';
+import { userSchemas } from '../../../middleware/validationSchemas';
 
 const router = Router();
 const userController = new UserController();
@@ -76,7 +77,7 @@ router.get('/profile',
  *         description: Unauthorized
  */
 router.put('/profile',
-  validate.userUpdate,
+  validate(userSchemas.userUpdate),
   asyncHandler(userController.updateProfile.bind(userController))
 );
 
@@ -181,7 +182,7 @@ router.get('/profile/completion',
  *         description: Unauthorized
  */
 router.put('/company',
-  validate.companyUpdate,
+  validate(userSchemas.companyUpdate),
   asyncHandler(userController.updateCompany.bind(userController))
 );
 
@@ -249,7 +250,7 @@ router.get('/company',
  *         description: Unauthorized or invalid current password
  */
 router.put('/password',
-  validate.userChangePassword,
+  validate(userSchemas.userChangePassword),
   asyncHandler(userController.changePassword.bind(userController))
 );
 

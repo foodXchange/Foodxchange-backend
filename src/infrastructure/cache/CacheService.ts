@@ -122,7 +122,7 @@ export class CacheService {
       logger.debug('Cache miss', { key: fullKey, duration: Date.now() - startTime });
       return null;
     } catch (error) {
-      logger.error('Cache get error', error, { key: fullKey });
+      logger.error('Cache get error', { error, key: fullKey });
       return null;
     }
   }
@@ -151,7 +151,7 @@ export class CacheService {
 
       return true;
     } catch (error) {
-      logger.error('Cache set error', error, { key: fullKey });
+      logger.error('Cache set error', { error, key: fullKey });
       return false;
     }
   }
@@ -171,7 +171,7 @@ export class CacheService {
       logger.debug('Cache delete', { key: fullKey });
       return true;
     } catch (error) {
-      logger.error('Cache delete error', error, { key: fullKey });
+      logger.error('Cache delete error', { error, key: fullKey });
       return false;
     }
   }
@@ -197,7 +197,7 @@ export class CacheService {
       logger.debug('Cache pattern delete', { pattern: fullPattern, deletedCount });
       return deletedCount;
     } catch (error) {
-      logger.error('Cache pattern delete error', error, { pattern: fullPattern });
+      logger.error('Cache pattern delete error', { error, pattern: fullPattern });
       return 0;
     }
   }

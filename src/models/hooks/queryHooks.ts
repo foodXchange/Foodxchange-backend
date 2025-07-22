@@ -134,7 +134,7 @@ export function addFieldSelectionOptimization(schema: Schema) {
   };
 
   schema.statics.selectFields = function(fieldSet: keyof typeof fieldSets) {
-    return this.select(fieldSets[fieldSet]);
+    return (this as any).select(fieldSets[fieldSet]);
   };
 }
 

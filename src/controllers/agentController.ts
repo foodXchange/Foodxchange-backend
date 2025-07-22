@@ -459,7 +459,7 @@ const acceptLead = asyncHandler(async (req, res) => {
     responseTime: Math.floor((new Date().getTime() - new Date(assignment.assignedAt).getTime()) / (1000 * 60))
   };
 
-  lead.assignment.activeAgent = agent._id;
+  lead.assignment.activeAgent = agent._id as any;
   lead.assignment.acceptedAt = new Date();
   lead.assignment.protectedUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
   lead.status = 'accepted';

@@ -1,4 +1,4 @@
-const aiService = require('./azureAIService');
+import aiService from './azureAIService';
 
 class SupplierMatchingService {
   constructor() {
@@ -203,4 +203,4 @@ class SupplierMatchingService {
   }
 }
 
-module.exports = new SupplierMatchingService();
+export default new SupplierMatchingService();

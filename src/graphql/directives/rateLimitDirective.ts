@@ -1,62 +1,67 @@
-import { SchemaDirectiveVisitor } from '@graphql-tools/utils';
-import { ApolloError } from 'apollo-server-express';
-import { defaultFieldResolver, GraphQLField } from 'graphql';
+import { mapSchema, getDirective, MapperKind } from '@graphql-tools/utils';
+import { defaultFieldResolver, GraphQLSchema } from 'graphql';
+import { GraphQLError } from 'graphql';
 
-import { rateLimitingService } from '../../services/security/RateLimitingService';
+// Simple in-memory rate limiter
+const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
-export class RateLimitDirective extends SchemaDirectiveVisitor {
-  visitFieldDefinition(field: GraphQLField<any, any>) {
-    const { resolve = defaultFieldResolver } = field;
-    const { max, window } = this.args;
+export function rateLimitDirectiveTransformer(schema: GraphQLSchema, directiveName: string) {
+  return mapSchema(schema, {
+    [MapperKind.OBJECT_FIELD]: (fieldConfig) => {
+      const rateLimitDirective = getDirective(schema, fieldConfig, directiveName)?.[0];
 
-    field.resolve = async function (...args) {
-      const [, , context, info] = args;
+      if (rateLimitDirective) {
+        const { limit = 10, duration = 60 } = rateLimitDirective;
+        const { resolve = defaultFieldResolver } = fieldConfig;
 
-      // Generate rate limit key
-      const userId = context.user?.id || context.req.ip;
-      const fieldName = `${info.parentType.name}.${info.fieldName}`;
-      const key = `graphql:${fieldName}:${userId}`;
+        fieldConfig.resolve = async function (source, args, context, info) {
+          const userId = context.user?.id || context.ip || 'anonymous';
+          const key = `${userId}:${info.fieldName}`;
+          const now = Date.now();
+          const windowDuration = duration * 1000; // Convert to milliseconds
 
-      // Convert window string to milliseconds
-      const windowMs = parseWindow(window);
+          const record = rateLimitStore.get(key);
 
-      // Check rate limit
-      const { allowed, info: limitInfo } = await rateLimitingService.checkRateLimit(key, {
-        windowMs,
-        maxRequests: max
-      });
-
-      if (!allowed) {
-        throw new ApolloError(
-          `Too many requests. Please retry after ${limitInfo.retryAfter} seconds`,
-          'RATE_LIMIT_EXCEEDED',
-          {
-            limit: limitInfo.limit,
-            remaining: limitInfo.remaining,
-            resetTime: limitInfo.resetTime
+          if (!record || now > record.resetTime) {
+            // New window
+            rateLimitStore.set(key, {
+              count: 1,
+              resetTime: now + windowDuration
+            });
+          } else if (record.count >= limit) {
+            // Rate limit exceeded
+            const resetIn = Math.ceil((record.resetTime - now) / 1000);
+            throw new GraphQLError(
+              `Rate limit exceeded. Try again in ${resetIn} seconds.`,
+              {
+                extensions: {
+                  code: 'RATE_LIMIT_EXCEEDED',
+                  resetIn
+                }
+              }
+            );
+          } else {
+            // Increment count
+            record.count++;
           }
-        );
+
+          // Clean up old entries periodically
+          if (Math.random() < 0.01) { // 1% chance
+            for (const [k, v] of rateLimitStore.entries()) {
+              if (now > v.resetTime) {
+                rateLimitStore.delete(k);
+              }
+            }
+          }
+
+          // Call original resolver
+          return resolve(source, args, context, info);
+        };
+
+        return fieldConfig;
       }
-
-      return resolve.apply(this, args);
-    };
-  }
+    }
+  });
 }
 
-function parseWindow(window: string): number {
-  const match = window.match(/^(\d+)([smhd])$/);
-  if (!match) {
-    throw new Error(`Invalid window format: ${window}`);
-  }
-
-  const value = parseInt(match[1]);
-  const unit = match[2];
-
-  switch (unit) {
-    case 's': return value * 1000;
-    case 'm': return value * 60 * 1000;
-    case 'h': return value * 60 * 60 * 1000;
-    case 'd': return value * 24 * 60 * 60 * 1000;
-    default: throw new Error(`Invalid time unit: ${unit}`);
-  }
-}
+export default rateLimitDirectiveTransformer;

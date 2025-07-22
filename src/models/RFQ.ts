@@ -68,6 +68,7 @@ export interface IRFQ extends Document {
   issuedDate: Date;
   dueDate: Date;
   validUntil: Date;
+  expiresAt?: Date; // Alias for validUntil for backward compatibility
 
   // Status and State
   status: 'draft' | 'published' | 'closed' | 'awarded' | 'cancelled' | 'expired';
@@ -604,6 +605,11 @@ rfqSchema.virtual('daysRemaining').get(function() {
   const now = new Date();
   const diff = this.dueDate.getTime() - now.getTime();
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+});
+
+// Virtual field for backward compatibility
+rfqSchema.virtual('expiresAt').get(function() {
+  return this.validUntil;
 });
 
 // Pre-save middleware

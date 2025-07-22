@@ -24,7 +24,7 @@ router.use(haccpRateLimiter);
  * @access Private
  */
 router.get('/dashboard',
-  authorize(['admin', 'manager', 'compliance']),
+  authorize('admin', 'manager', 'compliance'),
   asyncHandler(haccpController.getDashboard.bind(haccpController))
 );
 
@@ -34,7 +34,7 @@ router.get('/dashboard',
  * @access Private
  */
 router.post('/ccp',
-  authorize(['admin', 'manager', 'compliance']),
+  authorize('admin', 'manager', 'compliance'),
   asyncHandler(haccpController.createCCP.bind(haccpController))
 );
 
@@ -44,7 +44,7 @@ router.post('/ccp',
  * @access Private
  */
 router.post('/measurements',
-  authorize(['admin', 'manager', 'compliance', 'operator']),
+  authorize('admin', 'manager', 'compliance', 'operator'),
   asyncHandler(haccpController.recordMeasurement.bind(haccpController))
 );
 
@@ -54,7 +54,7 @@ router.post('/measurements',
  * @access Private
  */
 router.get('/measurements',
-  authorize(['admin', 'manager', 'compliance', 'operator']),
+  authorize('admin', 'manager', 'compliance', 'operator'),
   asyncHandler(haccpController.getMeasurements.bind(haccpController))
 );
 
@@ -64,7 +64,7 @@ router.get('/measurements',
  * @access Private
  */
 router.get('/alerts',
-  authorize(['admin', 'manager', 'compliance']),
+  authorize('admin', 'manager', 'compliance'),
   asyncHandler(haccpController.getAlerts.bind(haccpController))
 );
 
@@ -74,7 +74,7 @@ router.get('/alerts',
  * @access Private
  */
 router.post('/alerts/:id/acknowledge',
-  authorize(['admin', 'manager', 'compliance']),
+  authorize('admin', 'manager', 'compliance'),
   asyncHandler(haccpController.acknowledgeAlert.bind(haccpController))
 );
 
@@ -84,7 +84,7 @@ router.post('/alerts/:id/acknowledge',
  * @access Private
  */
 router.post('/alerts/:id/resolve',
-  authorize(['admin', 'manager', 'compliance']),
+  authorize('admin', 'manager', 'compliance'),
   asyncHandler(haccpController.resolveAlert.bind(haccpController))
 );
 
@@ -94,7 +94,7 @@ router.post('/alerts/:id/resolve',
  * @access Private
  */
 router.get('/reports',
-  authorize(['admin', 'manager', 'compliance']),
+  authorize('admin', 'manager', 'compliance'),
   asyncHandler(haccpController.generateReport.bind(haccpController))
 );
 

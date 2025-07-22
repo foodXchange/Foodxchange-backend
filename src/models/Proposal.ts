@@ -1,4 +1,4 @@
-﻿const mongoose = require('mongoose');
+﻿import mongoose from 'mongoose';
 
 const proposalSchema = mongoose.Schema({
   rfq: {
@@ -122,6 +122,5 @@ proposalSchema.pre('save', function(next) {
 proposalSchema.index({ rfq: 1, supplier: 1 });
 proposalSchema.index({ status: 1 });
 
-const Proposal = mongoose.model('Proposal', proposalSchema);
-
-module.exports = Proposal;
+export const Proposal = mongoose.model('Proposal', proposalSchema);
+export default Proposal;

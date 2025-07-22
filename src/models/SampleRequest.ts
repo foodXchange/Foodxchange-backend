@@ -1,4 +1,4 @@
-﻿const mongoose = require('mongoose');
+﻿import mongoose from 'mongoose';
 
 const sampleRequestSchema = new mongoose.Schema({
   requestId: {
@@ -69,11 +69,11 @@ const sampleRequestSchema = new mongoose.Schema({
 // Auto-generate Request ID
 sampleRequestSchema.pre('save', async function(next) {
   if (this.isNew && !this.requestId) {
-    const count = await this.constructor.countDocuments();
+    const count = await (this.constructor as any).countDocuments();
     this.requestId = `SMPL-${String(count + 1).padStart(5, '0')}`;
   }
   this.updatedAt = new Date();
   next();
 });
 
-module.exports = mongoose.model('SampleRequest', sampleRequestSchema);
+export default mongoose.model('SampleRequest', sampleRequestSchema);

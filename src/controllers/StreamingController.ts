@@ -3,12 +3,12 @@ import { Request, Response } from 'express';
 import { Logger } from '../core/logging/logger';
 import { kafkaService } from '../services/streaming/KafkaService';
 
-interface StreamingRequest extends Request {
+type StreamingRequest = Request & {
   user?: {
     id: string;
     companyId: string;
   };
-}
+};
 
 class StreamingController {
   private readonly logger: Logger;
@@ -20,11 +20,11 @@ class StreamingController {
   /**
    * Get streaming service health
    */
-  async getHealth(req: StreamingRequest, res: Response): Promise<void> {
+  async getHealth(req: StreamingRequest, res: Response): Promise<Response> {
     try {
       const health = await kafkaService.getHealth();
 
-      res.json({
+      return res.json({
         success: true,
         data: {
           service: 'Event Streaming',
@@ -35,7 +35,7 @@ class StreamingController {
       });
     } catch (error) {
       this.logger.error('Failed to get streaming health:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: {
           code: 'HEALTH_CHECK_FAILED',
@@ -48,7 +48,7 @@ class StreamingController {
   /**
    * Get topic information
    */
-  async getTopicInfo(req: StreamingRequest, res: Response): Promise<void> {
+  async getTopicInfo(req: StreamingRequest, res: Response): Promise<Response> {
     try {
       const { topicName } = req.params;
 
@@ -64,7 +64,7 @@ class StreamingController {
 
       const topicHealth = await kafkaService.getTopicHealth(topicName);
 
-      res.json({
+      return res.json({
         success: true,
         data: {
           topic: topicName,
@@ -74,7 +74,7 @@ class StreamingController {
       });
     } catch (error) {
       this.logger.error('Failed to get topic info:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: {
           code: 'TOPIC_INFO_FAILED',
@@ -87,7 +87,7 @@ class StreamingController {
   /**
    * Create a new topic
    */
-  async createTopic(req: StreamingRequest, res: Response): Promise<void> {
+  async createTopic(req: StreamingRequest, res: Response): Promise<Response> {
     try {
       const { topicName } = req.params;
       const { partitions = 3, replicationFactor = 1 } = req.body;
@@ -116,7 +116,7 @@ class StreamingController {
       });
     } catch (error) {
       this.logger.error('Failed to create topic:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: {
           code: 'TOPIC_CREATION_FAILED',
@@ -129,7 +129,7 @@ class StreamingController {
   /**
    * Publish a custom event
    */
-  async publishEvent(req: StreamingRequest, res: Response): Promise<void> {
+  async publishEvent(req: StreamingRequest, res: Response): Promise<Response> {
     try {
       const { eventType, source, data } = req.body;
       const userId = req.user?.id;
@@ -164,7 +164,7 @@ class StreamingController {
       });
     } catch (error) {
       this.logger.error('Failed to publish event:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: {
           code: 'EVENT_PUBLISH_FAILED',
@@ -177,7 +177,7 @@ class StreamingController {
   /**
    * Publish order event
    */
-  async publishOrderEvent(req: StreamingRequest, res: Response): Promise<void> {
+  async publishOrderEvent(req: StreamingRequest, res: Response): Promise<Response> {
     try {
       const { orderId } = req.params;
       const { eventType, orderData } = req.body;
@@ -224,7 +224,7 @@ class StreamingController {
       });
     } catch (error) {
       this.logger.error('Failed to publish order event:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: {
           code: 'ORDER_EVENT_PUBLISH_FAILED',
@@ -237,7 +237,7 @@ class StreamingController {
   /**
    * Publish product event
    */
-  async publishProductEvent(req: StreamingRequest, res: Response): Promise<void> {
+  async publishProductEvent(req: StreamingRequest, res: Response): Promise<Response> {
     try {
       const { productId } = req.params;
       const { eventType, productData } = req.body;
@@ -284,7 +284,7 @@ class StreamingController {
       });
     } catch (error) {
       this.logger.error('Failed to publish product event:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: {
           code: 'PRODUCT_EVENT_PUBLISH_FAILED',
@@ -297,7 +297,7 @@ class StreamingController {
   /**
    * Publish RFQ event
    */
-  async publishRFQEvent(req: StreamingRequest, res: Response): Promise<void> {
+  async publishRFQEvent(req: StreamingRequest, res: Response): Promise<Response> {
     try {
       const { rfqId } = req.params;
       const { eventType, rfqData } = req.body;
@@ -344,7 +344,7 @@ class StreamingController {
       });
     } catch (error) {
       this.logger.error('Failed to publish RFQ event:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: {
           code: 'RFQ_EVENT_PUBLISH_FAILED',
@@ -357,7 +357,7 @@ class StreamingController {
   /**
    * Publish user activity event
    */
-  async publishUserActivity(req: StreamingRequest, res: Response): Promise<void> {
+  async publishUserActivity(req: StreamingRequest, res: Response): Promise<Response> {
     try {
       const { activityType, activityData } = req.body;
       const userId = req.user?.id;
@@ -391,7 +391,7 @@ class StreamingController {
       });
     } catch (error) {
       this.logger.error('Failed to publish user activity:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: {
           code: 'USER_ACTIVITY_PUBLISH_FAILED',
@@ -404,7 +404,7 @@ class StreamingController {
   /**
    * Publish analytics event
    */
-  async publishAnalyticsEvent(req: StreamingRequest, res: Response): Promise<void> {
+  async publishAnalyticsEvent(req: StreamingRequest, res: Response): Promise<Response> {
     try {
       const { eventType, data } = req.body;
       const userId = req.user?.id;
@@ -437,7 +437,7 @@ class StreamingController {
       });
     } catch (error) {
       this.logger.error('Failed to publish analytics event:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: {
           code: 'ANALYTICS_EVENT_PUBLISH_FAILED',
@@ -450,7 +450,7 @@ class StreamingController {
   /**
    * Publish notification event
    */
-  async publishNotificationEvent(req: StreamingRequest, res: Response): Promise<void> {
+  async publishNotificationEvent(req: StreamingRequest, res: Response): Promise<Response> {
     try {
       const { notificationType, recipientId, notificationData } = req.body;
       const companyId = req.user?.companyId;
@@ -483,7 +483,7 @@ class StreamingController {
       });
     } catch (error) {
       this.logger.error('Failed to publish notification event:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: {
           code: 'NOTIFICATION_EVENT_PUBLISH_FAILED',
@@ -496,7 +496,7 @@ class StreamingController {
   /**
    * Get streaming statistics
    */
-  async getStatistics(req: StreamingRequest, res: Response): Promise<void> {
+  async getStatistics(req: StreamingRequest, res: Response): Promise<Response> {
     try {
       const health = await kafkaService.getHealth();
 
@@ -511,13 +511,13 @@ class StreamingController {
         timestamp: new Date().toISOString()
       };
 
-      res.json({
+      return res.json({
         success: true,
         data: statistics
       });
     } catch (error) {
       this.logger.error('Failed to get streaming statistics:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: {
           code: 'STATISTICS_FAILED',

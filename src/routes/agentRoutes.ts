@@ -1,9 +1,6 @@
-const express = require('express');
-
-const router = express.Router();
-const { body, param, query, validationResult } = require('express-validator');
-
-const {
+import express from 'express';
+import { body, param, query, validationResult } from 'express-validator';
+import {
   agentOnboarding,
   getAgentProfile,
   updateAgentProfile,
@@ -13,8 +10,10 @@ const {
   acceptLead,
   declineLead,
   getAgentCommissions
-} = require('../controllers/agentController');
-const { protect, authorize } = require('../middleware/auth');
+} from '../controllers/agentController';
+import { protect, authorize } from '../middleware/auth';
+
+const router = express.Router();
 
 // Validation middleware
 const validate = (req, res, next) => {
@@ -134,4 +133,4 @@ router.get('/commissions',
   getAgentCommissions
 );
 
-module.exports = router;
+export default router;

@@ -216,7 +216,12 @@ export function Injectable(token?: Token<any>) {
     const paramTypes = Reflect.getMetadata('design:paramtypes', target) || [];
 
     // Register the class with its dependencies
-    container.registerClass(serviceToken, true, paramTypes);
+    // If serviceToken is a string, we need to handle it differently
+    if (typeof serviceToken === 'string') {
+      container.registerSingleton(serviceToken as Token<any>, () => new target(...paramTypes), paramTypes);
+    } else {
+      container.registerClass(serviceToken as Constructor<any>, true, paramTypes);
+    }
 
     // Add metadata for easy retrieval
     Reflect.defineMetadata('di:token', serviceToken, target);
@@ -248,7 +253,11 @@ export function createProvider<T>(provider: Provider<T>): void {
   if (provider.useClass) {
     container.registerClass(provider.provide as Constructor<T>, provider.singleton ?? true, provider.deps);
   } else if (provider.useFactory) {
-    container.register(provider.provide, provider.useFactory, provider.singleton ?? true, provider.deps);
+    if (provider.singleton ?? true) {
+      container.registerSingleton(provider.provide, provider.useFactory, provider.deps);
+    } else {
+      container.registerTransient(provider.provide, provider.useFactory, provider.deps);
+    }
   } else if (provider.useValue !== undefined) {
     container.registerValue(provider.provide, provider.useValue);
   } else {

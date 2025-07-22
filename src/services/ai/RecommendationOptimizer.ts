@@ -5,7 +5,7 @@
 
 import { Logger } from '../../core/logging/logger';
 import { CacheService } from '../../infrastructure/cache/CacheService';
-import { MetricsService } from '../../infrastructure/monitoring/MetricsService';
+import { MetricsService } from '../../core/monitoring/metrics';
 
 export interface CacheStrategy {
   ttl: number; // Time to live in seconds
@@ -58,7 +58,7 @@ export class RecommendationOptimizer {
   private constructor() {
     this.logger = new Logger('RecommendationOptimizer');
     this.cache = cacheService;
-    this.metrics = metricsService;
+    this.metrics = new MetricsService();
     this.analytics = new Map();
     this.performanceHistory = [];
     this.config = this.getDefaultConfig();

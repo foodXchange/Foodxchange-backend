@@ -8,9 +8,11 @@ const logger = new Logger('AdvancedRateLimitMiddleware');
 interface RateLimitRequest extends Request {
   user?: {
     id: string;
+    email: string;
     role: string;
     tier?: string;
     companyId?: string;
+    company?: string;
   };
   rateLimitContext?: {
     userId?: string;

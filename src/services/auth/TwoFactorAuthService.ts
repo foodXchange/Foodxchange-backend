@@ -391,21 +391,24 @@ export class TwoFactorAuthService {
     const key = crypto.scryptSync(process.env.ENCRYPTION_KEY || 'default-key', 'salt', 32);
     const iv = crypto.randomBytes(16);
 
-    const cipher = crypto.createCipher(algorithm, key);
+    const cipher = crypto.createCipheriv(algorithm, key, iv);
     let encrypted = cipher.update(secret, 'utf8', 'hex');
     encrypted += cipher.final('hex');
+    const authTag = cipher.getAuthTag();
 
-    return `${iv.toString('hex')  }:${  encrypted}`;
+    return `${iv.toString('hex')}:${encrypted}:${authTag.toString('hex')}`;
   }
 
-  private decryptSecret(encryptedSecret: string): string {
+  decryptSecret(encryptedSecret: string): string {
     const algorithm = 'aes-256-gcm';
     const key = crypto.scryptSync(process.env.ENCRYPTION_KEY || 'default-key', 'salt', 32);
     const parts = encryptedSecret.split(':');
     const iv = Buffer.from(parts[0], 'hex');
     const encrypted = parts[1];
 
-    const decipher = crypto.createDecipher(algorithm, key);
+    const authTag = Buffer.from(parts[2], 'hex');
+    const decipher = crypto.createDecipheriv(algorithm, key, iv);
+    decipher.setAuthTag(authTag);
     let decrypted = decipher.update(encrypted, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
 
@@ -414,6 +417,19 @@ export class TwoFactorAuthService {
 
   private hashBackupCode(code: string): string {
     return crypto.createHash('sha256').update(code).digest('hex');
+  }
+
+  /**
+   * Get user by ID
+   */
+  async getUserById(userId: string) {
+    try {
+      const user = await User.findById(userId).select('+twoFactor.secret');
+      return user;
+    } catch (error) {
+      logger.error('Failed to get user by ID', error);
+      throw error;
+    }
   }
 
   private async storeTwoFactorChallenge(challenge: TwoFactorChallenge, code: string): Promise<void> {

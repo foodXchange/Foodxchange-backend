@@ -1,16 +1,15 @@
-﻿const express = require('express');
+﻿import express from 'express';
+import multer from 'multer';
+import analyticsController from '../../controllers/seller/analyticsController';
+import notificationController from '../../controllers/seller/notificationController';
+import orderController from '../../controllers/seller/orderController';
+import productController from '../../controllers/seller/productController';
+import proposalController from '../../controllers/seller/proposalController';
+import sellerController from '../../controllers/seller/sellerController';
+import { authenticateSeller } from '../../middleware/auth';
+import { validateRegistration, validateLogin } from '../../validators/seller';
 
 const router = express.Router();
-const multer = require('multer');
-
-const analyticsController = require('../controllers/seller/analyticsController');
-const notificationController = require('../controllers/seller/notificationController');
-const orderController = require('../controllers/seller/orderController');
-const productController = require('../controllers/seller/productController');
-const proposalController = require('../controllers/seller/proposalController');
-const sellerController = require('../controllers/seller/sellerController');
-const { authenticateSeller } = require('../middleware/auth');
-const { validateRegistration, validateLogin } = require('../validators/seller');
 
 
 // Configure multer for file uploads
@@ -82,4 +81,4 @@ router.get('/notifications', notificationController.getNotifications);
 router.put('/notifications/:id/read', notificationController.markAsRead);
 router.put('/notifications/read-all', notificationController.markAllAsRead);
 
-module.exports = router;
+export default router;

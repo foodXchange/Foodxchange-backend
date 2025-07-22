@@ -1,10 +1,11 @@
-﻿const router = require('express').Router();
+﻿import express from 'express';
+import { protect, authorize } from '../middleware/auth';
+import Product from '../models/Product';
+import Proposal from '../models/Proposal';
+import Request from '../models/Request';
+import RequestLineItem from '../models/RequestLineItem';
 
-const { protect, authorize } = require('../middleware/auth');
-const Product = require('../models/Product');
-const Proposal = require('../models/Proposal');
-const Request = require('../models/Request');
-const RequestLineItem = require('../models/RequestLineItem');
+const router = express.Router();
 
 // Get buyer dashboard data
 router.get('/dashboard', protect, authorize('buyer'), async (req, res) => {
@@ -53,7 +54,7 @@ router.get('/rfqs', protect, authorize('buyer'), async (req, res) => {
     const { status, category, search, page = 1, limit = 10 } = req.query;
     const buyerCompany = req.user.company;
 
-    const query = { buyer: buyerCompany };
+    const query: any = { buyer: buyerCompany };
 
     if (status && status !== 'All') {
       query.requestStatus = status;
@@ -70,12 +71,14 @@ router.get('/rfqs', protect, authorize('buyer'), async (req, res) => {
       ];
     }
 
-    const skip = (page - 1) * limit;
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const skip = (pageNum - 1) * limitNum;
 
     const requests = await Request.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(parseInt(limit))
+      .limit(limitNum)
       .populate('assignedTo', 'name');
 
     const total = await Request.countDocuments(query);
@@ -95,8 +98,8 @@ router.get('/rfqs', protect, authorize('buyer'), async (req, res) => {
       requests: requestsWithItems,
       pagination: {
         total,
-        page: parseInt(page),
-        pages: Math.ceil(total / limit)
+        page: pageNum,
+        pages: Math.ceil(total / limitNum)
       }
     });
   } catch (error) {
@@ -207,4 +210,4 @@ router.get('/proposals/compare', protect, authorize('buyer'), async (req, res) =
   }
 });
 
-module.exports = router;
+export default router;

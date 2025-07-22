@@ -1,5 +1,6 @@
 import { DateTimeResolver, JSONResolver } from 'graphql-scalars';
-import { GraphQLUpload } from 'graphql-upload';
+// GraphQL Upload placeholder - install graphql-upload package if needed
+const GraphQLUpload = null;
 import { merge } from 'lodash';
 
 // Import resolvers

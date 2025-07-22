@@ -1,4 +1,4 @@
-﻿const mongoose = require('mongoose');
+﻿import mongoose from 'mongoose';
 
 const requestLineItemSchema = new mongoose.Schema({
   request: {
@@ -27,4 +27,4 @@ const requestLineItemSchema = new mongoose.Schema({
   }
 });
 
-module.exports = mongoose.model('RequestLineItem', requestLineItemSchema);
+export default mongoose.model('RequestLineItem', requestLineItemSchema);

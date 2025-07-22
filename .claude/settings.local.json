@@ -75,7 +75,9 @@
       "Bash(del nul)",
       "Bash(npm run:*)",
       "Bash(PORT=5002 npm run dev)",
-      "Bash(tasklist)"
+      "Bash(tasklist)",
+      "Bash(sed:*)",
+      "Bash(del srccoremetricsMetricsService.ts)"
     ],
     "deny": []
   }

@@ -24,7 +24,7 @@ router.use(orderRateLimiter);
  * @access Private
  */
 router.post('/',
-  authorize(['buyer', 'admin', 'manager']),
+  authorize('buyer', 'admin', 'manager'),
   orderController.createOrder
 );
 
@@ -34,7 +34,7 @@ router.post('/',
  * @access Private
  */
 router.get('/',
-  authorize(['buyer', 'supplier', 'admin', 'manager']),
+  authorize('buyer', 'supplier', 'admin', 'manager'),
   orderController.getOrders
 );
 
@@ -44,7 +44,7 @@ router.get('/',
  * @access Private
  */
 router.get('/analytics',
-  authorize(['admin', 'manager']),
+  authorize('admin', 'manager'),
   orderController.getOrderAnalytics
 );
 
@@ -54,7 +54,7 @@ router.get('/analytics',
  * @access Private
  */
 router.get('/:id',
-  authorize(['buyer', 'supplier', 'admin', 'manager']),
+  authorize('buyer', 'supplier', 'admin', 'manager'),
   orderController.getOrderById
 );
 
@@ -64,7 +64,7 @@ router.get('/:id',
  * @access Private
  */
 router.put('/:id',
-  authorize(['buyer', 'admin', 'manager']),
+  authorize('buyer', 'admin', 'manager'),
   orderController.updateOrder
 );
 
@@ -74,7 +74,7 @@ router.put('/:id',
  * @access Private
  */
 router.post('/:id/approve',
-  authorize(['manager', 'director', 'ceo', 'admin']),
+  authorize('manager', 'director', 'ceo', 'admin'),
   orderController.processApproval
 );
 
@@ -84,7 +84,7 @@ router.post('/:id/approve',
  * @access Private
  */
 router.delete('/:id',
-  authorize(['buyer', 'admin', 'manager']),
+  authorize('buyer', 'admin', 'manager'),
   orderController.cancelOrder
 );
 
@@ -94,7 +94,7 @@ router.delete('/:id',
  * @access Private
  */
 router.post('/:id/shipments',
-  authorize(['supplier', 'admin', 'manager']),
+  authorize('supplier', 'admin', 'manager'),
   orderController.addShipment
 );
 
@@ -104,7 +104,7 @@ router.post('/:id/shipments',
  * @access Private
  */
 router.put('/:id/shipments/:shipmentId/tracking',
-  authorize(['supplier', 'admin', 'manager']),
+  authorize('supplier', 'admin', 'manager'),
   orderController.updateShipmentTracking
 );
 

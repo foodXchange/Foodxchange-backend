@@ -7,7 +7,7 @@ import { Logger } from '../../core/logging/logger';
 
 const logger = new Logger('JobProcessor');
 
-interface JobData {
+export interface JobData {
   type: string;
   payload: any;
   metadata?: {
@@ -18,7 +18,7 @@ interface JobData {
   };
 }
 
-interface JobResult {
+export interface JobResult {
   success: boolean;
   data?: any;
   error?: string;

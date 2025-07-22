@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const sampleRequestSchema = new mongoose.Schema({
   requester: {
@@ -157,4 +157,4 @@ sampleRequestSchema.pre('save', function(next) {
   next();
 });
 
-module.exports = mongoose.model('SampleRequest', sampleRequestSchema);
+export default mongoose.model('SampleRequest', sampleRequestSchema);

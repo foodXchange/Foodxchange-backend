@@ -3,14 +3,14 @@ import { Request, Response } from 'express';
 import { Logger } from '../core/logging/logger';
 import { advancedRateLimitingService } from '../services/security/AdvancedRateLimitingService';
 
-interface RateLimitingRequest extends Request {
+type RateLimitingRequest = Request & {
   user?: {
     id: string;
     companyId: string;
     role: string;
     tier?: string;
   };
-}
+};
 
 class RateLimitingController {
   private readonly logger: Logger;

@@ -1,9 +1,9 @@
-const fs = require('fs');
-const path = require('path');
-
-const csv = require('csv-parser');
-const mongoose = require('mongoose');
-require('dotenv').config();
+import fs from 'fs';
+import path from 'path';
+import csv from 'csv-parser';
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+dotenv.config();
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/foodxchange', {
@@ -279,9 +279,9 @@ async function importProposals() {
 async function createBuyerAccounts() {
   console.log('\n👤 Creating buyer user accounts...');
 
-  const bcrypt = require('bcryptjs');
-  const User = require('./models/User');
-  const Company = require('./models/Company');
+  const bcrypt = await import('bcryptjs');
+  const User = (await import('./models/User')).default;
+  const Company = (await import('./models/Company')).default;
 
   const buyers = await Buyer.find().limit(5); // Create accounts for first 5 buyers
 
@@ -345,7 +345,7 @@ async function runImport() {
     console.log(`Requests (RFQs): ${await Request.countDocuments()}`);
     console.log(`Proposals: ${await Proposal.countDocuments()}`);
 
-    const User = require('./models/User');
+    const User = (await import('./models/User')).default;
     console.log(`User Accounts: ${await User.countDocuments()}`);
 
     console.log('\n📧 Sample Login Credentials:');

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 
 import { Logger } from '../core/logging/logger';
-import { MetricsService } from '../core/metrics/MetricsService';
+import { MetricsService } from '../core/monitoring/metrics';
 import { AuditLog, IAuditLog } from '../models/AuditLog';
 import { complianceMonitor } from '../services/compliance/ComplianceMonitor';
 

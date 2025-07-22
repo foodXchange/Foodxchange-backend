@@ -1,5 +1,5 @@
 // Main AI Configuration for FoodXchange
-const secureConfig = require('../config/secure-config');
+import secureConfig from '../config/secure-config';
 
 class AIConfiguration {
   constructor() {
@@ -62,7 +62,7 @@ class AIConfiguration {
       return null;
     }
 
-    const { OpenAIClient, AzureKeyCredential } = require('@azure/openai');
+    const { OpenAIClient, AzureKeyCredential } = await import('@azure/openai');
     return new OpenAIClient(endpoint, new AzureKeyCredential(key));
   }
 
@@ -72,7 +72,7 @@ class AIConfiguration {
       return null;
     }
 
-    const { TextAnalyticsClient, AzureKeyCredential } = require('@azure/ai-text-analytics');
+    const { TextAnalyticsClient, AzureKeyCredential } = await import('@azure/ai-text-analytics');
     return new TextAnalyticsClient(endpoint, new AzureKeyCredential(key));
   }
 
@@ -82,7 +82,7 @@ class AIConfiguration {
       return null;
     }
 
-    const { DocumentAnalysisClient, AzureKeyCredential } = require('@azure/ai-form-recognizer');
+    const { DocumentAnalysisClient, AzureKeyCredential } = await import('@azure/ai-form-recognizer');
     return new DocumentAnalysisClient(endpoint, new AzureKeyCredential(key));
   }
 
@@ -92,7 +92,7 @@ class AIConfiguration {
       return null;
     }
 
-    const { SearchClient, AzureKeyCredential } = require('@azure/search-documents');
+    const { SearchClient, AzureKeyCredential } = await import('@azure/search-documents');
     return new SearchClient(
       endpoint,
       this.config.search.indexName,
@@ -101,4 +101,4 @@ class AIConfiguration {
   }
 }
 
-module.exports = new AIConfiguration();
+export default new AIConfiguration();

@@ -16,9 +16,7 @@ export class AuthService {
     // Check if user exists
     const existingUser = await User.findOne({ email: data.email.toLowerCase() });
     if (existingUser) {
-      throw new ValidationError('User already exists', [
-        { field: 'email', message: 'Email is already registered' }
-      ]);
+      throw new ValidationError('User already exists: Email is already registered');
     }
 
     // Hash password

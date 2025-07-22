@@ -1,5 +1,5 @@
-const bcrypt = require('bcryptjs');
-const mongoose = require('mongoose');
+import bcrypt from 'bcryptjs';
+import mongoose from 'mongoose';
 
 const userSchema = new mongoose.Schema({
   // Authentication
@@ -186,7 +186,7 @@ userSchema.methods.incLoginAttempts = function() {
     });
   }
 
-  const updates = { $inc: { 'security.loginAttempts': 1 } };
+  const updates: any = { $inc: { 'security.loginAttempts': 1 } };
 
   if (this.security.loginAttempts + 1 >= 5 && !this.isLocked) {
     updates.$set = { 'security.lockUntil': Date.now() + 2 * 60 * 60 * 1000 }; // 2 hours
@@ -209,4 +209,4 @@ userSchema.index({ role: 1, 'status.isActive': 1 });
 userSchema.index({ company: 1 });
 userSchema.index({ 'originalData.contactId': 1 }, { sparse: true });
 
-module.exports = mongoose.model('User', userSchema);
+export default mongoose.model('User', userSchema);

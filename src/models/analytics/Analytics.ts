@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const analyticsSchema = new mongoose.Schema({
   user: {
@@ -152,4 +152,4 @@ analyticsSchema.methods.generateInsights = function() {
   return insights;
 };
 
-module.exports = mongoose.model('Analytics', analyticsSchema);
+export default mongoose.model('Analytics', analyticsSchema);

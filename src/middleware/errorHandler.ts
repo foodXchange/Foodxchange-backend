@@ -12,7 +12,7 @@ import {
   ExternalServiceError
 } from '../core/errors';
 import { Logger } from '../core/logging/logger';
-import { MetricsService } from '../core/metrics/MetricsService';
+import { MetricsService } from '../core/monitoring/metrics';
 
 const logger = new Logger('ErrorHandler');
 const metricsService = new MetricsService();
@@ -77,9 +77,9 @@ const getErrorCode = (error: Error): string => {
 
 // Format validation errors
 const formatValidationError = (error: any): any => {
-  if (error instanceof ValidationError && error.details) {
+  if (error instanceof ValidationError && (error as any).details) {
     return {
-      fields: error.details.map((detail: any) => ({
+      fields: (error as any).details.map((detail: any) => ({
         field: detail.field,
         message: detail.message,
         value: detail.value

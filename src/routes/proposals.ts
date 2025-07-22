@@ -1,12 +1,12 @@
-const express = require('express');
+import express from 'express';
+import proposalController from '../controllers/proposalController';
+import auth from '../middleware/auth';
 
 const router = express.Router();
-const proposalController = require('../controllers/proposalController');
-const auth = require('../middleware/auth');
 
 router.post('/', auth, proposalController.createProposal);
 router.get('/rfq/:rfqId', auth, proposalController.getProposalsByRFQ);
 router.get('/:id', auth, proposalController.getProposalById);
 router.put('/:id/accept', auth, proposalController.acceptProposal);
 
-module.exports = router;
+export default router;

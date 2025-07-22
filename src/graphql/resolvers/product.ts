@@ -252,7 +252,7 @@ export const productResolvers = {
         }
 
         // Soft delete
-        product.status = 'INACTIVE';
+        product.status = 'inactive';
         product.deletedAt = new Date();
         await product.save();
 
@@ -313,7 +313,12 @@ export const productResolvers = {
         if (!product.images) {
           product.images = [];
         }
-        product.images.push(imageUrl);
+        product.images.push({
+          url: imageUrl,
+          alt: filename,
+          isPrimary: product.images.length === 0,
+          order: product.images.length
+        });
         await product.save();
 
         logger.info('Product image uploaded', {

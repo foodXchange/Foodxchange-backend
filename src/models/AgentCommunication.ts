@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const agentCommunicationSchema = new mongoose.Schema({
   communicationId: {
@@ -643,4 +643,4 @@ agentCommunicationSchema.index({
   'participants.recipients.name': 'text'
 });
 
-module.exports = mongoose.model('AgentCommunication', agentCommunicationSchema);
+export default mongoose.model('AgentCommunication', agentCommunicationSchema);

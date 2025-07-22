@@ -15,8 +15,8 @@ export const validateRequest = (req: Request, res: Response, next: NextFunction)
   const errors = validationResult(req);
 
   if (!errors.isEmpty()) {
-    const formattedErrors = errors.array().map(error => ({
-      field: error.param,
+    const formattedErrors = errors.array().map((error: any) => ({
+      field: error.param || error.path,
       message: error.msg,
       value: error.value,
       location: error.location

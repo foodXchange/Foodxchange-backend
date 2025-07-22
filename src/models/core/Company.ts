@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 const { Decimal128 } = mongoose.Types;
 
 const companySchema = new mongoose.Schema({
@@ -305,4 +305,4 @@ companySchema.post('save', async (doc) => {
   }
 });
 
-module.exports = mongoose.model('Company', companySchema);
+export default mongoose.model('Company', companySchema);

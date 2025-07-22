@@ -54,6 +54,12 @@ export interface IProduct extends Document {
     isTaxIncluded: boolean;
   };
 
+  // Legacy price property for backward compatibility
+  price?: {
+    amount: number;
+    currency?: string;
+  };
+
   // Inventory
   inventory: {
     trackInventory: boolean;
@@ -255,6 +261,7 @@ export interface IProduct extends Document {
   updatedAt: Date;
   createdBy: mongoose.Types.ObjectId;
   updatedBy?: mongoose.Types.ObjectId;
+  deletedAt?: Date;
   version: number;
 
   // Methods
@@ -398,6 +405,19 @@ const productSchema = new Schema<IProduct>({
     isTaxIncluded: {
       type: Boolean,
       default: false
+    }
+  },
+
+  // Legacy price field for backward compatibility
+  price: {
+    amount: {
+      type: Number,
+      min: 0
+    },
+    currency: {
+      type: String,
+      uppercase: true,
+      default: 'USD'
     }
   },
 
@@ -822,6 +842,9 @@ const productSchema = new Schema<IProduct>({
   updatedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
+  },
+  deletedAt: {
+    type: Date
   },
   version: {
     type: Number,

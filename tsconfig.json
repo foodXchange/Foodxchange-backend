@@ -8,7 +8,7 @@
     
     // Modules
     "module": "commonjs",
-    "rootDir": "./src",
+    "rootDir": ".",
     "moduleResolution": "node",
     "allowImportingTsExtensions": false,
     "baseUrl": ".",
@@ -21,7 +21,8 @@
       "@models/*": ["src/models/*"],
       "@controllers/*": ["src/controllers/*"],
       "@utils/*": ["src/utils/*"],
-      "@types/*": ["src/types/*"]
+      "@types/*": ["src/types/*"],
+      "@shared/types": ["shared/types"]
     },
     "resolveJsonModule": true,
     
@@ -67,7 +68,8 @@
     "maxNodeModuleJsDepth": 1
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "shared/**/*"
   ],
   "exclude": [
     "node_modules",

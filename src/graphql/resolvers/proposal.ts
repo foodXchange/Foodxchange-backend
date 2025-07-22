@@ -71,7 +71,7 @@ export const proposalResolvers = {
           throw new UserInputError('RFQ not found');
         }
 
-        if (rfq.status !== 'ACTIVE') {
+        if (rfq.status !== 'published') {
           throw new UserInputError('RFQ is not active');
         }
 

@@ -1,4 +1,4 @@
-const aiService = require('./azureAIService');
+import aiService from './azureAIService';
 
 class ProductAnalysisService {
   constructor() {
@@ -298,4 +298,4 @@ class ProductAnalysisService {
   }
 }
 
-module.exports = new ProductAnalysisService();
+export default new ProductAnalysisService();

@@ -1,16 +1,16 @@
-const { v4: uuidv4 } = require('uuid');
+import { v4 as uuidv4 } from 'uuid';
+import { Request, Response } from 'express';
+const Meeting = require('../../models/meeting/Meeting');
+import { User } from '../../models/User';
+import emailService from '../../services/email/EmailService';
 
-const Meeting = require('../models/meeting/Meeting');
-const User = require('../models/User');
-const emailService = require('../services/emailService');
-
-exports.scheduleMeeting = async (req, res) => {
+export const scheduleMeeting = async (req: Request & { user?: any }, res: Response) => {
   try {
     const { participantIds, type, title, description, scheduledAt, duration, products } = req.body;
 
     // Create meeting
     const meeting = new Meeting({
-      organizer: req.user._id,
+      organizer: req.user?._id || req.user?.id,
       participants: participantIds.map(id => ({ user: id })),
       type,
       title,
@@ -39,7 +39,7 @@ exports.scheduleMeeting = async (req, res) => {
   }
 };
 
-exports.updateMeetingStatus = async (req, res) => {
+export const updateMeetingStatus = async (req: Request, res: Response) => {
   try {
     const { meetingId } = req.params;
     const { status, cancelledReason } = req.body;
@@ -50,7 +50,7 @@ exports.updateMeetingStatus = async (req, res) => {
     }
 
     // Only organizer can update
-    if (meeting.organizer.toString() !== req.user._id.toString()) {
+    if (meeting.organizer.toString() !== req.user?.id?.toString()) {
       return res.status(403).json({ success: false, error: 'Not authorized' });
     }
 

@@ -1,5 +1,5 @@
 // AI-Powered Document Processing Service
-const aiConfig = require('./config');
+import aiConfig from './config';
 
 class DocumentProcessingService {
   constructor() {
@@ -148,4 +148,4 @@ class DocumentProcessingService {
   }
 }
 
-module.exports = new DocumentProcessingService();
+export default new DocumentProcessingService();

@@ -1,0 +1,4 @@
+Email,First Name,Last Name,Phone,Role,Company ID,Company Verified,Email Verified,Language,Timezone,Account Status
+john.doe@example.com,John,Doe,+1234567890,buyer,507f1f77bcf86cd799439012,Yes,Yes,en,America/New_York,active
+jane.smith@supplier.com,Jane,Smith,+1987654321,seller,507f1f77bcf86cd799439013,Yes,Yes,en,America/Chicago,active
+admin@foodxchange.com,Admin,User,+1555555555,admin,,No,Yes,en,UTC,active

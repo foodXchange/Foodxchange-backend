@@ -210,7 +210,7 @@ export class MobileController {
   /**
    * Get mobile search suggestions
    */
-  async getSearchSuggestions(req: Request, res: Response): Promise<void> {
+  async getSearchSuggestions(req: Request, res: Response): Promise<Response> {
     try {
       const {tenantId} = req;
       const {userId} = req;

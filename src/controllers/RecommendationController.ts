@@ -109,7 +109,7 @@ export class RecommendationController {
   /**
    * Get search suggestions for autocomplete
    */
-  async getSearchSuggestions(req: Request, res: Response): Promise<void> {
+  async getSearchSuggestions(req: Request, res: Response): Promise<Response> {
     try {
       const {tenantId} = req;
       const { q: query } = req.query;
@@ -236,12 +236,14 @@ export class RecommendationController {
         throw new ValidationError('Product ID is required');
       }
 
-      // Get content-based recommendations for similar products
-      const similarProducts = await this.recommendationService.getContentBasedRecommendations(
+      // Get personalized recommendations with category filter from the product
+      const similarProducts = await this.recommendationService.getPersonalizedRecommendations(
         tenantId,
-        [{ productId }], // Simulate as if user viewed this product
-        [],
-        parseInt(limit as string)
+        userId,
+        {
+          limit: parseInt(limit as string),
+          excludeProductIds: [productId] // Exclude the current product
+        }
       );
 
       res.json({

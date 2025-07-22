@@ -1,4 +1,4 @@
-import { ServiceBusClient, ServiceBusSender, ServiceBusReceiver, ServiceBusMessage } from '@azure/service-bus';
+import { ServiceBusClient, ServiceBusSender, ServiceBusReceiver, ServiceBusMessage, ServiceBusReceivedMessage } from '@azure/service-bus';
 
 import { trackAzureServiceCall } from '../../config/applicationInsights';
 import { Logger } from '../../core/logging/logger';
@@ -96,7 +96,8 @@ class ServiceBusService {
         messageId: sbMessage.messageId
       });
     } catch (error) {
-      logger.error('Error sending message to Service Bus', error, {
+      logger.error('Error sending message to Service Bus', {
+        error,
         topicName,
         eventType: message.eventType,
         entityId: message.entityId
@@ -236,12 +237,12 @@ class ServiceBusService {
 
             // Dead letter the message after 3 delivery attempts
             if ((brokeredMessage.deliveryCount || 0) >= 3) {
-              await receiver.deadLetterMessage(brokeredMessage, {
+              await receiver.deadLetterMessage(brokeredMessage as ServiceBusReceivedMessage, {
                 reason: 'MaxDeliveryCountExceeded',
                 errorDescription: error instanceof Error ? error.message : 'Unknown error'
               });
             } else {
-              await receiver.abandonMessage(brokeredMessage);
+              await receiver.abandonMessage(brokeredMessage as ServiceBusReceivedMessage);
             }
           } finally {
             const duration = Date.now() - startTime;

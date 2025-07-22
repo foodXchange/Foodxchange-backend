@@ -1,11 +1,17 @@
 // Azure Configuration for FoodXchange
 // Leveraging Microsoft for Startups benefits
 
-const { FormRecognizerClient } = require('@azure/ai-form-recognizer');
-const { TextAnalyticsClient, AzureKeyCredential } = require('@azure/ai-text-analytics');
-const { BlobServiceClient } = require('@azure/storage-blob');
+import { FormRecognizerClient } from '@azure/ai-form-recognizer';
+import { TextAnalyticsClient, AzureKeyCredential } from '@azure/ai-text-analytics';
+import { BlobServiceClient } from '@azure/storage-blob';
 
 class AzureService {
+  private blobServiceClient: BlobServiceClient | null;
+  private textAnalyticsClient: TextAnalyticsClient | null;
+  private formRecognizerClient: FormRecognizerClient | null;
+  private initialized: boolean;
+  private containerName: string;
+
   constructor() {
     this.blobServiceClient = null;
     this.textAnalyticsClient = null;
@@ -237,7 +243,7 @@ const envTemplate = {
   APPINSIGHTS_INSTRUMENTATIONKEY: 'your-instrumentation-key'
 };
 
-module.exports = {
+export {
   AzureService,
   mongoConfig,
   envTemplate

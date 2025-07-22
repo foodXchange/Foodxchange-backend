@@ -10,12 +10,12 @@ import { elasticsearchService } from '../services/search/ElasticsearchService';
 
 const logger = new Logger('SearchController');
 
-interface SearchRequest extends Request {
+type SearchRequest = Request & {
   user?: {
     id: string;
     role: string;
   };
-}
+};
 
 export class SearchController {
 
@@ -114,7 +114,7 @@ export class SearchController {
       const results = await elasticsearchService.searchProducts(searchOptions);
 
       // Cache results for 5 minutes
-      await optimizedCache.set(cacheKey, results, 300);
+      await optimizedCache.set(cacheKey, results, { ttl: 300 });
 
       // Log search analytics
       this.logSearchAnalytics(req.user?.id || 'anonymous', 'products', query as string);
@@ -190,7 +190,7 @@ export class SearchController {
 
       const results = await elasticsearchService.searchCompanies(searchOptions);
 
-      await optimizedCache.set(cacheKey, results, 300);
+      await optimizedCache.set(cacheKey, results, { ttl: 300 });
       this.logSearchAnalytics(req.user?.id || 'anonymous', 'companies', query as string);
 
       res.json({
@@ -329,7 +329,7 @@ export class SearchController {
         indices
       } = req.query;
 
-      if (!query || query.trim().length < 2) {
+      if (!query || typeof query !== 'string' || query.trim().length < 2) {
         res.status(400).json({
           success: false,
           message: 'Query must be at least 2 characters long'
@@ -457,7 +457,7 @@ export class SearchController {
         { query: 'meat products', count: 580, trend: 'stable' }
       ];
 
-      await optimizedCache.set(cacheKey, popularSearches, 3600); // Cache for 1 hour
+      await optimizedCache.set(cacheKey, popularSearches, { ttl: 3600 }); // Cache for 1 hour
 
       res.json({
         success: true,
@@ -502,7 +502,7 @@ export class SearchController {
         ]
       };
 
-      await optimizedCache.set(cacheKey, trends, 1800); // Cache for 30 minutes
+      await optimizedCache.set(cacheKey, trends, { ttl: 1800 }); // Cache for 30 minutes
 
       res.json({
         success: true,
@@ -622,7 +622,8 @@ export class SearchController {
     try {
       // Store search analytics in cache or database
       const analyticsKey = `search_analytics:${new Date().toISOString().split('T')[0]}`;
-      const analytics = await optimizedCache.get(analyticsKey) || [];
+      const cachedAnalytics = await optimizedCache.get(analyticsKey);
+      const analytics = Array.isArray(cachedAnalytics) ? cachedAnalytics : [];
 
       analytics.push({
         userId,
@@ -631,7 +632,7 @@ export class SearchController {
         timestamp: new Date().toISOString()
       });
 
-      await optimizedCache.set(analyticsKey, analytics, 86400); // 24 hours
+      await optimizedCache.set(analyticsKey, analytics, { ttl: 86400 }); // 24 hours
     } catch (error) {
       logger.warn('Failed to log search analytics', error);
     }

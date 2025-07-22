@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 
 import {
   ValidationError,
@@ -45,13 +46,13 @@ export class UserController {
           profileCompletionPercentage: user.profileCompletionPercentage,
           preferences: user.preferences,
           company: user.company ? {
-            id: user.company._id?.toString(),
-            name: user.company.name,
-            size: user.company.size,
-            industry: user.company.industry,
-            businessType: user.company.businessType,
-            website: user.company.website,
-            verificationStatus: user.company.verificationStatus
+            id: (user.company as any)._id?.toString(),
+            name: (user.company as any).name,
+            size: (user.company as any).size,
+            industry: (user.company as any).industry,
+            businessType: (user.company as any).type,
+            website: (user.company as any).contact?.website,
+            verificationStatus: (user.company as any).subscriptionStatus
           } : null,
           createdAt: user.createdAt,
           updatedAt: user.updatedAt
@@ -89,10 +90,14 @@ export class UserController {
       ).populate('company');
 
       // Track profile update
-      await this.analyticsService.track('profile_updated', {
-        userId,
-        updatedFields: Object.keys(updateData),
-        ip: req.ip
+      await this.analyticsService.trackEvent({
+        eventType: 'profile_updated',
+        category: 'user',
+        userId: new mongoose.Types.ObjectId(userId),
+        data: {
+          updatedFields: Object.keys(updateData)
+        },
+        ipAddress: req.ip
       });
 
       res.success({
@@ -235,14 +240,18 @@ export class UserController {
       }
 
       // Track company update
-      await this.analyticsService.track('company_updated', {
-        userId,
-        companyId: company._id.toString(),
-        companyName,
-        companySize,
-        industry,
-        businessType,
-        ip: req.ip
+      await this.analyticsService.trackEvent({
+        eventType: 'company_updated',
+        category: 'user',
+        userId: new mongoose.Types.ObjectId(userId),
+        data: {
+          companyId: company._id.toString(),
+          companyName,
+          companySize,
+          industry,
+          businessType
+        },
+        ipAddress: req.ip
       });
 
       res.success({
@@ -329,9 +338,12 @@ export class UserController {
       });
 
       // Track password change
-      await this.analyticsService.track('password_changed', {
-        userId,
-        ip: req.ip
+      await this.analyticsService.trackEvent({
+        eventType: 'password_changed',
+        category: 'user',
+        userId: new mongoose.Types.ObjectId(userId),
+        data: {},
+        ipAddress: req.ip
       });
 
       res.success({ message: 'Password changed successfully' });
@@ -367,10 +379,14 @@ export class UserController {
       await user.save();
 
       // Track document upload
-      await this.analyticsService.track('document_uploaded', {
-        userId,
-        documentType: type,
-        ip: req.ip
+      await this.analyticsService.trackEvent({
+        eventType: 'document_uploaded',
+        category: 'user',
+        userId: new mongoose.Types.ObjectId(userId),
+        data: {
+          documentType: type
+        },
+        ipAddress: req.ip
       });
 
       res.status(201).success({
@@ -431,10 +447,14 @@ export class UserController {
       );
 
       // Track preferences update
-      await this.analyticsService.track('preferences_updated', {
-        userId,
-        updatedPreferences: Object.keys(req.body),
-        ip: req.ip
+      await this.analyticsService.trackEvent({
+        eventType: 'preferences_updated',
+        category: 'user',
+        userId: new mongoose.Types.ObjectId(userId),
+        data: {
+          updatedPreferences: Object.keys(req.body)
+        },
+        ipAddress: req.ip
       });
 
       res.success({

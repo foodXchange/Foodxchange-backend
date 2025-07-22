@@ -1,36 +1,44 @@
-import { SchemaDirectiveVisitor } from '@graphql-tools/utils';
+import { mapSchema, getDirective, MapperKind } from '@graphql-tools/utils';
 import { AuthenticationError, ForbiddenError } from 'apollo-server-express';
-import { defaultFieldResolver, GraphQLField } from 'graphql';
+import { defaultFieldResolver, GraphQLSchema } from 'graphql';
 
-export class AuthDirective extends SchemaDirectiveVisitor {
-  visitFieldDefinition(field: GraphQLField<any, any>) {
-    const { resolve = defaultFieldResolver } = field;
-    const { requires } = this.args;
+export function authDirectiveTransformer(schema: GraphQLSchema, directiveName: string) {
+  return mapSchema(schema, {
+    [MapperKind.OBJECT_FIELD]: (fieldConfig) => {
+      const authDirective = getDirective(schema, fieldConfig, directiveName)?.[0];
 
-    field.resolve = async function (...args) {
-      const [, , context] = args;
+      if (authDirective) {
+        const { requires } = authDirective;
+        const { resolve = defaultFieldResolver } = fieldConfig;
 
-      // Check if user is authenticated
-      if (!context.isAuthenticated || !context.user) {
-        throw new AuthenticationError('You must be logged in to access this resource');
+        fieldConfig.resolve = async function (source, args, context, info) {
+          // Check if user is authenticated
+          if (!context.isAuthenticated || !context.user) {
+            throw new AuthenticationError('You must be logged in to access this resource');
+          }
+
+          // Check role if specified
+          if (requires) {
+            const userRole = context.user.role;
+
+            // Check if user has required role
+            if (Array.isArray(requires)) {
+              if (!requires.includes(userRole)) {
+                throw new ForbiddenError(`You need one of the following roles: ${requires.join(', ')}`);
+              }
+            } else if (userRole !== requires) {
+              throw new ForbiddenError(`You need ${requires} role to access this resource`);
+            }
+          }
+
+          // Call original resolver
+          return resolve(source, args, context, info);
+        };
+
+        return fieldConfig;
       }
-
-      // Check role if specified
-      if (requires) {
-        const userRole = context.user.role;
-
-        // Admin can access everything
-        if (userRole === 'ADMIN') {
-          return resolve.apply(this, args);
-        }
-
-        // Check if user has required role
-        if (userRole !== requires) {
-          throw new ForbiddenError(`You need ${requires} role to access this resource`);
-        }
-      }
-
-      return resolve.apply(this, args);
-    };
-  }
+    }
+  });
 }
+
+export default authDirectiveTransformer;

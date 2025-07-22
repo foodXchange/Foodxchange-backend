@@ -1,11 +1,10 @@
-const express = require('express');
+import express from 'express';
+import multer from 'multer';
+import ExcelJS from 'exceljs';
+import fs from 'fs';
+import Product from '../models/Product';
+
 const router = express.Router();
-const multer = require('multer');
-const ExcelJS = require('exceljs');
-
-const fs = require('fs');
-
-const Product = require('../../models/Product');
 
 // Configure file upload
 const upload = multer({ dest: 'uploads/' });
@@ -106,4 +105,4 @@ router.get('/test', (req, res) => {
   res.json({ message: 'Import route is working!' });
 });
 
-module.exports = router;
+export default router;

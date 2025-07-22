@@ -25,7 +25,7 @@ router.use(orderRateLimiter);
  * @access Private
  */
 router.post('/',
-  authorize(['buyer', 'admin', 'manager']),
+  authorize('buyer', 'admin', 'manager'),
   asyncHandler(orderController.createOrder.bind(orderController))
 );
 
@@ -35,7 +35,7 @@ router.post('/',
  * @access Private
  */
 router.get('/',
-  authorize(['buyer', 'supplier', 'admin', 'manager']),
+  authorize('buyer', 'supplier', 'admin', 'manager'),
   asyncHandler(orderController.getOrders.bind(orderController))
 );
 
@@ -45,7 +45,7 @@ router.get('/',
  * @access Private
  */
 router.get('/analytics',
-  authorize(['admin', 'manager']),
+  authorize('admin', 'manager'),
   asyncHandler(orderController.getOrderAnalytics.bind(orderController))
 );
 
@@ -55,7 +55,7 @@ router.get('/analytics',
  * @access Private
  */
 router.get('/:id',
-  authorize(['buyer', 'supplier', 'admin', 'manager']),
+  authorize('buyer', 'supplier', 'admin', 'manager'),
   asyncHandler(orderController.getOrderById.bind(orderController))
 );
 
@@ -65,7 +65,7 @@ router.get('/:id',
  * @access Private
  */
 router.put('/:id',
-  authorize(['buyer', 'admin', 'manager']),
+  authorize('buyer', 'admin', 'manager'),
   asyncHandler(orderController.updateOrder.bind(orderController))
 );
 
@@ -75,7 +75,7 @@ router.put('/:id',
  * @access Private
  */
 router.post('/:id/approve',
-  authorize(['manager', 'director', 'ceo', 'admin']),
+  authorize('manager', 'director', 'ceo', 'admin'),
   asyncHandler(orderController.processApproval.bind(orderController))
 );
 
@@ -85,7 +85,7 @@ router.post('/:id/approve',
  * @access Private
  */
 router.delete('/:id',
-  authorize(['buyer', 'admin', 'manager']),
+  authorize('buyer', 'admin', 'manager'),
   asyncHandler(orderController.cancelOrder.bind(orderController))
 );
 
@@ -95,7 +95,7 @@ router.delete('/:id',
  * @access Private
  */
 router.post('/:id/shipments',
-  authorize(['supplier', 'admin', 'manager']),
+  authorize('supplier', 'admin', 'manager'),
   asyncHandler(orderController.addShipment.bind(orderController))
 );
 
@@ -105,7 +105,7 @@ router.post('/:id/shipments',
  * @access Private
  */
 router.put('/:id/shipments/:shipmentId/tracking',
-  authorize(['supplier', 'admin', 'manager']),
+  authorize('supplier', 'admin', 'manager'),
   asyncHandler(orderController.updateShipmentTracking.bind(orderController))
 );
 

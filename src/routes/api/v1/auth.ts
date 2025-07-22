@@ -5,6 +5,7 @@ import { asyncHandler } from '../../../core/errors';
 import { rateLimitPresets } from '../../../middleware/rateLimiting';
 import { responseFormatterMiddleware } from '../../../middleware/responseFormatter';
 import { validate } from '../../../middleware/validation';
+import { authSchemas } from '../../../middleware/validationSchemas';
 
 const router = Router();
 const authController = new AuthController();
@@ -74,7 +75,7 @@ router.use(responseFormatterMiddleware);
  */
 router.post('/login',
   rateLimitPresets.auth.login,
-  validate.userLogin,
+  validate(authSchemas.userLogin),
   asyncHandler(authController.login.bind(authController))
 );
 
@@ -131,8 +132,8 @@ router.post('/login',
  */
 router.post('/signup',
   rateLimitPresets.auth.register,
-  validate.userRegister,
-  asyncHandler(authController.signup.bind(authController))
+  validate(authSchemas.userRegister),
+  asyncHandler(authController.register.bind(authController))
 );
 
 /**
@@ -194,7 +195,7 @@ router.post('/forgot-password',
  *         description: Invalid or expired token
  */
 router.post('/reset-password',
-  rateLimiters.auth,
+  rateLimitPresets.auth.passwordReset,
   asyncHandler(authController.resetPassword.bind(authController))
 );
 

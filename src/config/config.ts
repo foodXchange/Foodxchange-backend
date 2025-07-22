@@ -1,5 +1,6 @@
-// File: src/config/config.js
-require('dotenv').config();
+// File: src/config/config.ts
+import dotenv from 'dotenv';
+dotenv.config();
 
 const config = {
   // Server configuration
@@ -56,4 +57,4 @@ const config = {
   }
 };
 
-module.exports = config;
+export default config;

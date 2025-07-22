@@ -1,8 +1,9 @@
-const Proposal = require('../models/Proposal');
-const RFQ = require('../models/RFQ');
+import { Request, Response } from 'express';
+const ProposalModel = require('../models/Proposal');
+const RFQModel = require('../models/RFQ');
 
 // Create new proposal
-exports.createProposal = async (req, res) => {
+export const createProposal = async (req: Request & { user?: any }, res: Response) => {
   try {
     const proposalData = {
       ...req.body,
@@ -10,11 +11,11 @@ exports.createProposal = async (req, res) => {
       supplierCompany: req.user.company
     };
 
-    const proposal = new Proposal(proposalData);
+    const proposal = new ProposalModel(proposalData);
     await proposal.save();
 
     // Update RFQ proposal count
-    await RFQ.findByIdAndUpdate(req.body.rfq, {
+    await RFQModel.findByIdAndUpdate(req.body.rfq, {
       $inc: { proposalCount: 1 }
     });
 
@@ -26,9 +27,9 @@ exports.createProposal = async (req, res) => {
 };
 
 // Get proposals for an RFQ
-exports.getProposalsByRFQ = async (req, res) => {
+export const getProposalsByRFQ = async (req: Request & { user?: any }, res: Response) => {
   try {
-    const rfq = await RFQ.findById(req.params.rfqId);
+    const rfq = await RFQModel.findById(req.params.rfqId);
 
     if (!rfq) {
       return res.status(404).json({ error: 'RFQ not found' });
@@ -39,7 +40,7 @@ exports.getProposalsByRFQ = async (req, res) => {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    const proposals = await Proposal.find({ rfq: req.params.rfqId })
+    const proposals = await ProposalModel.find({ rfq: req.params.rfqId })
       .populate('supplier', 'name email')
       .populate('supplierCompany', 'name');
 
@@ -51,9 +52,9 @@ exports.getProposalsByRFQ = async (req, res) => {
 };
 
 // Get single proposal
-exports.getProposalById = async (req, res) => {
+export const getProposalById = async (req: Request & { user?: any }, res: Response) => {
   try {
-    const proposal = await Proposal.findById(req.params.id)
+    const proposal = await ProposalModel.findById(req.params.id)
       .populate('rfq')
       .populate('supplier', 'name email')
       .populate('supplierCompany', 'name');
@@ -63,7 +64,7 @@ exports.getProposalById = async (req, res) => {
     }
 
     // Check access
-    const rfq = await RFQ.findById(proposal.rfq._id);
+    const rfq = await RFQModel.findById(proposal.rfq._id);
     if (proposal.supplier._id.toString() !== req.user._id.toString() &&
         rfq.buyer.toString() !== req.user._id.toString()) {
       return res.status(403).json({ error: 'Access denied' });
@@ -77,16 +78,16 @@ exports.getProposalById = async (req, res) => {
 };
 
 // Accept proposal
-exports.acceptProposal = async (req, res) => {
+export const acceptProposal = async (req: Request & { user?: any }, res: Response) => {
   try {
-    const proposal = await Proposal.findById(req.params.id).populate('rfq');
+    const proposal = await ProposalModel.findById(req.params.id).populate('rfq');
 
     if (!proposal) {
       return res.status(404).json({ error: 'Proposal not found' });
     }
 
     // Check if user owns the RFQ
-    const rfq = await RFQ.findById(proposal.rfq._id);
+    const rfq = await RFQModel.findById(proposal.rfq._id);
     if (rfq.buyer.toString() !== req.user._id.toString()) {
       return res.status(403).json({ error: 'Access denied' });
     }

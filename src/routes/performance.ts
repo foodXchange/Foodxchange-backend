@@ -16,19 +16,19 @@ const cacheService = getApplicationCacheService();
  * GET /api/v1/performance/health
  * Get performance health check
  */
-router.get('/health', authenticate, authorize(['admin', 'manager']), performanceHealthCheck);
+router.get('/health', authenticate, authorize('admin', 'manager'), performanceHealthCheck);
 
 /**
  * GET /api/v1/performance/recommendations
  * Get performance optimization recommendations
  */
-router.get('/recommendations', authenticate, authorize(['admin', 'manager']), performanceRecommendations);
+router.get('/recommendations', authenticate, authorize('admin', 'manager'), performanceRecommendations);
 
 /**
  * POST /api/v1/performance/optimize/database
  * Initialize database optimization
  */
-router.post('/optimize/database', authenticate, authorize(['admin']), async (req, res) => {
+router.post('/optimize/database', authenticate, authorize('admin'), async (req, res) => {
   try {
     logger.info('Starting database optimization', { userId: req.userId, tenantId: req.tenantId });
 
@@ -55,7 +55,7 @@ router.post('/optimize/database', authenticate, authorize(['admin']), async (req
  * GET /api/v1/performance/database/metrics
  * Get database performance metrics
  */
-router.get('/database/metrics', authenticate, authorize(['admin', 'manager']), async (req, res) => {
+router.get('/database/metrics', authenticate, authorize('admin', 'manager'), async (req, res) => {
   try {
     const metrics = await dbOptimizationService.getPerformanceMetrics();
 
@@ -79,7 +79,7 @@ router.get('/database/metrics', authenticate, authorize(['admin', 'manager']), a
  * GET /api/v1/performance/database/indexes
  * Get database index usage statistics
  */
-router.get('/database/indexes', authenticate, authorize(['admin', 'manager']), async (req, res) => {
+router.get('/database/indexes', authenticate, authorize('admin', 'manager'), async (req, res) => {
   try {
     const indexStats = await dbOptimizationService.getIndexUsageStats();
 
@@ -103,7 +103,7 @@ router.get('/database/indexes', authenticate, authorize(['admin', 'manager']), a
  * GET /api/v1/performance/cache/stats
  * Get cache statistics
  */
-router.get('/cache/stats', authenticate, authorize(['admin', 'manager']), async (req, res) => {
+router.get('/cache/stats', authenticate, authorize('admin', 'manager'), async (req, res) => {
   try {
     const stats = await cacheService.getStats();
 
@@ -127,7 +127,7 @@ router.get('/cache/stats', authenticate, authorize(['admin', 'manager']), async 
  * POST /api/v1/performance/cache/clear
  * Clear cache
  */
-router.post('/cache/clear', authenticate, authorize(['admin']), async (req, res) => {
+router.post('/cache/clear', authenticate, authorize('admin'), async (req, res) => {
   try {
     const { namespace } = req.body;
 
@@ -153,7 +153,7 @@ router.post('/cache/clear', authenticate, authorize(['admin']), async (req, res)
  * POST /api/v1/performance/cache/warm-up
  * Warm up cache
  */
-router.post('/cache/warm-up', authenticate, authorize(['admin']), async (req, res) => {
+router.post('/cache/warm-up', authenticate, authorize('admin'), async (req, res) => {
   try {
     await cacheService.warmUpCache();
 
@@ -177,7 +177,7 @@ router.post('/cache/warm-up', authenticate, authorize(['admin']), async (req, re
  * GET /api/v1/performance/memory
  * Get memory usage information
  */
-router.get('/memory', authenticate, authorize(['admin', 'manager']), async (req, res) => {
+router.get('/memory', authenticate, authorize('admin', 'manager'), async (req, res) => {
   try {
     const memoryUsage = process.memoryUsage();
 
@@ -220,7 +220,7 @@ router.get('/memory', authenticate, authorize(['admin', 'manager']), async (req,
  * POST /api/v1/performance/gc
  * Trigger garbage collection (if exposed)
  */
-router.post('/gc', authenticate, authorize(['admin']), async (req, res) => {
+router.post('/gc', authenticate, authorize('admin'), async (req, res) => {
   try {
     if (global.gc) {
       global.gc();
@@ -253,7 +253,7 @@ router.post('/gc', authenticate, authorize(['admin']), async (req, res) => {
  * GET /api/v1/performance/queries/slow
  * Get slow queries information
  */
-router.get('/queries/slow', authenticate, authorize(['admin', 'manager']), async (req, res) => {
+router.get('/queries/slow', authenticate, authorize('admin', 'manager'), async (req, res) => {
   try {
     const suggestions = await dbOptimizationService.suggestOptimizations();
 
@@ -280,7 +280,7 @@ router.get('/queries/slow', authenticate, authorize(['admin', 'manager']), async
  * POST /api/v1/performance/queries/analyze
  * Analyze a specific query
  */
-router.post('/queries/analyze', authenticate, authorize(['admin']), async (req, res) => {
+router.post('/queries/analyze', authenticate, authorize('admin'), async (req, res) => {
   try {
     const { model, query, options } = req.body;
 
@@ -322,7 +322,7 @@ router.post('/queries/analyze', authenticate, authorize(['admin']), async (req, 
  * GET /api/v1/performance/system
  * Get system performance information
  */
-router.get('/system', authenticate, authorize(['admin']), async (req, res) => {
+router.get('/system', authenticate, authorize('admin'), async (req, res) => {
   try {
     const cpuUsage = process.cpuUsage();
     const memoryUsage = process.memoryUsage();

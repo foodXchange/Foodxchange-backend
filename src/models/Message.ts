@@ -133,7 +133,7 @@ MessageSchema.pre('save', function(next) {
 
 // Virtual for read status
 MessageSchema.virtual('isRead').get(function() {
-  return this.readBy && this.readBy.length > 0;
+  return this.readBy && (this.readBy as any[]).length > 0;
 });
 
 // Method to check if message is read by specific user
@@ -174,7 +174,7 @@ MessageSchema.methods.removeReaction = function(emoji: string, userId: string) {
 
 // Static method to find messages in conversation
 MessageSchema.statics.findInConversation = function(conversationId: string, options: any = {}) {
-  const query = { conversationId, deleted: { $ne: true } };
+  const query: any = { conversationId, deleted: { $ne: true } };
 
   if (options.before) {
     query.timestamp = { $lt: options.before };
@@ -196,7 +196,7 @@ MessageSchema.statics.findInConversation = function(conversationId: string, opti
 
 // Static method for text search
 MessageSchema.statics.searchMessages = function(searchTerm: string, conversationIds: string[], options: any = {}) {
-  const query = {
+  const query: any = {
     $text: { $search: searchTerm },
     conversationId: { $in: conversationIds },
     deleted: { $ne: true }

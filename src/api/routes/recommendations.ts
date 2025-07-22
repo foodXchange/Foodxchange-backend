@@ -8,7 +8,7 @@ import { body, param, query, validationResult } from 'express-validator';
 
 import { ApiError } from '../../core/errors';
 import { Logger } from '../../core/logging/logger';
-import { MetricsService } from '../../core/metrics/MetricsService';
+import { MetricsService } from '../../core/monitoring/metrics';
 import { protect } from '../../middleware/auth';
 import { AuthRequest } from '../../middleware/auth.middleware';
 import { authorize } from '../../middleware/authorize';

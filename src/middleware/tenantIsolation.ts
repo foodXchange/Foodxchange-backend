@@ -24,6 +24,7 @@ declare global {
           maxProducts: number;
           maxOrders: number;
           apiCallsPerMinute: number;
+          orderApprovalThreshold?: number;
         };
       };
     }
@@ -59,7 +60,8 @@ export const extractTenantContext = async (req: Request, res: Response, next: Ne
           maxUsers: company.limits?.maxUsers || 10,
           maxProducts: company.limits?.maxProducts || 100,
           maxOrders: company.limits?.maxOrders || 50,
-          apiCallsPerMinute: company.limits?.apiCallsPerMinute || 100
+          apiCallsPerMinute: company.limits?.apiCallsPerMinute || 100,
+          orderApprovalThreshold: company.limits?.orderApprovalThreshold || 10000
         }
       };
 

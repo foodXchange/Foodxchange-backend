@@ -72,8 +72,8 @@ router.post('/',
       ...payload,
       _context: {
         userId,
-        tenantId: (req).user.tenantId,
-        requestId: (req).correlationId
+        tenantId: (req).user?.tenantId || (req).user?.company,
+        requestId: (req as any).correlationId
       }
     };
 
@@ -478,49 +478,50 @@ router.get('/types',
 );
 
 // WebSocket support for real-time job updates
-router.ws('/stream', (ws, req) => {
-  const userId = (req).user?.id;
+// TODO: Implement WebSocket support with express-ws or socket.io
+// router.ws('/stream', (ws, req) => {
+//   const userId = (req).user?.id;
+//
+//   if (!userId) {
+//     ws.close(1008, 'Unauthorized');
+//     return;
+//   }
+//
+//   logger.info('WebSocket connection for job updates', { userId });
 
-  if (!userId) {
-    ws.close(1008, 'Unauthorized');
-    return;
-  }
-
-  logger.info('WebSocket connection for job updates', { userId });
-
-  // Subscribe to job events
-  const handlers = {
-    'job:completed': (event: any) => {
-      ws.send(JSON.stringify({ type: 'job:completed', ...event }));
-    },
-    'job:failed': (event: any) => {
-      ws.send(JSON.stringify({ type: 'job:failed', ...event }));
-    },
-    'job:progress': (event: any) => {
-      ws.send(JSON.stringify({ type: 'job:progress', ...event }));
-    }
-  };
-
-  // Register event handlers
-  Object.entries(handlers).forEach(([event, handler]) => {
-    jobProcessor.on(event, handler);
-  });
-
-  // Ping to keep connection alive
-  const pingInterval = setInterval(() => {
-    if (ws.readyState === ws.OPEN) {
-      ws.ping();
-    }
-  }, 30000);
-
-  // Cleanup on disconnect
-  ws.on('close', () => {
-    clearInterval(pingInterval);
-    Object.entries(handlers).forEach(([event, handler]) => {
-      jobProcessor.off(event, handler);
-    });
-    logger.info('WebSocket disconnected for job updates', { userId });
-  });
-});
+//   // Subscribe to job events
+//   const handlers = {
+//     'job:completed': (event: any) => {
+//       ws.send(JSON.stringify({ type: 'job:completed', ...event }));
+//     },
+//     'job:failed': (event: any) => {
+//       ws.send(JSON.stringify({ type: 'job:failed', ...event }));
+//     },
+//     'job:progress': (event: any) => {
+//       ws.send(JSON.stringify({ type: 'job:progress', ...event }));
+//     }
+//   };
+//
+//   // Register event handlers
+//   Object.entries(handlers).forEach(([event, handler]) => {
+//     jobProcessor.on(event, handler);
+//   });
+//
+//   // Ping to keep connection alive
+//   const pingInterval = setInterval(() => {
+//     if (ws.readyState === ws.OPEN) {
+//       ws.ping();
+//     }
+//   }, 30000);
+//
+//   // Cleanup on disconnect
+//   ws.on('close', () => {
+//     clearInterval(pingInterval);
+//     Object.entries(handlers).forEach(([event, handler]) => {
+//       jobProcessor.off(event, handler);
+//     });
+//     logger.info('WebSocket disconnected for job updates', { userId });
+//   });
+// });
 
 export default router;

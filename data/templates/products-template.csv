@@ -1,0 +1,4 @@
+SKU,Product Name,Description,Category,Subcategory,Tags,Supplier ID,Brand,Country of Origin,Base Price,Currency,Unit,Min Order Quantity,Current Stock,Weight Value,Weight Unit,Units Per Case,Cases Per Pallet,Is Organic,Is Kosher,Is Halal,Is Vegan,Allergens,Storage Temp Min,Storage Temp Max,Shelf Life Days
+SKU001,Organic Tomatoes,Fresh organic tomatoes from local farms,Vegetables,Fresh Produce,"organic,fresh,tomatoes",507f1f77bcf86cd799439011,FarmFresh,USA,2.99,USD,kg,10,500,1,kg,24,48,Yes,No,Yes,Yes,,2,8,7
+SKU002,Premium Olive Oil,Extra virgin cold-pressed olive oil,Oils & Condiments,Cooking Oils,"premium,olive oil,organic",507f1f77bcf86cd799439012,Mediterranean Gold,Italy,15.99,USD,liter,5,200,1,liter,12,60,Yes,Yes,Yes,Yes,,15,25,365
+SKU003,Whole Wheat Flour,100% whole wheat flour for baking,Grains & Cereals,Flour,"whole wheat,flour,baking",507f1f77bcf86cd799439013,Baker's Choice,Canada,3.49,USD,kg,20,1000,1,kg,20,50,No,Yes,Yes,Yes,"gluten",10,25,180

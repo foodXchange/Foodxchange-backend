@@ -3,7 +3,7 @@ import mongoSanitize from 'express-mongo-sanitize';
 
 import { ValidationError } from '../../core/errors';
 import { Logger } from '../../core/logging/logger';
-import { MetricsService } from '../../core/metrics/MetricsService';
+import { MetricsService } from '../../core/monitoring/metrics';
 
 const logger = new Logger('InputSanitizer');
 const metricsService = new MetricsService();

@@ -27,9 +27,6 @@ export class SignalRController {
       }
 
       const roles = [user.role];
-      if (user.permissions) {
-        roles.push(...user.permissions);
-      }
 
       // Get connection info
       const connectionInfo = await this.signalRService.getConnectionInfo(userId, tenantId, roles);

@@ -42,6 +42,15 @@ export interface IUser extends Document {
   passwordResetToken?: string;
   passwordResetExpires?: Date;
 
+  // Two-factor authentication
+  twoFactor?: {
+    enabled: boolean;
+    secret?: string;
+    verified?: boolean;
+    backupCodes?: string[];
+    lastUsed?: Date;
+  };
+
   // Verification documents
   verificationDocuments: Array<{
     type: string;
@@ -75,6 +84,7 @@ export interface IUser extends Document {
   getNextOnboardingStep(): string;
   isAccountLocked(): boolean;
   fullName: string;
+  name: string; // Virtual field for backward compatibility
 }
 
 const userSchema = new Schema<IUser>({
@@ -197,6 +207,27 @@ const userSchema = new Schema<IUser>({
   passwordResetToken: String,
   passwordResetExpires: Date,
 
+  // Two-factor authentication
+  twoFactor: {
+    enabled: {
+      type: Boolean,
+      default: false
+    },
+    secret: {
+      type: String,
+      select: false
+    },
+    verified: {
+      type: Boolean,
+      default: false
+    },
+    backupCodes: [{
+      type: String,
+      select: false
+    }],
+    lastUsed: Date
+  },
+
   // Verification documents
   verificationDocuments: [{
     type: {
@@ -247,6 +278,11 @@ userSchema.index({ lastLoginAt: -1 });
 
 // Virtual for full name
 userSchema.virtual('fullName').get(function() {
+  return `${this.firstName} ${this.lastName}`.trim();
+});
+
+// Virtual field for backward compatibility
+userSchema.virtual('name').get(function() {
   return `${this.firstName} ${this.lastName}`.trim();
 });
 

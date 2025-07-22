@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 const { Decimal128 } = mongoose.Types;
 
 const requestSchema = new mongoose.Schema({
@@ -265,4 +265,4 @@ requestSchema.pre('save', function(next) {
   next();
 });
 
-module.exports = mongoose.model('Request', requestSchema);
+export default mongoose.model('Request', requestSchema);

@@ -4,7 +4,7 @@ import { body, param, query, validationResult } from 'express-validator';
 import { ApiError } from '../core/errors';
 import { Logger } from '../core/logging/logger';
 import { CacheService } from '../infrastructure/cache/CacheService';
-import { MetricsService } from '../infrastructure/monitoring/MetricsService';
+import { MetricsService } from '../core/monitoring/metrics';
 import { protect } from '../middleware/auth';
 import { authorize } from '../middleware/authorize';
 import { Order, LineItemStatus, ShipmentStatus } from '../models/order.model';
@@ -14,13 +14,13 @@ import { asyncHandler } from '../utils/asyncHandler';
 const router = Router();
 const logger = new Logger('TrackingRoutes');
 const cache = cacheService;
-const metrics = metricsService;
+const metrics = new MetricsService();
 
 // Middleware to validate request
 const validateRequest = (req: Request, res: Response, next: NextFunction) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    throw new ApiError(400, 'Validation failed', errors.array());
+    throw new ApiError('Validation failed', 400);
   }
   next();
 };
@@ -46,13 +46,13 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     const { stage, notes, location, attachments, metadata } = req.body;
-    const userId = req.user._id;
-    const userName = req.user.name;
+    const userId = req.user?.id;
+    const userName = req.user?.email?.split('@')[0] || 'Unknown User';
 
     // Find sample
     const sample = await Sample.findById(id);
     if (!sample) {
-      throw new ApiError(404, 'Sample not found');
+      throw new ApiError('Sample not found', 404);
     }
 
     // Check permissions
@@ -62,7 +62,7 @@ router.post(
       req.user.role === 'admin';
 
     if (!canUpdate) {
-      throw new ApiError(403, 'Not authorized to update this sample');
+      throw new ApiError('Not authorized to update this sample', 403);
     }
 
     // Update stage and add timeline event
@@ -125,7 +125,7 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     const { includeTimeline = true } = req.query;
-    const userId = req.user._id;
+    const userId = req.user?.id;
 
     // Try cache first
     const cacheKey = `sample:${id}:status`;
@@ -139,7 +139,7 @@ router.get(
       .select('sampleId currentStage priority timeline estimatedDeliveryDate actualDeliveryDate supplier buyer productName');
 
     if (!sample) {
-      throw new ApiError(404, 'Sample not found');
+      throw new ApiError('Sample not found', 404);
     }
 
     // Check permissions
@@ -199,31 +199,32 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     const shipmentData = req.body;
-    const userId = req.user._id;
+    const userId = req.user?.id;
 
     // Find order
     const order = await Order.findById(id);
     if (!order) {
-      throw new ApiError(404, 'Order not found');
+      throw new ApiError('Order not found', 404);
     }
 
     // Verify supplier
     if (!order.supplier.equals(userId) && req.user.role !== 'admin') {
-      throw new ApiError(403, 'Not authorized to update this order');
+      throw new ApiError('Not authorized to update this order', 403);
     }
 
     // Validate line items
     for (const item of shipmentData.lineItems) {
       const lineItem = order.lineItems.id(item.lineItemId);
       if (!lineItem) {
-        throw new ApiError(400, `Line item ${item.lineItemId} not found`);
+        throw new ApiError(`Line item ${item.lineItemId} not found`, 400);
       }
 
       const remainingQuantity = lineItem.quantity - lineItem.shippedQuantity;
       if (item.quantity > remainingQuantity) {
-        throw new ApiError(400,
+        throw new ApiError(
           `Cannot ship ${item.quantity} units of ${lineItem.productName}. ` +
-          `Only ${remainingQuantity} units remaining.`
+          `Only ${remainingQuantity} units remaining.`,
+          400
         );
       }
     }
@@ -281,7 +282,7 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     const { lineItemId } = req.query;
-    const userId = req.user._id;
+    const userId = req.user?.id;
 
     // Find order
     const order = await Order.findById(id)
@@ -289,7 +290,7 @@ router.get(
       .populate('lineItems.product', 'name images');
 
     if (!order) {
-      throw new ApiError(404, 'Order not found');
+      throw new ApiError('Order not found', 404);
     }
 
     // Check permissions
@@ -307,7 +308,7 @@ router.get(
     if (lineItemId) {
       const item = order.lineItems.id(lineItemId as string);
       if (!item) {
-        throw new ApiError(404, 'Line item not found');
+        throw new ApiError('Line item not found', 404);
       }
       lineItems = [item];
     }
@@ -387,7 +388,7 @@ router.post(
     // Find order
     const order = await Order.findById(orderId);
     if (!order) {
-      throw new ApiError(404, 'Order not found');
+      throw new ApiError('Order not found', 404);
     }
 
     // Add temperature reading
@@ -447,17 +448,17 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     const { orderId, lineItemId } = req.params;
     const { status, notes } = req.body;
-    const userId = req.user._id;
+    const userId = req.user?.id;
 
     // Find order
     const order = await Order.findById(orderId);
     if (!order) {
-      throw new ApiError(404, 'Order not found');
+      throw new ApiError('Order not found', 404);
     }
 
     // Verify permissions
     if (!order.supplier.equals(userId) && req.user.role !== 'admin') {
-      throw new ApiError(403, 'Not authorized to update this order');
+      throw new ApiError('Not authorized to update this order', 403);
     }
 
     // Update line item status
@@ -519,7 +520,7 @@ router.get(
     }).select('orderId shipments');
 
     if (!order) {
-      throw new ApiError(404, 'Tracking number not found');
+      throw new ApiError('Tracking number not found', 404);
     }
 
     const shipment = order.shipments.find(s =>
@@ -527,7 +528,7 @@ router.get(
     );
 
     if (!shipment) {
-      throw new ApiError(404, 'Shipment not found');
+      throw new ApiError('Shipment not found', 404);
     }
 
     const response = {

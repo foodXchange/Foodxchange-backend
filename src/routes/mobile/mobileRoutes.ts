@@ -24,7 +24,7 @@ router.use(mobileRateLimiter);
  * @access Private
  */
 router.get('/dashboard',
-  authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
+  authorize('admin', 'manager', 'user', 'supplier', 'buyer'),
   asyncHandler(mobileController.getDashboard.bind(mobileController))
 );
 
@@ -34,7 +34,7 @@ router.get('/dashboard',
  * @access Private
  */
 router.get('/products',
-  authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
+  authorize('admin', 'manager', 'user', 'supplier', 'buyer'),
   asyncHandler(mobileController.getProducts.bind(mobileController))
 );
 
@@ -44,7 +44,7 @@ router.get('/products',
  * @access Private
  */
 router.get('/products/:productId',
-  authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
+  authorize('admin', 'manager', 'user', 'supplier', 'buyer'),
   asyncHandler(mobileController.getProductDetails.bind(mobileController))
 );
 
@@ -54,7 +54,7 @@ router.get('/products/:productId',
  * @access Private
  */
 router.get('/orders',
-  authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
+  authorize('admin', 'manager', 'user', 'supplier', 'buyer'),
   asyncHandler(mobileController.getOrders.bind(mobileController))
 );
 
@@ -64,7 +64,7 @@ router.get('/orders',
  * @access Private
  */
 router.get('/rfqs',
-  authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
+  authorize('admin', 'manager', 'user', 'supplier', 'buyer'),
   asyncHandler(mobileController.getRFQs.bind(mobileController))
 );
 
@@ -74,7 +74,7 @@ router.get('/rfqs',
  * @access Private
  */
 router.get('/search/suggestions',
-  authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
+  authorize('admin', 'manager', 'user', 'supplier', 'buyer'),
   asyncHandler(mobileController.getSearchSuggestions.bind(mobileController))
 );
 
@@ -84,7 +84,7 @@ router.get('/search/suggestions',
  * @access Private
  */
 router.get('/categories',
-  authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
+  authorize('admin', 'manager', 'user', 'supplier', 'buyer'),
   asyncHandler(mobileController.getCategories.bind(mobileController))
 );
 
@@ -94,7 +94,7 @@ router.get('/categories',
  * @access Private
  */
 router.get('/config',
-  authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
+  authorize('admin', 'manager', 'user', 'supplier', 'buyer'),
   asyncHandler(mobileController.getAppConfig.bind(mobileController))
 );
 
@@ -104,7 +104,7 @@ router.get('/config',
  * @access Private
  */
 router.post('/track',
-  authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
+  authorize('admin', 'manager', 'user', 'supplier', 'buyer'),
   asyncHandler(mobileController.trackEvent.bind(mobileController))
 );
 

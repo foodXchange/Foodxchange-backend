@@ -1,5 +1,5 @@
 // Example: Using Secure Configuration in FoodXchange
-const secureConfig = require('./config/secure-config');
+import secureConfig from './config/secure-config';
 
 async function initializeAIServices() {
   try {
@@ -8,14 +8,14 @@ async function initializeAIServices() {
     const endpoints = secureConfig.getEndpoints();
 
     // Initialize Azure OpenAI
-    const { OpenAIClient, AzureKeyCredential } = require('@azure/openai');
+    const { OpenAIClient, AzureKeyCredential } = await import('@azure/openai');
     const openAIClient = new OpenAIClient(
       endpoints.openAI,
       new AzureKeyCredential(secrets.openAIKey)
     );
 
     // Initialize Text Analytics
-    const { TextAnalyticsClient } = require('@azure/ai-text-analytics');
+    const { TextAnalyticsClient } = await import('@azure/ai-text-analytics');
     const textAnalyticsClient = new TextAnalyticsClient(
       endpoints.textAnalytics,
       new AzureKeyCredential(secrets.textAnalyticsKey)
@@ -34,4 +34,4 @@ async function initializeAIServices() {
   }
 }
 
-module.exports = { initializeAIServices };
+export { initializeAIServices };

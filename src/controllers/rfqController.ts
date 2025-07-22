@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
+import mongoose from 'mongoose';
 
 import { cacheHelpers, cacheKeys } from '../config/redis';
 import { ValidationError, NotFoundError } from '../core/errors';
@@ -8,10 +9,10 @@ import { Company } from '../models/Company';
 import { Product } from '../models/Product';
 import { RFQ, IRFQ } from '../models/RFQ';
 import { uploadToAzureBlob, deleteFromAzureBlob } from '../services/azure/BlobStorageService';
-import { NotificationService } from '../services/notifications/NotificationService';
+import NotificationService from '../services/notifications/NotificationService';
 
 const logger = new Logger('RFQController');
-const notificationService = new NotificationService();
+const notificationService = NotificationService;
 
 export class RFQController {
   /**
@@ -133,10 +134,10 @@ export class RFQController {
   createRFQ = asyncHandler(async (req: Request, res: Response) => {
     const rfqData = {
       ...req.body,
-      buyer: req.userId,
+      buyer: new mongoose.Types.ObjectId(req.userId),
       buyerCompany: req.user.company,
       tenantId: req.tenantId,
-      createdBy: req.userId
+      createdBy: new mongoose.Types.ObjectId(req.userId)
     };
 
     // Validate items
@@ -175,7 +176,7 @@ export class RFQController {
     await rfq.save();
 
     // Add creation activity log
-    await rfq.addActivityLog('rfq_created', req.userId, {
+    await rfq.addActivityLog('rfq_created', new mongoose.Types.ObjectId(req.userId).toString(), {
       title: rfq.title,
       itemCount: rfq.items.length
     });
@@ -228,12 +229,12 @@ export class RFQController {
       }
     });
 
-    rfq.updatedBy = req.userId;
+    rfq.updatedBy = new mongoose.Types.ObjectId(req.userId);
     rfq.version += 1;
 
     await rfq.save();
 
-    await rfq.addActivityLog('rfq_updated', req.userId, {
+    await rfq.addActivityLog('rfq_updated', new mongoose.Types.ObjectId(req.userId).toString(), {
       updatedFields: Object.keys(req.body)
     });
     await rfq.save();
@@ -266,7 +267,7 @@ export class RFQController {
 
     await rfq.save();
 
-    await rfq.addActivityLog('rfq_published', req.userId);
+    await rfq.addActivityLog('rfq_published', new mongoose.Types.ObjectId(req.userId).toString());
     await rfq.save();
 
     // Send notifications
@@ -321,11 +322,12 @@ export class RFQController {
     await rfq.submitQuote(quote);
 
     // Send notification to buyer
-    await notificationService.sendNotification({
-      recipientId: rfq.buyer.toString(),
-      type: 'quote_received',
+    await notificationService.notify({
+      userId: rfq.buyer.toString(),
+      type: 'proposal_submitted',
       title: 'New Quote Received',
       message: `New quote received for RFQ ${rfq.rfqNumber}`,
+      priority: 'medium',
       data: { rfqId: rfq._id, quoteId: quote._id }
     });
 
@@ -449,7 +451,7 @@ export class RFQController {
 
     await rfq.evaluateQuotes();
 
-    await rfq.addActivityLog('quotes_evaluated', req.userId);
+    await rfq.addActivityLog('quotes_evaluated', new mongoose.Types.ObjectId(req.userId).toString());
     await rfq.save();
 
     res.json({
@@ -483,11 +485,12 @@ export class RFQController {
     const quote = rfq.quotes.find(q => q._id?.toString() === quoteId);
     if (quote) {
       // Notify winner
-      await notificationService.sendNotification({
-        recipientId: supplierId,
-        type: 'rfq_awarded',
+      await notificationService.notify({
+        userId: supplierId,
+        type: 'proposal_accepted',
         title: 'RFQ Awarded',
         message: `Congratulations! You have been awarded RFQ ${rfq.rfqNumber}`,
+        priority: 'high',
         data: { rfqId: rfq._id, quoteId }
       });
 
@@ -497,11 +500,12 @@ export class RFQController {
         .map(q => q.supplier);
 
       for (const supplier of otherSuppliers) {
-        await notificationService.sendNotification({
-          recipientId: supplier.toString(),
-          type: 'rfq_not_awarded',
+        await notificationService.notify({
+          userId: supplier.toString(),
+          type: 'proposal_rejected',
           title: 'RFQ Update',
           message: `RFQ ${rfq.rfqNumber} has been awarded to another supplier`,
+          priority: 'low',
           data: { rfqId: rfq._id }
         });
       }
@@ -545,11 +549,12 @@ export class RFQController {
       .map(q => q.supplier);
 
     for (const supplier of suppliers) {
-      await notificationService.sendNotification({
-        recipientId: supplier.toString(),
-        type: 'rfq_cancelled',
+      await notificationService.notify({
+        userId: supplier.toString(),
+        type: 'system_alert',
         title: 'RFQ Cancelled',
         message: `RFQ ${rfq.rfqNumber} has been cancelled`,
+        priority: 'medium',
         data: { rfqId: rfq._id, reason }
       });
     }
@@ -591,11 +596,12 @@ export class RFQController {
       rfq.quotes.map(q => q.supplier);
 
     for (const supplier of suppliers) {
-      await notificationService.sendNotification({
-        recipientId: supplier.toString(),
-        type: 'rfq_deadline_extended',
+      await notificationService.notify({
+        userId: supplier.toString(),
+        type: 'system_alert',
         title: 'RFQ Deadline Extended',
         message: `Deadline for RFQ ${rfq.rfqNumber} has been extended`,
+        priority: 'medium',
         data: { rfqId: rfq._id, newDeadline: newDate }
       });
     }
@@ -644,7 +650,7 @@ export class RFQController {
         type: file.mimetype,
         size: file.size,
         uploadedAt: new Date(),
-        uploadedBy: req.userId
+        uploadedBy: new mongoose.Types.ObjectId(req.userId)
       };
 
       rfq.attachments.push(attachment);
@@ -653,7 +659,7 @@ export class RFQController {
 
     await rfq.save();
 
-    await rfq.addActivityLog('attachments_uploaded', req.userId, {
+    await rfq.addActivityLog('attachments_uploaded', new mongoose.Types.ObjectId(req.userId).toString(), {
       count: uploadedAttachments.length
     });
     await rfq.save();
@@ -757,22 +763,24 @@ export class RFQController {
         });
 
         for (const supplier of suppliers) {
-          await notificationService.sendNotification({
-            recipientId: supplier._id.toString(),
-            type: 'new_rfq',
+          await notificationService.notify({
+            userId: supplier._id.toString(),
+            type: 'rfq_created',
             title: 'New RFQ Available',
             message: `New RFQ: ${rfq.title}`,
+            priority: 'medium',
             data: { rfqId: rfq._id }
           });
         }
       } else if (rfq.visibility === 'invited') {
         // Notify invited suppliers only
         for (const supplierId of rfq.invitedSuppliers || []) {
-          await notificationService.sendNotification({
-            recipientId: supplierId.toString(),
-            type: 'rfq_invitation',
+          await notificationService.notify({
+            userId: supplierId.toString(),
+            type: 'rfq_created',
             title: 'RFQ Invitation',
             message: `You're invited to quote on: ${rfq.title}`,
+            priority: 'high',
             data: { rfqId: rfq._id }
           });
         }

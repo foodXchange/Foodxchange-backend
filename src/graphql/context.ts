@@ -1,8 +1,15 @@
 import { Request, Response } from 'express';
-import { RedisPubSub } from 'graphql-redis-subscriptions';
 import { PubSub } from 'graphql-subscriptions';
 import Redis from 'ioredis';
 import jwt from 'jsonwebtoken';
+
+// Conditional import for RedisPubSub
+let RedisPubSub: any;
+try {
+  RedisPubSub = require('graphql-redis-subscriptions').RedisPubSub;
+} catch (e) {
+  // Package not installed, will use default PubSub
+}
 
 import { Logger } from '../core/logging/logger';
 import { User } from '../models/User';
@@ -14,8 +21,8 @@ const logger = new Logger('GraphQLContext');
 
 // Create PubSub instance
 const createPubSub = (): PubSub => {
-  if (process.env.NODE_ENV === 'production') {
-    // Use Redis PubSub for production (scalable)
+  if (process.env.NODE_ENV === 'production' && RedisPubSub) {
+    // Use Redis PubSub for production (scalable) if available
     const options = {
       host: process.env.REDIS_HOST || 'localhost',
       port: parseInt(process.env.REDIS_PORT || '6379'),

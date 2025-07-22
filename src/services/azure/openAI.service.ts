@@ -1,4 +1,9 @@
-import { OpenAIClient, AzureKeyCredential, ChatCompletions, ChatRequestMessage } from '@azure/openai';
+import { OpenAIClient, AzureKeyCredential, ChatCompletions } from '@azure/openai';
+
+export type ChatRequestMessage = {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+};
 
 import { trackAzureServiceCall } from '../../config/applicationInsights';
 import { Logger } from '../../core/logging/logger';

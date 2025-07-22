@@ -216,16 +216,16 @@ export class RecommendationService {
             name: product.name,
             description: product.description,
             price: product.price,
-            currency: product.currency,
+            currency: (product as any).currency,
             category: product.category,
             supplier: {
               id: product.supplier._id.toString(),
-              name: product.supplier.name,
-              rating: product.supplier.rating || 0
+              name: (product.supplier as any).name,
+              rating: (product.supplier as any).rating || 0
             },
             relevanceScore,
             images: product.images || [],
-            location: product.location || product.supplier.location || ''
+            location: (product as any).location || (product.supplier as any).location || ''
           };
         })
       );

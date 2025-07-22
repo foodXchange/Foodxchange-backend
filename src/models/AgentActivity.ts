@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const agentActivitySchema = new mongoose.Schema({
   activityId: {
@@ -388,5 +388,4 @@ agentActivitySchema.index({ agentId: 1, 'activity.type': 1, createdAt: -1 });
 agentActivitySchema.index({ agentId: 1, 'activity.category': 1, 'timing.startTime': 1 });
 agentActivitySchema.index({ 'relatedEntities.leadId': 1, 'activity.type': 1 });
 
-module.exports = mongoose.model('AgentActivity', agentActivitySchema);
 export default mongoose.model('AgentActivity', agentActivitySchema);

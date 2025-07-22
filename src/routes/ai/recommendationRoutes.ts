@@ -24,7 +24,7 @@ router.use(aiRateLimiter);
  * @access Private
  */
 router.get('/recommendations',
-  authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
+  authorize('admin', 'manager', 'user', 'supplier', 'buyer'),
   asyncHandler(recommendationController.getPersonalizedRecommendations.bind(recommendationController))
 );
 
@@ -34,7 +34,7 @@ router.get('/recommendations',
  * @access Private
  */
 router.get('/search',
-  authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
+  authorize('admin', 'manager', 'user', 'supplier', 'buyer'),
   asyncHandler(recommendationController.advancedSearch.bind(recommendationController))
 );
 
@@ -44,7 +44,7 @@ router.get('/search',
  * @access Private
  */
 router.get('/search/suggestions',
-  authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
+  authorize('admin', 'manager', 'user', 'supplier', 'buyer'),
   asyncHandler(recommendationController.getSearchSuggestions.bind(recommendationController))
 );
 
@@ -54,7 +54,7 @@ router.get('/search/suggestions',
  * @access Private
  */
 router.get('/recommendations/category/:category',
-  authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
+  authorize('admin', 'manager', 'user', 'supplier', 'buyer'),
   asyncHandler(recommendationController.getRecommendationsByCategory.bind(recommendationController))
 );
 
@@ -64,7 +64,7 @@ router.get('/recommendations/category/:category',
  * @access Private
  */
 router.get('/recommendations/trending',
-  authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
+  authorize('admin', 'manager', 'user', 'supplier', 'buyer'),
   asyncHandler(recommendationController.getTrendingProducts.bind(recommendationController))
 );
 
@@ -74,7 +74,7 @@ router.get('/recommendations/trending',
  * @access Private
  */
 router.get('/recommendations/similar/:productId',
-  authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
+  authorize('admin', 'manager', 'user', 'supplier', 'buyer'),
   asyncHandler(recommendationController.getSimilarProducts.bind(recommendationController))
 );
 
@@ -84,7 +84,7 @@ router.get('/recommendations/similar/:productId',
  * @access Private
  */
 router.get('/recommendations/rfq/:rfqId',
-  authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
+  authorize('admin', 'manager', 'user', 'supplier', 'buyer'),
   asyncHandler(recommendationController.getRecommendationsForRFQ.bind(recommendationController))
 );
 
@@ -94,7 +94,7 @@ router.get('/recommendations/rfq/:rfqId',
  * @access Private
  */
 router.get('/recommendations/seasonal',
-  authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
+  authorize('admin', 'manager', 'user', 'supplier', 'buyer'),
   asyncHandler(recommendationController.getSeasonalRecommendations.bind(recommendationController))
 );
 
@@ -104,7 +104,7 @@ router.get('/recommendations/seasonal',
  * @access Private
  */
 router.get('/recommendations/location',
-  authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
+  authorize('admin', 'manager', 'user', 'supplier', 'buyer'),
   asyncHandler(recommendationController.getLocationBasedRecommendations.bind(recommendationController))
 );
 
@@ -114,7 +114,7 @@ router.get('/recommendations/location',
  * @access Private
  */
 router.post('/recommendations/track',
-  authorize(['admin', 'manager', 'user', 'supplier', 'buyer']),
+  authorize('admin', 'manager', 'user', 'supplier', 'buyer'),
   asyncHandler(recommendationController.trackRecommendationInteraction.bind(recommendationController))
 );
 

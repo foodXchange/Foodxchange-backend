@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
 import { Logger } from '../../core/logging/logger';
-import { MetricsService } from '../../core/metrics/MetricsService';
+import { MetricsService } from '../../core/monitoring/metrics';
 
 const logger = new Logger('QueryOptimizer');
 

@@ -9,11 +9,11 @@ import { ApiError } from '../core/errors';
 export const authorize = (...roles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
-      throw new ApiError(401, 'Authentication required');
+      throw new ApiError('Authentication required', 401);
     }
 
     if (!roles.includes(req.user.role)) {
-      throw new ApiError(403, `Access denied. Required roles: ${roles.join(', ')}`);
+      throw new ApiError(`Access denied. Required roles: ${roles.join(', ')}`, 403);
     }
 
     next();

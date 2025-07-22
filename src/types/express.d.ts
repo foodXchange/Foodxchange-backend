@@ -1,5 +1,5 @@
 import { User } from '../models/User';
-import { MetricsService } from '../services/metrics/MetricsService';
+import { MetricsService } from '../core/monitoring/metrics';
 
 declare global {
   namespace Express {

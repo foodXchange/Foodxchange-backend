@@ -8,10 +8,10 @@ import mongoose, { Connection, ConnectOptions, ClientSession } from 'mongoose';
 import { config } from '../../core/config';
 import { SystemError } from '../../core/errors';
 import { Logger } from '../../core/logging/logger';
-import { MetricsService } from '../monitoring/MetricsService';
+import { MetricsService } from '../../core/monitoring/metrics';
 
 const logger = new Logger('DatabaseService');
-const metrics = metricsService;
+const metrics = new MetricsService();
 
 export interface DatabaseConfig {
   uri: string;
@@ -26,7 +26,7 @@ export class DatabaseService {
   private reconnectAttempts = 0;
   private readonly maxReconnectAttempts = 10;
   private readonly reconnectInterval = 5000; // 5 seconds
-  private healthCheckInterval: NodeJS.Timer | null = null;
+  private healthCheckInterval: NodeJS.Timeout | null = null;
 
   private constructor() {
     this.setupEventHandlers();

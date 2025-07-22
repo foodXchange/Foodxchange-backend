@@ -1,69 +1,62 @@
 # Multi-stage Dockerfile for FoodXchange Backend
-FROM node:20-alpine AS base
 
-# Install system dependencies
-RUN apk add --no-cache \
-    dumb-init \
-    curl \
-    tzdata \
-    && rm -rf /var/cache/apk/*
+# Stage 1: Build
+FROM node:18-alpine AS builder
 
-# Set timezone
-ENV TZ=UTC
+# Install build dependencies
+RUN apk add --no-cache python3 make g++
 
-# Create app directory
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
+COPY tsconfig.json ./
 
 # Install dependencies
-RUN npm ci --only=production && npm cache clean --force
-
-# Development stage
-FROM base AS development
-ENV NODE_ENV=development
 RUN npm ci
-COPY . .
-EXPOSE 5000
-CMD ["npm", "run", "dev"]
 
-# Build stage
-FROM base AS build
-ENV NODE_ENV=production
-RUN npm ci
-COPY . .
+# Copy source code
+COPY src ./src
+COPY shared ./shared
+
+# Build application
 RUN npm run build
 
-# Production stage
-FROM base AS production
-ENV NODE_ENV=production
-ENV PORT=5000
-ENV HOST=0.0.0.0
+# Remove dev dependencies
+RUN npm prune --production
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+# Stage 2: Production
+FROM node:18-alpine
+
+# Install production dependencies
+RUN apk add --no-cache dumb-init
+
+# Create app user
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nodejs -u 1001
+
+WORKDIR /app
 
 # Copy built application
-COPY --from=build --chown=nodejs:nodejs /app/dist ./dist
-COPY --from=build --chown=nodejs:nodejs /app/node_modules ./node_modules
-COPY --from=build --chown=nodejs:nodejs /app/package*.json ./
+COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
+COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
 
-# Create required directories
-RUN mkdir -p logs uploads && \
-    chown -R nodejs:nodejs /app
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:5000/health || exit 1
+# Create necessary directories
+RUN mkdir -p logs uploads && chown -R nodejs:nodejs logs uploads
 
 # Switch to non-root user
 USER nodejs
 
-# Expose ports
-EXPOSE 5000 9090
+# Expose port
+EXPOSE 5000
 
-# Start application with dumb-init for proper signal handling
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:5000/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"
+
+# Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "dist/src/server-optimized.js"]
+
+# Start application
+CMD ["node", "dist/server.js"]

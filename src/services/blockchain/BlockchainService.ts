@@ -78,7 +78,7 @@ export class BlockchainService {
         providerOrUrl: providerUrl
       });
 
-      this.web3 = new Web3(provider);
+      this.web3 = new Web3(provider as any);
       this.account = (await this.web3.eth.getAccounts())[0];
       this.contractAddress = contractAddress;
 

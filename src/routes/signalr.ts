@@ -33,7 +33,7 @@ router.get('/connection',
  * @access Private
  */
 router.post('/message/user',
-  authorize(['buyer', 'supplier', 'admin', 'manager']),
+  authorize('buyer', 'supplier', 'admin', 'manager'),
   asyncHandler(signalRController.sendMessageToUser.bind(signalRController))
 );
 
@@ -43,7 +43,7 @@ router.post('/message/user',
  * @access Private
  */
 router.post('/message/group',
-  authorize(['admin', 'manager']),
+  authorize('admin', 'manager'),
   asyncHandler(signalRController.sendMessageToGroup.bind(signalRController))
 );
 
@@ -53,7 +53,7 @@ router.post('/message/group',
  * @access Private
  */
 router.post('/chat/message',
-  authorize(['buyer', 'supplier', 'admin', 'manager']),
+  authorize('buyer', 'supplier', 'admin', 'manager'),
   asyncHandler(signalRController.sendChatMessage.bind(signalRController))
 );
 
@@ -63,7 +63,7 @@ router.post('/chat/message',
  * @access Private
  */
 router.post('/chat/typing',
-  authorize(['buyer', 'supplier', 'admin', 'manager']),
+  authorize('buyer', 'supplier', 'admin', 'manager'),
   asyncHandler(signalRController.sendTypingIndicator.bind(signalRController))
 );
 
@@ -73,7 +73,7 @@ router.post('/chat/typing',
  * @access Private
  */
 router.post('/group/join',
-  authorize(['buyer', 'supplier', 'admin', 'manager']),
+  authorize('buyer', 'supplier', 'admin', 'manager'),
   asyncHandler(signalRController.joinGroup.bind(signalRController))
 );
 
@@ -83,7 +83,7 @@ router.post('/group/join',
  * @access Private
  */
 router.post('/group/leave',
-  authorize(['buyer', 'supplier', 'admin', 'manager']),
+  authorize('buyer', 'supplier', 'admin', 'manager'),
   asyncHandler(signalRController.leaveGroup.bind(signalRController))
 );
 
@@ -93,7 +93,7 @@ router.post('/group/leave',
  * @access Private
  */
 router.get('/users/online/count',
-  authorize(['admin', 'manager']),
+  authorize('admin', 'manager'),
   asyncHandler(signalRController.getOnlineUsersCount.bind(signalRController))
 );
 
@@ -103,7 +103,7 @@ router.get('/users/online/count',
  * @access Private
  */
 router.get('/users/:userId/online',
-  authorize(['buyer', 'supplier', 'admin', 'manager']),
+  authorize('buyer', 'supplier', 'admin', 'manager'),
   asyncHandler(signalRController.checkUserOnline.bind(signalRController))
 );
 
@@ -113,7 +113,7 @@ router.get('/users/:userId/online',
  * @access Private
  */
 router.post('/notification/system',
-  authorize(['admin', 'manager']),
+  authorize('admin', 'manager'),
   asyncHandler(signalRController.sendSystemNotification.bind(signalRController))
 );
 
@@ -123,7 +123,7 @@ router.post('/notification/system',
  * @access Private
  */
 router.get('/health',
-  authorize(['admin', 'manager']),
+  authorize('admin', 'manager'),
   asyncHandler(signalRController.getHealth.bind(signalRController))
 );
 

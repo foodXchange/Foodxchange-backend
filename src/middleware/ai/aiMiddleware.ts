@@ -1,4 +1,4 @@
-const aiService = require('../services/ai/azureAIService');
+import aiService from '../../services/ai/azureAIService';
 
 // Middleware to ensure AI services are initialized
 const requireAIServices = async (req, res, next) => {
@@ -41,7 +41,7 @@ const aiRateLimit = (req, res, next) => {
   next();
 };
 
-module.exports = {
+export {
   requireAIServices,
   requireAIFeature,
   aiRateLimit

@@ -1,4 +1,4 @@
-﻿const cors = require('cors');
+﻿import cors from 'cors';
 
 const corsOptions = {
   origin (origin, callback) {
@@ -22,4 +22,4 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization']
 };
 
-module.exports = corsOptions;
+export default corsOptions;

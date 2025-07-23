@@ -6,15 +6,15 @@ OPTION 1: ALL-IN-ONE COMMAND (Recommended)
 ------------------------------------------
 Copy and paste this entire command:
 
-"Delete all old documentation .md files and update and Create complete documentation package with verification. Put in documents all server related issues - including, docker and redis and mongo. Put this as a permanent part of documentation."
+"Delete all old documentation .md files and update and Create complete backend documentation package with verification. Name all documentation files with BACKEND_ prefix. Put in documents all server related issues - including, docker and redis and mongo. Put this as a permanent part of documentation in BACKEND_TROUBLESHOOTING.md."
 
 
 OPTION 2: STEP BY STEP
 ----------------------
 1. "Show me all .md documentation files"
 2. "Delete all old documentation .md files except README.md"
-3. "Create complete documentation package with verification"
-4. "Put all server issues including docker, redis, mongo as permanent documentation"
+3. "Create complete backend documentation package with verification - name all files with BACKEND_ prefix"
+4. "Put all server issues including docker, redis, mongo as permanent documentation in BACKEND_TROUBLESHOOTING.md"
 5. "Create verification and export scripts"
 6. "Run verification and show results"
 

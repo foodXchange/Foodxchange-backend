@@ -7,12 +7,12 @@ Welcome to the FoodXchange Backend documentation. This is your central navigatio
 ### Getting Started
 - **[README](../README.md)** - Project overview, features, quick start guide, and architecture
 - **[Quick Start Guide](../README.md#quick-start)** - Get up and running in minutes
-- **[Development Setup](DEPLOYMENT.md#local-development-setup)** - Detailed local environment setup
+- **[Development Setup](BACKEND_DEPLOYMENT.md#local-development-setup)** - Detailed local environment setup
 
 ### Core Documentation
-- **[API Reference](API_REFERENCE.md)** - Complete API documentation with examples
-- **[Deployment Guide](DEPLOYMENT.md)** - Deployment instructions for all platforms
-- **[Troubleshooting](TROUBLESHOOTING.md)** - Comprehensive troubleshooting guide
+- **[API Reference](BACKEND_API_REFERENCE.md)** - Complete API documentation with examples
+- **[Deployment Guide](BACKEND_DEPLOYMENT.md)** - Deployment instructions for all platforms
+- **[Troubleshooting](BACKEND_TROUBLESHOOTING.md)** - Comprehensive troubleshooting guide
 
 ### Architecture & Design
 - **[Architecture Overview](../README.md#architecture-overview)** - System design and components
@@ -22,49 +22,49 @@ Welcome to the FoodXchange Backend documentation. This is your central navigatio
 ## 🚀 Quick Links
 
 ### For Developers
-- [API Authentication](API_REFERENCE.md#authentication)
-- [Product APIs](API_REFERENCE.md#product-management-apis)
-- [RFQ System](API_REFERENCE.md#rfq-system-endpoints)
-- [WebSocket Events](API_REFERENCE.md#websocket-events)
-- [SDK Examples](API_REFERENCE.md#sdk-examples)
+- [API Authentication](BACKEND_API_REFERENCE.md#authentication)
+- [Product APIs](BACKEND_API_REFERENCE.md#product-management-apis)
+- [RFQ System](BACKEND_API_REFERENCE.md#rfq-system-endpoints)
+- [WebSocket Events](BACKEND_API_REFERENCE.md#websocket-events)
+- [SDK Examples](BACKEND_API_REFERENCE.md#sdk-examples)
 
 ### For DevOps
-- [Docker Deployment](DEPLOYMENT.md#docker-deployment)
-- [Kubernetes Setup](DEPLOYMENT.md#kubernetes-deployment)
-- [Cloud Platforms](DEPLOYMENT.md#cloud-platforms)
-- [Security Checklist](DEPLOYMENT.md#security-checklist)
+- [Docker Deployment](BACKEND_DEPLOYMENT.md#docker-deployment)
+- [Kubernetes Setup](BACKEND_DEPLOYMENT.md#kubernetes-deployment)
+- [Cloud Platforms](BACKEND_DEPLOYMENT.md#cloud-platforms)
+- [Security Checklist](BACKEND_DEPLOYMENT.md#security-checklist)
 
 ### For Troubleshooting
-- [Server Issues](TROUBLESHOOTING.md#server-startup-issues)
-- [Docker Problems](TROUBLESHOOTING.md#docker-issues)
-- [Database Issues](TROUBLESHOOTING.md#mongodb-issues)
-- [Common Errors](TROUBLESHOOTING.md#common-error-messages)
+- [Server Issues](BACKEND_TROUBLESHOOTING.md#server-startup-issues)
+- [Docker Problems](BACKEND_TROUBLESHOOTING.md#docker-issues)
+- [Database Issues](BACKEND_TROUBLESHOOTING.md#mongodb-issues)
+- [Common Errors](BACKEND_TROUBLESHOOTING.md#common-error-messages)
 
 ## 📖 Documentation by Role
 
 ### Backend Developer
-1. [Development Setup](DEPLOYMENT.md#local-development-setup)
-2. [API Reference](API_REFERENCE.md)
+1. [Development Setup](BACKEND_DEPLOYMENT.md#local-development-setup)
+2. [API Reference](BACKEND_API_REFERENCE.md)
 3. [Testing Guide](../README.md#testing)
 4. [Contributing Guidelines](../README.md#contributing)
 
 ### Frontend Developer
-1. [API Authentication](API_REFERENCE.md#authentication)
-2. [REST Endpoints](API_REFERENCE.md#overview)
-3. [WebSocket Integration](API_REFERENCE.md#websocket-events)
-4. [SDK Usage](API_REFERENCE.md#sdk-examples)
+1. [API Authentication](BACKEND_API_REFERENCE.md#authentication)
+2. [REST Endpoints](BACKEND_API_REFERENCE.md#overview)
+3. [WebSocket Integration](BACKEND_API_REFERENCE.md#websocket-events)
+4. [SDK Usage](BACKEND_API_REFERENCE.md#sdk-examples)
 
 ### DevOps Engineer
-1. [Deployment Guide](DEPLOYMENT.md)
-2. [Production Config](DEPLOYMENT.md#production-configuration)
-3. [Monitoring Setup](DEPLOYMENT.md#monitoring--maintenance)
-4. [Security Checklist](DEPLOYMENT.md#security-checklist)
+1. [Deployment Guide](BACKEND_DEPLOYMENT.md)
+2. [Production Config](BACKEND_DEPLOYMENT.md#production-configuration)
+3. [Monitoring Setup](BACKEND_DEPLOYMENT.md#monitoring--maintenance)
+4. [Security Checklist](BACKEND_DEPLOYMENT.md#security-checklist)
 
 ### System Administrator
-1. [Troubleshooting Guide](TROUBLESHOOTING.md)
-2. [Performance Tuning](DEPLOYMENT.md#performance-tuning)
-3. [Backup Strategy](DEPLOYMENT.md#backup-strategy)
-4. [Update Process](DEPLOYMENT.md#update-process)
+1. [Troubleshooting Guide](BACKEND_TROUBLESHOOTING.md)
+2. [Performance Tuning](BACKEND_DEPLOYMENT.md#performance-tuning)
+3. [Backup Strategy](BACKEND_DEPLOYMENT.md#backup-strategy)
+4. [Update Process](BACKEND_DEPLOYMENT.md#update-process)
 
 ## 🛠️ Common Tasks
 
@@ -102,7 +102,7 @@ docker build -t foodxchange-backend .
 kubectl apply -f k8s/
 
 # Deploy to Cloud
-# See platform-specific guides in DEPLOYMENT.md
+# See platform-specific guides in BACKEND_DEPLOYMENT.md
 ```
 
 ### Troubleshooting
@@ -183,10 +183,10 @@ Use these keywords to find specific information:
 ### Documentation Structure
 ```
 docs/
-├── INDEX.md              # This file
-├── API_REFERENCE.md      # Complete API documentation
-├── DEPLOYMENT.md         # Deployment guides
-├── TROUBLESHOOTING.md    # Problem-solving guide
+├── BACKEND_INDEX.md              # This file
+├── BACKEND_API_REFERENCE.md      # Complete API documentation
+├── BACKEND_DEPLOYMENT.md         # Deployment guides
+├── BACKEND_TROUBLESHOOTING.md    # Problem-solving guide
 └── guides/               # Additional guides
     ├── authentication.md
     ├── websockets.md

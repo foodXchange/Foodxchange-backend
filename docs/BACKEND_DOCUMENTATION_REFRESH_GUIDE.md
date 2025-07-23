@@ -39,10 +39,10 @@ Delete these old documentation files:
 ### Step 3: Create Fresh Documentation Structure
 ```
 Create a fresh documentation structure in the docs/ folder with these files:
-- TROUBLESHOOTING.md
-- API_REFERENCE.md  
-- DEPLOYMENT.md
-- INDEX.md
+- BACKEND_TROUBLESHOOTING.md
+- BACKEND_API_REFERENCE.md  
+- BACKEND_DEPLOYMENT.md
+- BACKEND_INDEX.md
 ```
 
 ### Step 4: Document Server Issues (Important!)
@@ -50,7 +50,7 @@ Create a fresh documentation structure in the docs/ folder with these files:
 Put in documents all server related issues - including, docker and redis and mongo. Put this as a permanent part of documentation.
 ```
 
-This ensures TROUBLESHOOTING.md includes:
+This ensures BACKEND_TROUBLESHOOTING.md includes:
 - Docker startup and configuration issues
 - Redis connection problems
 - MongoDB authentication failures
@@ -60,10 +60,10 @@ This ensures TROUBLESHOOTING.md includes:
 ```
 Create complete documentation package with:
 1. Updated README.md with project overview
-2. TROUBLESHOOTING.md with all server issues
-3. API_REFERENCE.md with complete API documentation
-4. DEPLOYMENT.md with deployment instructions for all platforms
-5. INDEX.md as central navigation
+2. BACKEND_TROUBLESHOOTING.md with all server issues
+3. BACKEND_API_REFERENCE.md with complete API documentation
+4. BACKEND_DEPLOYMENT.md with deployment instructions for all platforms
+5. BACKEND_INDEX.md as central navigation
 ```
 
 ### Step 6: Add Verification Tools
@@ -161,10 +161,10 @@ After following these steps, you'll have:
 1. **Clean documentation structure** - No old/outdated files
 2. **Comprehensive guides**:
    - README.md (main overview)
-   - docs/TROUBLESHOOTING.md (all server issues)
-   - docs/API_REFERENCE.md (complete API docs)
-   - docs/DEPLOYMENT.md (deployment guide)
-   - docs/INDEX.md (navigation hub)
+   - docs/BACKEND_TROUBLESHOOTING.md (all server issues)
+   - docs/BACKEND_API_REFERENCE.md (complete API docs)
+   - docs/BACKEND_DEPLOYMENT.md (deployment guide)
+   - docs/BACKEND_INDEX.md (navigation hub)
 3. **Verification tools**:
    - verify-documentation.ps1
    - export-session-docs.ps1

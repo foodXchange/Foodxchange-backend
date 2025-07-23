@@ -1,39 +1,55 @@
-# API Reference
+# FoodXchange Backend - API Reference
 
-Complete API documentation for FoodXchange Backend v2.0.
+Complete API documentation for the FoodXchange Backend platform.
 
-## Base Information
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Authentication](#authentication)
+3. [Product Management APIs](#product-management-apis)
+4. [RFQ System Endpoints](#rfq-system-endpoints)
+5. [Order Processing](#order-processing)
+6. [Compliance Validation](#compliance-validation)
+7. [WebSocket Events](#websocket-events)
+8. [Rate Limiting](#rate-limiting)
+9. [SDK Examples](#sdk-examples)
+10. [Error Handling](#error-handling)
+
+## Overview
 
 ### Base URLs
-- **Development**: `http://localhost:5000/api/v1`
-- **Staging**: `https://staging-api.foodxchange.com/api/v1`
-- **Production**: `https://api.foodxchange.com/api/v1`
 
-### Authentication
-All API requests require authentication unless specified otherwise.
+- **Production**: `https://api.foodxchange.com/v1`
+- **Staging**: `https://staging-api.foodxchange.com/v1`
+- **Development**: `http://localhost:5000/api`
 
-```http
-Authorization: Bearer <jwt-token>
-X-API-Key: <api-key>  # Alternative for B2B integrations
-```
+### Request Format
+
+All requests must include:
+- `Content-Type: application/json` header
+- `Authorization: Bearer <token>` header (for authenticated endpoints)
+- `X-Tenant-ID: <tenant-id>` header (for multi-tenant operations)
 
 ### Response Format
-All responses follow this structure:
 
 ```json
 {
   "success": true,
   "data": {},
-  "error": null,
-  "metadata": {
-    "timestamp": "2025-07-23T10:00:00Z",
-    "requestId": "550e8400-e29b-41d4-a716-446655440000",
-    "version": "1.0",
-    "processingTime": 45
-  },
+  "message": "Operation successful",
+  "timestamp": "2025-01-23T12:00:00Z",
+  "requestId": "req_123456789"
+}
+```
+
+### Pagination
+
+```json
+{
+  "data": [],
   "pagination": {
     "page": 1,
-    "limit": 20,
+    "pageSize": 20,
     "total": 100,
     "totalPages": 5,
     "hasNext": true,
@@ -42,55 +58,42 @@ All responses follow this structure:
 }
 ```
 
-### Error Response
-```json
-{
-  "success": false,
-  "data": null,
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Invalid input data",
-    "details": {
-      "field": ["error message"]
-    }
-  },
-  "metadata": {}
-}
-```
-
-## Authentication Endpoints
+## Authentication
 
 ### Register User
+
 ```http
 POST /auth/register
 Content-Type: application/json
 
 {
   "email": "user@example.com",
-  "password": "SecurePassword123!",
+  "password": "SecurePass123!",
   "firstName": "John",
   "lastName": "Doe",
+  "role": "buyer",
   "company": {
-    "name": "ABC Foods Ltd",
-    "type": "buyer",
+    "name": "Acme Foods Inc",
+    "type": "distributor",
     "taxId": "123456789"
-  },
-  "role": "buyer"
+  }
 }
+```
 
-Response: 201 Created
+**Response:**
+```json
 {
   "success": true,
   "data": {
     "user": {
-      "id": "user_123",
+      "id": "usr_123456789",
       "email": "user@example.com",
       "role": "buyer",
-      "verified": false
+      "status": "pending_verification"
     },
     "tokens": {
-      "access": "eyJhbGc...",
-      "refresh": "eyJhbGc...",
+      "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+      "refreshToken": "eyJhbGciOiJIUzI1NiIs...",
       "expiresIn": 3600
     }
   }
@@ -98,27 +101,31 @@ Response: 201 Created
 ```
 
 ### Login
+
 ```http
 POST /auth/login
 Content-Type: application/json
 
 {
   "email": "user@example.com",
-  "password": "SecurePassword123!"
+  "password": "SecurePass123!"
 }
+```
 
-Response: 200 OK
+**Response:**
+```json
 {
   "success": true,
   "data": {
     "user": {
-      "id": "user_123",
+      "id": "usr_123456789",
       "email": "user@example.com",
-      "role": "buyer"
+      "role": "buyer",
+      "permissions": ["products.read", "rfqs.create", "orders.manage"]
     },
     "tokens": {
-      "access": "eyJhbGc...",
-      "refresh": "eyJhbGc...",
+      "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+      "refreshToken": "eyJhbGciOiJIUzI1NiIs...",
       "expiresIn": 3600
     }
   }
@@ -126,646 +133,634 @@ Response: 200 OK
 ```
 
 ### Refresh Token
+
 ```http
 POST /auth/refresh
 Content-Type: application/json
 
 {
-  "refreshToken": "eyJhbGc..."
-}
-
-Response: 200 OK
-{
-  "success": true,
-  "data": {
-    "tokens": {
-      "access": "eyJhbGc...",
-      "refresh": "eyJhbGc...",
-      "expiresIn": 3600
-    }
-  }
+  "refreshToken": "eyJhbGciOiJIUzI1NiIs..."
 }
 ```
 
 ### Logout
+
 ```http
 POST /auth/logout
 Authorization: Bearer <token>
+```
 
-Response: 200 OK
+### Get Current User
+
+```http
+GET /auth/me
+Authorization: Bearer <token>
+```
+
+### Update Password
+
+```http
+PUT /auth/update-password
+Authorization: Bearer <token>
+Content-Type: application/json
+
 {
-  "success": true,
-  "data": {
-    "message": "Logged out successfully"
-  }
+  "currentPassword": "OldPass123!",
+  "newPassword": "NewPass456!"
 }
 ```
 
-## Product Endpoints
+## Product Management APIs
 
 ### List Products
+
 ```http
-GET /products?category=vegetables&status=active&page=1&limit=20&sort=-createdAt
+GET /products?page=1&pageSize=20&category=beverages&inStock=true&sort=-createdAt
 Authorization: Bearer <token>
+```
 
-Query Parameters:
-- category: string (optional) - Filter by category
-- status: string (optional) - active, inactive, draft
-- minPrice: number (optional) - Minimum price
-- maxPrice: number (optional) - Maximum price
-- search: string (optional) - Search in name and description
-- page: number (default: 1) - Page number
-- limit: number (default: 20, max: 100) - Items per page
-- sort: string (default: -createdAt) - Sort field with - for descending
+**Query Parameters:**
+- `page` (number): Page number (default: 1)
+- `pageSize` (number): Items per page (default: 20, max: 100)
+- `category` (string): Filter by category
+- `supplier` (string): Filter by supplier ID
+- `inStock` (boolean): Filter by stock status
+- `minPrice` (number): Minimum price filter
+- `maxPrice` (number): Maximum price filter
+- `search` (string): Search in name and description
+- `sort` (string): Sort field (prefix with - for desc)
 
-Response: 200 OK
+**Response:**
+```json
 {
   "success": true,
-  "data": {
-    "products": [
-      {
-        "id": "prod_123",
-        "sku": "VEG-TOM-001",
-        "name": "Organic Tomatoes",
-        "description": "Fresh organic tomatoes from local farms",
-        "category": ["vegetables", "organic"],
-        "pricing": {
-          "basePrice": {
-            "amount": 5.99,
-            "currency": "USD"
+  "data": [
+    {
+      "id": "prod_123456789",
+      "sku": "BEV-001",
+      "name": "Premium Orange Juice",
+      "description": "100% pure orange juice",
+      "category": "beverages",
+      "pricing": {
+        "currency": "USD",
+        "basePrice": 3.99,
+        "unit": "liter",
+        "tierPricing": [
+          {
+            "minQuantity": 100,
+            "price": 3.49
           },
-          "unit": "kg",
-          "tiers": [
-            {
-              "minQuantity": 100,
-              "price": 5.49
-            },
-            {
-              "minQuantity": 500,
-              "price": 4.99
-            }
-          ]
-        },
-        "inventory": {
-          "available": 1000,
-          "reserved": 50,
-          "unit": "kg"
-        },
-        "media": {
-          "images": [
-            {
-              "url": "https://cdn.foodxchange.com/products/tomatoes-1.jpg",
-              "alt": "Organic tomatoes",
-              "isPrimary": true
-            }
-          ]
-        },
-        "compliance": {
-          "certifications": ["ORGANIC", "GAP"],
-          "allergens": [],
-          "nutrition": {
-            "calories": 18,
-            "protein": 0.9,
-            "carbs": 3.9,
-            "fat": 0.2
+          {
+            "minQuantity": 500,
+            "price": 2.99
           }
-        },
-        "supplier": {
-          "id": "company_456",
-          "name": "Green Farms Ltd",
-          "rating": 4.8
-        },
-        "createdAt": "2025-07-20T10:00:00Z",
-        "updatedAt": "2025-07-23T08:30:00Z"
+        ]
+      },
+      "inventory": {
+        "quantity": 5000,
+        "unit": "liters",
+        "lowStockThreshold": 500,
+        "trackInventory": true
+      },
+      "images": [
+        {
+          "url": "https://cdn.foodxchange.com/products/bev-001-1.jpg",
+          "alt": "Premium Orange Juice",
+          "isPrimary": true
+        }
+      ],
+      "certifications": ["USDA Organic", "Non-GMO"],
+      "supplier": {
+        "id": "sup_987654321",
+        "name": "Fresh Farms Inc",
+        "rating": 4.8
       }
-    ]
-  },
+    }
+  ],
   "pagination": {
     "page": 1,
-    "limit": 20,
+    "pageSize": 20,
     "total": 150,
-    "totalPages": 8,
-    "hasNext": true,
-    "hasPrev": false
+    "totalPages": 8
   }
 }
 ```
 
 ### Get Product Details
-```http
-GET /products/:id
-Authorization: Bearer <token>
 
-Response: 200 OK
-{
-  "success": true,
-  "data": {
-    "product": {
-      // Full product object
-    }
-  }
-}
+```http
+GET /products/{productId}
+Authorization: Bearer <token>
 ```
 
 ### Create Product
+
 ```http
 POST /products
 Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "sku": "VEG-TOM-001",
-  "name": "Organic Tomatoes",
-  "description": "Fresh organic tomatoes",
-  "category": ["vegetables", "organic"],
+  "sku": "BEV-002",
+  "name": "Organic Apple Juice",
+  "description": "100% organic apple juice from local farms",
+  "category": "beverages",
+  "tags": ["organic", "local", "juice"],
   "pricing": {
-    "basePrice": {
-      "amount": 5.99,
-      "currency": "USD"
-    },
-    "unit": "kg"
+    "currency": "USD",
+    "basePrice": 4.99,
+    "unit": "liter",
+    "tierPricing": [
+      {
+        "minQuantity": 100,
+        "price": 4.49
+      }
+    ],
+    "taxRate": 8.5,
+    "isTaxIncluded": false
   },
   "inventory": {
-    "available": 1000,
-    "unit": "kg"
-  }
-}
-
-Response: 201 Created
-{
-  "success": true,
-  "data": {
-    "product": {
-      // Created product object
+    "trackInventory": true,
+    "quantity": 1000,
+    "lowStockThreshold": 100,
+    "outOfStockBehavior": "hide"
+  },
+  "specifications": {
+    "ingredients": ["100% Organic Apples"],
+    "nutritionFacts": {
+      "servingSize": "250ml",
+      "calories": 120,
+      "sugar": "28g",
+      "addedSugar": "0g"
+    },
+    "allergens": [],
+    "storageInstructions": "Keep refrigerated after opening",
+    "shelfLife": "12 months"
+  },
+  "packaging": {
+    "type": "bottle",
+    "material": "glass",
+    "size": "1L",
+    "unitsPerCase": 12,
+    "casesPerPallet": 50
+  },
+  "logistics": {
+    "weight": 1.2,
+    "weightUnit": "kg",
+    "dimensions": {
+      "length": 8,
+      "width": 8,
+      "height": 25,
+      "unit": "cm"
+    },
+    "requiresRefrigeration": true,
+    "temperatureRange": {
+      "min": 2,
+      "max": 8,
+      "unit": "celsius"
     }
+  },
+  "compliance": {
+    "certifications": ["USDA Organic", "Non-GMO"],
+    "countryOfOrigin": "USA",
+    "hsCode": "2009.71"
   }
 }
 ```
 
 ### Update Product
+
 ```http
-PUT /products/:id
+PUT /products/{productId}
 Authorization: Bearer <token>
 Content-Type: application/json
 
 {
   "pricing": {
-    "basePrice": {
-      "amount": 6.49
-    }
+    "basePrice": 4.49
   },
   "inventory": {
-    "available": 800
-  }
-}
-
-Response: 200 OK
-{
-  "success": true,
-  "data": {
-    "product": {
-      // Updated product object
-    }
+    "quantity": 800
   }
 }
 ```
 
 ### Delete Product
-```http
-DELETE /products/:id
-Authorization: Bearer <token>
 
-Response: 200 OK
-{
-  "success": true,
-  "data": {
-    "message": "Product deleted successfully"
-  }
-}
+```http
+DELETE /products/{productId}
+Authorization: Bearer <token>
 ```
 
-### Bulk Operations
+### Upload Product Images
+
 ```http
-POST /products/bulk
+POST /products/{productId}/images
+Authorization: Bearer <token>
+Content-Type: multipart/form-data
+
+images: [file1.jpg, file2.jpg]
+```
+
+### Search Products
+
+```http
+GET /products/search?q=organic+juice&category=beverages
+Authorization: Bearer <token>
+```
+
+### Export Products
+
+```http
+GET /products/export?format=csv&category=beverages
+Authorization: Bearer <token>
+```
+
+**Formats:** `json`, `csv`, `excel`
+
+### Bulk Import Products
+
+```http
+POST /products/bulk/import
 Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "operation": "update",
-  "filters": {
-    "category": "vegetables"
-  },
-  "data": {
-    "status": "inactive"
-  }
-}
-
-Response: 200 OK
-{
-  "success": true,
-  "data": {
-    "affected": 25,
-    "message": "25 products updated successfully"
-  }
+  "products": [
+    {
+      "sku": "PROD-001",
+      "name": "Product 1",
+      "category": "beverages",
+      "pricing": {
+        "basePrice": 10.99,
+        "currency": "USD"
+      }
+    }
+  ]
 }
 ```
 
-## RFQ (Request for Quote) Endpoints
+## RFQ System Endpoints
+
+### List RFQs
+
+```http
+GET /rfqs?status=published&category=beverages&page=1
+Authorization: Bearer <token>
+```
+
+**Query Parameters:**
+- `status`: `draft`, `published`, `closed`, `awarded`, `cancelled`, `expired`
+- `category`: Product category filter
+- `fromDate`: Start date (ISO 8601)
+- `toDate`: End date (ISO 8601)
+- `sort`: `createdAt`, `-createdAt`, `dueDate`, `-dueDate`
 
 ### Create RFQ
+
 ```http
 POST /rfqs
 Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "title": "Bulk Vegetable Order Q3 2025",
-  "description": "Looking for suppliers for quarterly vegetable supply",
+  "title": "Bulk Beverage Order Q1 2025",
+  "description": "Looking for suppliers for our Q1 beverage needs",
+  "category": "beverages",
+  "tags": ["bulk", "quarterly", "beverages"],
   "items": [
     {
-      "productId": "prod_123",
-      "quantity": 1000,
-      "unit": "kg",
-      "specifications": "Organic certified, delivered weekly"
+      "name": "Orange Juice - 1L",
+      "quantity": 5000,
+      "unit": "bottles",
+      "targetPrice": 3.50,
+      "specifications": "100% pure, no added sugar",
+      "requiredCertifications": ["USDA Organic"],
+      "preferredBrands": ["Brand A", "Brand B"]
     }
   ],
-  "requirements": {
-    "delivery": {
-      "location": "New York, NY",
-      "schedule": "weekly",
-      "startDate": "2025-08-01"
-    },
-    "payment": {
-      "terms": "NET30",
-      "method": ["bank_transfer", "credit"]
-    },
-    "compliance": ["ORGANIC", "GAP"]
+  "deliveryLocation": {
+    "name": "Main Warehouse",
+    "address": "123 Commerce St",
+    "city": "New York",
+    "state": "NY",
+    "country": "USA",
+    "postalCode": "10001"
   },
-  "expiryDate": "2025-07-30T23:59:59Z"
-}
-
-Response: 201 Created
-{
-  "success": true,
-  "data": {
-    "rfq": {
-      "id": "rfq_789",
-      "number": "RFQ-2025-0123",
-      "status": "open",
-      "matchedSuppliers": 12
-    }
+  "deliveryTerms": {
+    "incoterm": "DDP",
+    "instructions": "Deliver to loading dock between 8 AM - 5 PM"
+  },
+  "deliverySchedule": {
+    "type": "recurring",
+    "frequency": "weekly",
+    "startDate": "2025-02-01",
+    "endDate": "2025-04-30"
+  },
+  "paymentTerms": {
+    "method": "net30",
+    "currency": "USD",
+    "notes": "2% discount for early payment"
+  },
+  "dueDate": "2025-01-30T23:59:59Z",
+  "validUntil": "2025-02-15T23:59:59Z",
+  "visibility": "public",
+  "selectionCriteria": {
+    "priceWeight": 40,
+    "qualityWeight": 30,
+    "deliveryWeight": 20,
+    "certificationWeight": 10
+  },
+  "compliance": {
+    "requiredCertifications": ["USDA Organic", "FDA Approved"],
+    "requiredDocuments": ["Certificate of Analysis", "Product Specification Sheet"],
+    "qualityStandards": ["ISO 22000"]
+  },
+  "additionalRequirements": {
+    "sampleRequired": true,
+    "siteVisitRequired": false,
+    "insuranceRequired": true,
+    "minimumRating": 4.0
   }
 }
 ```
 
-### List RFQs
-```http
-GET /rfqs?status=open&category=vegetables
-Authorization: Bearer <token>
+### Get RFQ Details
 
-Response: 200 OK
+```http
+GET /rfqs/{rfqId}
+Authorization: Bearer <token>
+```
+
+### Update RFQ
+
+```http
+PUT /rfqs/{rfqId}
+Authorization: Bearer <token>
+Content-Type: application/json
+
 {
-  "success": true,
-  "data": {
-    "rfqs": [
-      {
-        "id": "rfq_789",
-        "number": "RFQ-2025-0123",
-        "title": "Bulk Vegetable Order Q3 2025",
-        "status": "open",
-        "buyer": {
-          "id": "company_111",
-          "name": "Restaurant Chain ABC"
-        },
-        "items": 3,
-        "proposalCount": 5,
-        "expiryDate": "2025-07-30T23:59:59Z",
-        "createdAt": "2025-07-23T10:00:00Z"
-      }
-    ]
-  },
-  "pagination": {}
+  "description": "Updated description",
+  "dueDate": "2025-02-05T23:59:59Z"
 }
 ```
 
-### Submit Proposal
+### Publish RFQ
+
 ```http
-POST /rfqs/:id/proposals
+POST /rfqs/{rfqId}/publish
+Authorization: Bearer <token>
+```
+
+### Submit Quote
+
+```http
+POST /rfqs/{rfqId}/quotes
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "currency": "USD",
+  "validUntil": "2025-02-10T23:59:59Z",
+  "items": [
+    {
+      "itemIndex": 0,
+      "price": 3.25,
+      "quantity": 5000,
+      "leadTime": 7,
+      "notes": "Can deliver weekly as requested"
+    }
+  ],
+  "deliveryTerms": {
+    "canMeetRequirements": true,
+    "notes": "We have trucks available for weekly delivery"
+  },
+  "paymentTerms": {
+    "acceptedTerms": ["net30", "net60"],
+    "notes": "3% discount for net15"
+  },
+  "certifications": ["USDA Organic", "FDA Approved", "ISO 22000"],
+  "attachments": [
+    {
+      "name": "Product Catalog 2025.pdf",
+      "url": "https://storage.foodxchange.com/quotes/catalog-2025.pdf",
+      "type": "catalog"
+    }
+  ],
+  "terms": "Standard terms apply. Prices valid for 30 days.",
+  "notes": "We're a local supplier with 20 years experience"
+}
+```
+
+### Update Quote
+
+```http
+PUT /rfqs/{rfqId}/quotes/{quoteId}
 Authorization: Bearer <token>
 Content-Type: application/json
 
 {
   "items": [
     {
-      "rfqItemId": "item_001",
-      "unitPrice": 5.25,
-      "totalPrice": 5250,
-      "notes": "Can deliver weekly as requested"
-    }
-  ],
-  "totalAmount": 5250,
-  "validUntil": "2025-07-29T23:59:59Z",
-  "terms": {
-    "payment": "NET30",
-    "delivery": "FOB Origin"
-  },
-  "attachments": [
-    {
-      "name": "Product Catalog.pdf",
-      "url": "https://cdn.foodxchange.com/docs/catalog.pdf"
+      "itemIndex": 0,
+      "price": 3.15
     }
   ]
 }
+```
 
-Response: 201 Created
+### Withdraw Quote
+
+```http
+POST /rfqs/{rfqId}/quotes/{quoteId}/withdraw
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "reason": "Unable to meet delivery timeline"
+}
+```
+
+### Evaluate Quotes
+
+```http
+POST /rfqs/{rfqId}/evaluate
+Authorization: Bearer <token>
+```
+
+**Response:**
+```json
 {
   "success": true,
   "data": {
-    "proposal": {
-      "id": "proposal_456",
-      "status": "submitted",
-      "rfqId": "rfq_789"
+    "evaluation": {
+      "quotes": [
+        {
+          "quoteId": "quote_123",
+          "supplierId": "sup_456",
+          "score": 85.5,
+          "breakdown": {
+            "price": 34,
+            "quality": 27,
+            "delivery": 16,
+            "certification": 8.5
+          },
+          "rank": 1
+        }
+      ],
+      "recommendation": {
+        "supplierId": "sup_456",
+        "reason": "Best overall score with competitive pricing"
+      }
     }
   }
 }
 ```
 
 ### Award RFQ
+
 ```http
-POST /rfqs/:id/award
+POST /rfqs/{rfqId}/award
 Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "proposalId": "proposal_456",
-  "notes": "Best price and terms"
-}
-
-Response: 200 OK
-{
-  "success": true,
-  "data": {
-    "rfq": {
-      "id": "rfq_789",
-      "status": "awarded",
-      "awardedTo": "company_456",
-      "orderId": "order_999"
-    }
-  }
+  "supplierId": "sup_456",
+  "quoteId": "quote_123",
+  "reason": "Best value and meets all requirements"
 }
 ```
 
-## Order Endpoints
+### Cancel RFQ
+
+```http
+POST /rfqs/{rfqId}/cancel
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "reason": "Requirements changed"
+}
+```
+
+### Extend RFQ Deadline
+
+```http
+POST /rfqs/{rfqId}/extend-deadline
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "newDate": "2025-02-10T23:59:59Z"
+}
+```
+
+## Order Processing
 
 ### Create Order
+
 ```http
 POST /orders
 Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "type": "standard",
-  "source": "rfq",
-  "sourceId": "rfq_789",
+  "rfqId": "rfq_123",
+  "quoteId": "quote_456",
   "items": [
     {
-      "productId": "prod_123",
-      "quantity": 1000,
-      "unitPrice": 5.25,
-      "totalPrice": 5250
+      "productId": "prod_789",
+      "sku": "BEV-001",
+      "quantity": 5000,
+      "unitPrice": 3.25,
+      "totalPrice": 16250.00
     }
   ],
-  "shipping": {
-    "address": {
-      "line1": "123 Main St",
-      "city": "New York",
-      "state": "NY",
-      "zipCode": "10001",
-      "country": "US"
-    },
-    "method": "standard",
-    "instructions": "Deliver to loading dock"
+  "shippingAddress": {
+    "name": "Main Warehouse",
+    "address": "123 Commerce St",
+    "city": "New York",
+    "state": "NY",
+    "country": "USA",
+    "postalCode": "10001"
   },
-  "payment": {
-    "method": "bank_transfer",
-    "terms": "NET30"
-  }
+  "billingAddress": {
+    "sameAsShipping": true
+  },
+  "paymentMethod": "net30",
+  "notes": "Please coordinate delivery time"
 }
+```
 
-Response: 201 Created
-{
-  "success": true,
-  "data": {
-    "order": {
-      "id": "order_999",
-      "number": "ORD-2025-0456",
-      "status": "pending",
-      "total": 5250,
-      "estimatedDelivery": "2025-08-05"
-    }
-  }
-}
+### Get Order Details
+
+```http
+GET /orders/{orderId}
+Authorization: Bearer <token>
 ```
 
 ### List Orders
-```http
-GET /orders?status=pending,processing&startDate=2025-07-01
-Authorization: Bearer <token>
 
-Response: 200 OK
-{
-  "success": true,
-  "data": {
-    "orders": [
-      {
-        "id": "order_999",
-        "number": "ORD-2025-0456",
-        "status": "processing",
-        "buyer": {
-          "id": "company_111",
-          "name": "Restaurant Chain ABC"
-        },
-        "supplier": {
-          "id": "company_456",
-          "name": "Green Farms Ltd"
-        },
-        "total": 5250,
-        "currency": "USD",
-        "createdAt": "2025-07-23T11:00:00Z",
-        "estimatedDelivery": "2025-08-05"
-      }
-    ]
-  },
-  "pagination": {}
-}
+```http
+GET /orders?status=pending&page=1&pageSize=20
+Authorization: Bearer <token>
 ```
 
+**Query Parameters:**
+- `status`: `pending`, `confirmed`, `processing`, `shipped`, `delivered`, `cancelled`
+- `fromDate`: Filter by creation date
+- `toDate`: Filter by creation date
+- `supplierId`: Filter by supplier
+- `customerId`: Filter by customer
+
 ### Update Order Status
+
 ```http
-PATCH /orders/:id/status
+PUT /orders/{orderId}/status
 Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "status": "shipped",
-  "tracking": {
-    "carrier": "FedEx",
-    "trackingNumber": "1234567890",
-    "estimatedDelivery": "2025-08-05T14:00:00Z"
-  }
-}
-
-Response: 200 OK
-{
-  "success": true,
-  "data": {
-    "order": {
-      "id": "order_999",
-      "status": "shipped",
-      "tracking": {
-        "carrier": "FedEx",
-        "trackingNumber": "1234567890",
-        "url": "https://fedex.com/track/1234567890"
-      }
-    }
-  }
+  "status": "confirmed",
+  "notes": "Order confirmed and processing started"
 }
 ```
 
 ### Cancel Order
+
 ```http
-POST /orders/:id/cancel
+POST /orders/{orderId}/cancel
 Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "reason": "customer_request",
-  "notes": "Customer changed requirements"
-}
-
-Response: 200 OK
-{
-  "success": true,
-  "data": {
-    "order": {
-      "id": "order_999",
-      "status": "cancelled",
-      "cancelledAt": "2025-07-23T12:00:00Z"
-    }
-  }
+  "reason": "Customer requested cancellation"
 }
 ```
 
-## Compliance Endpoints
+### Track Order
 
-### Validate Compliance
 ```http
-POST /compliance/validate
+GET /orders/{orderId}/tracking
 Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "productId": "prod_123",
-  "market": "EU",
-  "certifications": ["ORGANIC", "GAP"],
-  "specifications": {
-    "pesticides": 0.01,
-    "origin": "USA"
-  }
-}
-
-Response: 200 OK
-{
-  "success": true,
-  "data": {
-    "validation": {
-      "status": "passed",
-      "market": "EU",
-      "results": [
-        {
-          "rule": "pesticide_limits",
-          "status": "passed",
-          "details": "Within EU limits"
-        },
-        {
-          "rule": "organic_certification",
-          "status": "passed",
-          "details": "Valid ORGANIC certification"
-        }
-      ],
-      "validUntil": "2025-12-31T23:59:59Z"
-    }
-  }
-}
 ```
 
-### Upload Certification
-```http
-POST /compliance/certifications
-Authorization: Bearer <token>
-Content-Type: multipart/form-data
-
-{
-  "type": "ORGANIC",
-  "file": <file>,
-  "validFrom": "2025-01-01",
-  "validTo": "2025-12-31",
-  "issuedBy": "USDA"
-}
-
-Response: 201 Created
+**Response:**
+```json
 {
   "success": true,
   "data": {
-    "certification": {
-      "id": "cert_567",
-      "type": "ORGANIC",
-      "status": "pending_verification",
-      "documentUrl": "https://cdn.foodxchange.com/certs/cert_567.pdf"
-    }
-  }
-}
-```
-
-## Analytics Endpoints
-
-### Dashboard Metrics
-```http
-GET /analytics/dashboard?period=last30days
-Authorization: Bearer <token>
-
-Response: 200 OK
-{
-  "success": true,
-  "data": {
-    "metrics": {
-      "orders": {
-        "total": 156,
-        "value": 125670,
-        "change": "+12.5%"
-      },
-      "products": {
-        "active": 234,
-        "views": 15670,
-        "conversion": "3.2%"
-      },
-      "rfqs": {
-        "open": 23,
-        "awarded": 45,
-        "successRate": "78%"
-      }
-    },
-    "charts": {
-      "salesTrend": [
+    "tracking": {
+      "carrier": "FedEx",
+      "trackingNumber": "1234567890",
+      "status": "in_transit",
+      "estimatedDelivery": "2025-02-05",
+      "events": [
         {
-          "date": "2025-07-01",
-          "value": 4500
-        }
-      ],
-      "topProducts": [
-        {
-          "name": "Organic Tomatoes",
-          "sales": 45000
+          "timestamp": "2025-02-01T10:00:00Z",
+          "status": "picked_up",
+          "location": "New York, NY",
+          "description": "Package picked up"
         }
       ]
     }
@@ -773,43 +768,112 @@ Response: 200 OK
 }
 ```
 
-### Generate Report
+### Generate Invoice
+
 ```http
-POST /analytics/reports
+GET /orders/{orderId}/invoice
+Authorization: Bearer <token>
+Accept: application/pdf
+```
+
+## Compliance Validation
+
+### Validate Product Compliance
+
+```http
+POST /compliance/validate/product
 Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "type": "sales",
-  "period": {
-    "start": "2025-07-01",
-    "end": "2025-07-31"
-  },
-  "format": "pdf",
-  "email": "manager@company.com"
+  "productId": "prod_123",
+  "targetMarkets": ["USA", "Canada"],
+  "certifications": ["USDA Organic", "Non-GMO"],
+  "documents": [
+    {
+      "type": "certificate",
+      "url": "https://docs.foodxchange.com/cert-123.pdf"
+    }
+  ]
 }
+```
 
-Response: 202 Accepted
+**Response:**
+```json
 {
   "success": true,
   "data": {
-    "report": {
-      "id": "report_123",
-      "status": "processing",
-      "estimatedTime": 300
+    "validation": {
+      "status": "compliant",
+      "score": 95,
+      "issues": [],
+      "recommendations": [
+        {
+          "type": "certification",
+          "message": "Consider adding FDA registration for broader market access",
+          "priority": "low"
+        }
+      ],
+      "marketCompliance": {
+        "USA": {
+          "status": "compliant",
+          "requirements": ["FDA", "USDA"],
+          "missing": []
+        },
+        "Canada": {
+          "status": "compliant",
+          "requirements": ["CFIA"],
+          "missing": []
+        }
+      }
     }
   }
 }
 ```
 
+### Validate Document
+
+```http
+POST /compliance/validate/document
+Authorization: Bearer <token>
+Content-Type: multipart/form-data
+
+document: certificate.pdf
+type: "certificate"
+```
+
+### Check RFQ Compliance
+
+```http
+POST /compliance/check/rfq/{rfqId}
+Authorization: Bearer <token>
+```
+
+### Get Compliance Requirements
+
+```http
+GET /compliance/requirements?country=USA&category=beverages
+Authorization: Bearer <token>
+```
+
+### Generate Compliance Report
+
+```http
+GET /compliance/report/{entityType}/{entityId}
+Authorization: Bearer <token>
+Accept: application/pdf
+```
+
 ## WebSocket Events
 
 ### Connection
+
 ```javascript
 const socket = io('wss://api.foodxchange.com', {
   auth: {
-    token: 'Bearer <jwt-token>'
-  }
+    token: 'Bearer <token>'
+  },
+  transports: ['websocket']
 });
 
 socket.on('connect', () => {
@@ -817,148 +881,444 @@ socket.on('connect', () => {
 });
 ```
 
-### Subscribe to Events
+### RFQ Events
+
+#### Subscribe to RFQ Updates
 ```javascript
-// Join rooms
-socket.emit('join', {
-  rooms: ['orders', 'rfqs', 'chat']
-});
+socket.emit('subscribe_rfq', { rfqId: 'rfq_123' });
+```
 
-// Order updates
-socket.on('order:update', (data) => {
-  console.log('Order updated:', data);
+#### RFQ Update Event
+```javascript
+socket.on('rfq_update', (data) => {
+  console.log('RFQ Updated:', data);
   // {
-  //   orderId: 'order_999',
-  //   status: 'shipped',
-  //   timestamp: '2025-07-23T12:00:00Z'
+  //   rfqId: 'rfq_123',
+  //   status: 'published',
+  //   updatedBy: 'usr_456',
+  //   timestamp: '2025-01-23T12:00:00Z'
   // }
-});
-
-// RFQ notifications
-socket.on('rfq:new_proposal', (data) => {
-  console.log('New proposal received:', data);
-});
-
-// Chat messages
-socket.on('chat:message', (data) => {
-  console.log('New message:', data);
 });
 ```
 
-### Send Events
+#### New Quote Event
 ```javascript
-// Send chat message
-socket.emit('chat:send', {
-  roomId: 'order_999',
-  message: 'When will the order be delivered?'
+socket.on('quote_received', (data) => {
+  console.log('New Quote:', data);
+  // {
+  //   rfqId: 'rfq_123',
+  //   quoteId: 'quote_789',
+  //   supplierId: 'sup_456',
+  //   timestamp: '2025-01-23T12:00:00Z'
+  // }
+});
+```
+
+### Order Events
+
+#### Order Status Update
+```javascript
+socket.on('order_update', (data) => {
+  console.log('Order Updated:', data);
+  // {
+  //   orderId: 'ord_123',
+  //   status: 'shipped',
+  //   trackingNumber: '1234567890',
+  //   timestamp: '2025-01-23T12:00:00Z'
+  // }
+});
+```
+
+### Compliance Events
+
+#### Compliance Alert
+```javascript
+socket.on('compliance_alert', (data) => {
+  console.log('Compliance Alert:', data);
+  // {
+  //   type: 'certification_expiring',
+  //   entityId: 'cert_123',
+  //   message: 'USDA Organic certification expires in 30 days',
+  //   severity: 'warning',
+  //   timestamp: '2025-01-23T12:00:00Z'
+  // }
+});
+```
+
+### User Activity Events
+
+#### User Presence
+```javascript
+socket.on('user_activity', (data) => {
+  console.log('User Activity:', data);
+  // {
+  //   userId: 'usr_456',
+  //   status: 'online',
+  //   currentRfq: 'rfq_123',
+  //   lastSeen: '2025-01-23T12:00:00Z'
+  // }
+});
+```
+
+### Collaboration Events
+
+#### Typing Indicator
+```javascript
+// Send typing indicator
+socket.emit('typing_indicator', {
+  rfqId: 'rfq_123',
+  isTyping: true
 });
 
-// Update order status (if authorized)
-socket.emit('order:update_status', {
-  orderId: 'order_999',
-  status: 'delivered'
+// Receive typing indicator
+socket.on('typing_indicator', (data) => {
+  console.log('User typing:', data);
+  // {
+  //   rfqId: 'rfq_123',
+  //   userId: 'usr_456',
+  //   userName: 'John Doe',
+  //   isTyping: true
+  // }
+});
+```
+
+#### Collaboration Message
+```javascript
+// Send message
+socket.emit('collaboration_message', {
+  rfqId: 'rfq_123',
+  message: 'What about delivery terms?',
+  metadata: {
+    type: 'question',
+    priority: 'high'
+  }
+});
+
+// Receive message
+socket.on('collaboration_message', (data) => {
+  console.log('New message:', data);
 });
 ```
 
 ## Rate Limiting
 
-API rate limits are enforced per user and endpoint:
+### Default Limits
 
-| Endpoint Type | Rate Limit | Window |
-|--------------|------------|--------|
-| Authentication | 5 requests | 1 minute |
-| Public endpoints | 100 requests | 1 minute |
-| Standard API | 1000 requests | 1 hour |
-| Premium API | 10000 requests | 1 hour |
-| Bulk operations | 10 requests | 1 hour |
+- **API Endpoints**: 100 requests per 15 minutes per IP
+- **Search Endpoints**: 30 requests per minute per IP
+- **RFQ Creation**: 10 requests per hour per user
+- **File Upload**: 20 requests per hour per user
 
-Rate limit headers:
+### Rate Limit Headers
+
 ```http
-X-RateLimit-Limit: 1000
-X-RateLimit-Remaining: 950
-X-RateLimit-Reset: 1627891200
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 95
+X-RateLimit-Reset: 1706016000
 ```
 
-## Error Codes
+### Rate Limit Response
 
-| Code | Description |
-|------|-------------|
-| `VALIDATION_ERROR` | Invalid input data |
-| `AUTHENTICATION_ERROR` | Invalid or expired token |
-| `AUTHORIZATION_ERROR` | Insufficient permissions |
-| `NOT_FOUND` | Resource not found |
-| `CONFLICT` | Resource conflict (e.g., duplicate) |
-| `RATE_LIMIT_EXCEEDED` | Too many requests |
-| `INTERNAL_ERROR` | Server error |
-| `SERVICE_UNAVAILABLE` | Service temporarily unavailable |
+```json
+{
+  "success": false,
+  "error": {
+    "code": "RATE_LIMIT_EXCEEDED",
+    "message": "Too many requests, please try again later",
+    "retryAfter": 900
+  }
+}
+```
 
-## SDKs and Code Examples
+## SDK Examples
 
-### JavaScript/Node.js
-```javascript
-const FoodXchangeAPI = require('@foodxchange/sdk');
+### JavaScript/TypeScript SDK
 
-const api = new FoodXchangeAPI({
+```typescript
+import { FoodXchangeClient } from '@foodxchange/sdk';
+
+const client = new FoodXchangeClient({
   apiKey: 'your-api-key',
   environment: 'production'
 });
 
-// Get products
-const products = await api.products.list({
-  category: 'vegetables',
-  limit: 20
+// Authentication
+const { user, tokens } = await client.auth.login({
+  email: 'user@example.com',
+  password: 'password123'
 });
 
-// Create order
-const order = await api.orders.create({
-  items: [...],
-  shipping: {...}
+// Set auth token
+client.setAuthToken(tokens.accessToken);
+
+// Product operations
+const products = await client.products.list({
+  category: 'beverages',
+  page: 1,
+  pageSize: 20
 });
+
+const product = await client.products.create({
+  name: 'New Product',
+  sku: 'SKU-001',
+  category: 'beverages',
+  pricing: {
+    basePrice: 10.99,
+    currency: 'USD'
+  }
+});
+
+// RFQ operations
+const rfq = await client.rfqs.create({
+  title: 'Bulk Order Q1',
+  items: [{
+    name: 'Product 1',
+    quantity: 1000
+  }],
+  dueDate: new Date('2025-02-01')
+});
+
+// Submit quote
+const quote = await client.rfqs.submitQuote(rfq.id, {
+  items: [{
+    itemIndex: 0,
+    price: 9.99,
+    quantity: 1000
+  }],
+  validUntil: new Date('2025-02-15')
+});
+
+// WebSocket connection
+const socket = client.createWebSocket();
+
+socket.on('rfq_update', (data) => {
+  console.log('RFQ updated:', data);
+});
+
+socket.subscribe('rfq', rfq.id);
 ```
 
-### Python
+### Python SDK
+
 ```python
-from foodxchange import Client
+from foodxchange import FoodXchangeClient
 
-client = Client(api_key='your-api-key')
+client = FoodXchangeClient(
+    api_key='your-api-key',
+    environment='production'
+)
 
-# Get products
+# Authentication
+auth_response = client.auth.login(
+    email='user@example.com',
+    password='password123'
+)
+
+client.set_auth_token(auth_response['tokens']['accessToken'])
+
+# Product operations
 products = client.products.list(
-    category='vegetables',
-    limit=20
+    category='beverages',
+    page=1,
+    page_size=20
 )
 
-# Create order
-order = client.orders.create(
-    items=[...],
-    shipping={...}
-)
+product = client.products.create({
+    'name': 'New Product',
+    'sku': 'SKU-001',
+    'category': 'beverages',
+    'pricing': {
+        'basePrice': 10.99,
+        'currency': 'USD'
+    }
+})
+
+# RFQ operations
+rfq = client.rfqs.create({
+    'title': 'Bulk Order Q1',
+    'items': [{
+        'name': 'Product 1',
+        'quantity': 1000
+    }],
+    'dueDate': '2025-02-01T00:00:00Z'
+})
+
+# WebSocket connection
+def on_rfq_update(data):
+    print(f"RFQ updated: {data}")
+
+socket = client.create_websocket()
+socket.on('rfq_update', on_rfq_update)
+socket.subscribe('rfq', rfq['id'])
+socket.connect()
 ```
 
 ### cURL Examples
+
 ```bash
-# Get products
-curl -X GET "https://api.foodxchange.com/api/v1/products?category=vegetables" \
+# Login
+curl -X POST https://api.foodxchange.com/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "password123"
+  }'
+
+# List products
+curl -X GET "https://api.foodxchange.com/v1/products?category=beverages" \
   -H "Authorization: Bearer <token>"
 
-# Create order
-curl -X POST "https://api.foodxchange.com/api/v1/orders" \
+# Create RFQ
+curl -X POST https://api.foodxchange.com/v1/rfqs \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
-  -d '{"items":[...],"shipping":{...}}'
+  -d '{
+    "title": "Bulk Order Q1",
+    "items": [{
+      "name": "Product 1",
+      "quantity": 1000
+    }],
+    "dueDate": "2025-02-01T00:00:00Z"
+  }'
 ```
 
-## Postman Collection
+## Error Handling
 
-Download our Postman collection for easy API testing:
-[Download Postman Collection](https://api.foodxchange.com/docs/postman-collection.json)
+### Error Response Format
 
-## OpenAPI Specification
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Validation failed",
+    "details": [
+      {
+        "field": "email",
+        "message": "Invalid email format"
+      }
+    ]
+  },
+  "timestamp": "2025-01-23T12:00:00Z",
+  "requestId": "req_123456789"
+}
+```
 
-Access our OpenAPI 3.0 specification:
-- Swagger UI: https://api.foodxchange.com/api-docs
-- OpenAPI JSON: https://api.foodxchange.com/openapi.json
+### Common Error Codes
+
+| Code | HTTP Status | Description |
+|------|-------------|-------------|
+| `UNAUTHORIZED` | 401 | Missing or invalid authentication |
+| `FORBIDDEN` | 403 | Insufficient permissions |
+| `NOT_FOUND` | 404 | Resource not found |
+| `VALIDATION_ERROR` | 400 | Request validation failed |
+| `DUPLICATE_ENTRY` | 409 | Resource already exists |
+| `RATE_LIMIT_EXCEEDED` | 429 | Too many requests |
+| `INTERNAL_ERROR` | 500 | Server error |
+| `SERVICE_UNAVAILABLE` | 503 | Service temporarily unavailable |
+
+### Validation Errors
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Validation failed",
+    "details": [
+      {
+        "field": "pricing.basePrice",
+        "message": "Base price must be greater than 0",
+        "value": -5
+      },
+      {
+        "field": "category",
+        "message": "Invalid category",
+        "value": "invalid_category",
+        "allowedValues": ["beverages", "dairy", "meat", "seafood"]
+      }
+    ]
+  }
+}
+```
+
+### Business Logic Errors
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "INSUFFICIENT_INVENTORY",
+    "message": "Requested quantity exceeds available inventory",
+    "details": {
+      "requested": 5000,
+      "available": 2500,
+      "productId": "prod_123"
+    }
+  }
+}
+```
+
+## API Versioning
+
+### Version Header
+
+```http
+X-API-Version: 1.0
+```
+
+### Version in URL
+
+```
+https://api.foodxchange.com/v1/products
+https://api.foodxchange.com/v2/products
+```
+
+### Deprecation Notice
+
+```http
+X-API-Deprecation: true
+X-API-Deprecation-Date: 2025-12-31
+X-API-Sunset-Date: 2026-06-30
+```
+
+## Testing
+
+### Test Environment
+
+- **Base URL**: `https://sandbox.foodxchange.com/v1`
+- **Test Credentials**: Available in developer portal
+- **Rate Limits**: 10x higher than production
+
+### Test Data
+
+```json
+{
+  "testUsers": [
+    {
+      "email": "buyer@test.foodxchange.com",
+      "password": "TestPass123!",
+      "role": "buyer"
+    },
+    {
+      "email": "seller@test.foodxchange.com",
+      "password": "TestPass123!",
+      "role": "seller"
+    }
+  ],
+  "testProducts": ["prod_test_001", "prod_test_002"],
+  "testRFQs": ["rfq_test_001", "rfq_test_002"]
+}
+```
+
+## Support
+
+- **Documentation**: [https://docs.foodxchange.com](https://docs.foodxchange.com)
+- **API Status**: [https://status.foodxchange.com](https://status.foodxchange.com)
+- **Developer Portal**: [https://developers.foodxchange.com](https://developers.foodxchange.com)
+- **Support Email**: api-support@foodxchange.com
 
 ---
 
-For more information, visit our [Developer Portal](https://developers.foodxchange.com) or contact support@foodxchange.com.
+**Version**: 1.0  
+**Last Updated**: January 2025

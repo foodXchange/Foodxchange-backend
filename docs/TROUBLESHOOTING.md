@@ -1,31 +1,51 @@
-# Troubleshooting Guide
+# FoodXchange Backend - Comprehensive Troubleshooting Guide
 
-This comprehensive guide covers common issues and solutions for the FoodXchange Backend, including server, Docker, Redis, and MongoDB problems.
+This guide covers all common and advanced troubleshooting scenarios for the FoodXchange Backend platform.
 
 ## Table of Contents
-1. [Server Issues](#server-issues)
+
+1. [Server Startup Issues](#server-startup-issues)
 2. [Docker Issues](#docker-issues)
 3. [Redis Issues](#redis-issues)
 4. [MongoDB Issues](#mongodb-issues)
-5. [Performance Issues](#performance-issues)
+5. [Common Error Messages](#common-error-messages)
 6. [Development Environment Issues](#development-environment-issues)
-7. [Production Issues](#production-issues)
-8. [Common Error Messages](#common-error-messages)
+7. [Production Deployment Problems](#production-deployment-problems)
+8. [Performance Issues](#performance-issues)
+9. [Security Issues](#security-issues)
+10. [API Issues](#api-issues)
+11. [WebSocket Issues](#websocket-issues)
+12. [Integration Issues](#integration-issues)
 
----
-
-## Server Issues
+## Server Startup Issues
 
 ### Server Won't Start
 
-#### Symptom
+#### Symptom: "Cannot find module" errors
+
+```bash
+Error: Cannot find module './core/integration/ArchitectureIntegrator'
 ```
+
+**Solution:**
+```bash
+# Clear node_modules and reinstall
+rm -rf node_modules package-lock.json
+npm install
+
+# If TypeScript issues persist
+npm run build
+```
+
+#### Symptom: "Port already in use"
+
+```bash
 Error: listen EADDRINUSE: address already in use :::5000
 ```
 
-#### Solution
+**Solution:**
 ```bash
-# Find process using port 5000
+# Find process using port
 # Windows
 netstat -ano | findstr :5000
 taskkill /PID <PID> /F
@@ -38,597 +58,732 @@ kill -9 <PID>
 PORT=5001
 ```
 
-### Node.js Memory Issues
+#### Symptom: "ECONNREFUSED" on startup
 
-#### Symptom
-```
-FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory
-```
-
-#### Solution
+**Solution:**
 ```bash
-# Increase memory limit
-NODE_OPTIONS="--max-old-space-size=4096" npm run dev
+# Check if required services are running
+docker-compose ps
 
-# Or in .env
-NODE_OPTIONS=--max-old-space-size=4096
+# Start services if needed
+docker-compose up -d mongo redis
 
-# For production
-node --max-old-space-size=4096 dist/server.js
+# Or run without external dependencies
+npm run dev:standalone
 ```
 
 ### TypeScript Compilation Errors
 
-#### Symptom
-```
-TSError: ⨯ Unable to compile TypeScript
-```
+#### Symptom: "Type 'X' is not assignable to type 'Y'"
 
-#### Solution
+**Solution:**
 ```bash
-# Clear TypeScript cache
-rm -rf node_modules/.cache
-rm -rf dist
-
-# Reinstall dependencies
-npm ci
-
-# Rebuild
+# Clean build
+npm run clean
 npm run build
+
+# Check TypeScript version
+npm list typescript
+
+# Update if needed
+npm install typescript@latest
 ```
-
-### Module Not Found Errors
-
-#### Symptom
-```
-Error: Cannot find module 'express'
-```
-
-#### Solution
-```bash
-# Clear npm cache
-npm cache clean --force
-
-# Remove node_modules
-rm -rf node_modules package-lock.json
-
-# Reinstall
-npm install
-```
-
----
 
 ## Docker Issues
 
 ### Docker Desktop Not Starting (Windows)
 
-#### Symptom
-Docker Desktop fails to start or hangs on "Starting..."
+#### Symptom: Docker Desktop hangs or crashes
 
-#### Solution
+**Solution:**
 ```powershell
 # Run as Administrator
-# 1. Enable virtualization
-.\enable-virtualization.ps1
-
-# 2. Reset Docker Desktop
-Stop-Service com.docker.service
+# Reset Docker Desktop
+Stop-Service docker
 Remove-Item "$env:APPDATA\Docker" -Recurse -Force
 Remove-Item "$env:LOCALAPPDATA\Docker" -Recurse -Force
 
-# 3. Restart Docker Desktop
-Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+# Enable virtualization
+.\enable-virtualization.ps1
 
-# 4. If still failing, reset WSL2
+# Restart Docker Desktop
+Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+```
+
+#### Symptom: WSL 2 issues
+
+**Solution:**
+```powershell
+# Update WSL
+wsl --update
+
+# Set default version
+wsl --set-default-version 2
+
+# Reset WSL
 wsl --shutdown
 wsl --unregister docker-desktop
 wsl --unregister docker-desktop-data
 ```
 
-### Docker Build Failures
+### Docker Compose Issues
 
-#### Canvas Package Build Error
-```
-error /app/node_modules/canvas: Command failed
+#### Symptom: "Cannot connect to Docker daemon"
+
+**Solution:**
+```bash
+# Check Docker service
+sudo systemctl status docker
+
+# Start if needed
+sudo systemctl start docker
+
+# Add user to docker group
+sudo usermod -aG docker $USER
+newgrp docker
 ```
 
-#### Solution
-Update Dockerfile to include canvas dependencies:
+#### Symptom: "No space left on device"
+
+**Solution:**
+```bash
+# Clean Docker system
+docker system prune -a --volumes
+
+# Check disk space
+df -h
+
+# Remove unused images
+docker image prune -a
+
+# Remove unused volumes
+docker volume prune
+```
+
+### Container Build Failures
+
+#### Symptom: "npm ERR! code ELIFECYCLE"
+
+**Solution:**
 ```dockerfile
-RUN apk add --no-cache \
-    python3 \
-    make \
-    g++ \
-    cairo-dev \
-    jpeg-dev \
-    pango-dev \
-    giflib-dev \
-    pixman-dev \
-    libjpeg-turbo-dev \
-    freetype-dev \
-    pkgconfig
+# Update Dockerfile to include build tools
+RUN apk add --no-cache python3 make g++ \
+    && npm install \
+    && apk del python3 make g++
 ```
 
-### Docker Compose Connection Issues
+#### Symptom: ARM64/M1 Mac issues
 
-#### Symptom
+**Solution:**
+```yaml
+# docker-compose.yml - specify platform
+services:
+  mongo:
+    image: mongo:7.0
+    platform: linux/amd64  # or linux/arm64
 ```
-ERROR: for backend Cannot start service backend: driver failed programming external connectivity
-```
-
-#### Solution
-```bash
-# Stop all containers
-docker-compose down
-
-# Remove all containers
-docker container prune -f
-
-# Restart Docker
-# Windows: Restart Docker Desktop
-# Linux: sudo systemctl restart docker
-
-# Start again
-docker-compose up -d
-```
-
-### Docker Network Issues
-
-#### Symptom
-Services can't communicate with each other
-
-#### Solution
-```bash
-# List networks
-docker network ls
-
-# Remove old network
-docker network rm foodxchange-backend_foodxchange-network
-
-# Recreate network
-docker network create foodxchange-network
-
-# Update docker-compose.yml to use external network
-networks:
-  foodxchange-network:
-    external: true
-```
-
----
 
 ## Redis Issues
 
-### Redis Connection Refused
+### Connection Issues
 
-#### Symptom
-```
-[ioredis] Unhandled error event: Error: connect ECONNREFUSED 127.0.0.1:6379
-```
+#### Symptom: "Redis connection to localhost:6379 failed"
 
-#### Solution
-
-1. **Check if Redis is running**
+**Solution:**
 ```bash
-# Docker
-docker ps | grep redis
+# Check if Redis is running
+docker-compose ps redis
 
-# Local Redis (Windows)
-redis-cli ping
+# Test connection
+docker exec -it foodxchange-redis redis-cli ping
 
-# Start Redis if not running
-docker-compose up -d redis
-```
-
-2. **Verify Redis configuration**
-```bash
 # Check Redis logs
 docker logs foodxchange-redis
 
-# Test connection
-redis-cli -h localhost -p 6379 ping
+# Restart Redis
+docker-compose restart redis
 ```
 
-3. **Use fallback mode**
-```env
-# In .env - disable Redis to use memory cache
-DISABLE_REDIS=true
-```
+#### Symptom: "MISCONF Redis is configured to save RDB snapshots"
 
-### Redis Memory Issues
-
-#### Symptom
-```
-OOM command not allowed when used memory > 'maxmemory'
-```
-
-#### Solution
+**Solution:**
 ```bash
 # Connect to Redis
-redis-cli
+docker exec -it foodxchange-redis redis-cli
 
-# Check memory usage
-INFO memory
+# Disable persistence temporarily
+CONFIG SET stop-writes-on-bgsave-error no
 
-# Clear cache
-FLUSHDB
-
-# Or increase memory limit in redis.conf
-maxmemory 1gb
-maxmemory-policy allkeys-lru
+# Or fix permissions
+docker exec -it foodxchange-redis chown redis:redis /data
 ```
 
-### Redis Persistence Issues
+### Memory Issues
 
-#### Symptom
-Data lost after restart
+#### Symptom: "OOM command not allowed when used memory > 'maxmemory'"
 
-#### Solution
+**Solution:**
 ```bash
-# Enable AOF persistence
-# In redis.conf or docker-compose.yml
-appendonly yes
-appendfsync everysec
+# Increase memory limit
+docker exec -it foodxchange-redis redis-cli CONFIG SET maxmemory 512mb
 
-# Check persistence files
-docker exec foodxchange-redis ls /data
+# Set eviction policy
+docker exec -it foodxchange-redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
 
-# Backup Redis data
-docker exec foodxchange-redis redis-cli BGSAVE
+# Or update docker-compose.yml
+command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru
 ```
 
----
+### Performance Issues
+
+#### Symptom: Slow Redis operations
+
+**Solution:**
+```bash
+# Monitor Redis
+docker exec -it foodxchange-redis redis-cli MONITOR
+
+# Check slow log
+docker exec -it foodxchange-redis redis-cli SLOWLOG GET 10
+
+# Optimize persistence
+docker exec -it foodxchange-redis redis-cli CONFIG SET save ""
+```
 
 ## MongoDB Issues
 
-### MongoDB Connection Failed
+### Authentication Failures
 
-#### Symptom
-```
-MongoServerError: Authentication failed
-MongoNetworkError: connect ECONNREFUSED 127.0.0.1:27017
-```
+#### Symptom: "MongoServerError: Authentication failed"
 
-#### Solution
-
-1. **Check MongoDB is running**
+**Solution:**
 ```bash
-# Docker
-docker ps | grep mongo
-docker logs foodxchange-mongo
+# Check connection string
+MONGODB_URI=mongodb://admin:password@localhost:27017/foodxchange?authSource=admin
 
-# Start if not running
-docker-compose up -d mongo
-```
-
-2. **Verify connection string**
-```env
-# For Docker
-MONGODB_URI=mongodb://mongo:27017/foodxchange
-
-# For local
-MONGODB_URI=mongodb://localhost:27017/foodxchange
-
-# With auth
-MONGODB_URI=mongodb://admin:password@mongo:27017/foodxchange?authSource=admin
-```
-
-3. **Check MongoDB logs**
-```bash
-docker logs foodxchange-mongo
-
-# Enter MongoDB shell
+# Create user if missing
 docker exec -it foodxchange-mongo mongosh
+
+use admin
+db.createUser({
+  user: "admin",
+  pwd: "password",
+  roles: ["root"]
+})
+
+use foodxchange
+db.createUser({
+  user: "foodxchange",
+  pwd: "password",
+  roles: ["readWrite"]
+})
 ```
 
-### MongoDB Performance Issues
+### Connection Issues
 
-#### Symptom
-Slow queries, high CPU usage
+#### Symptom: "MongoNetworkError: connect ECONNREFUSED"
 
-#### Solution
+**Solution:**
+```bash
+# Check MongoDB status
+docker-compose ps mongo
+docker logs foodxchange-mongo
 
-1. **Check slow queries**
+# Test connection
+docker exec -it foodxchange-mongo mongosh --eval "db.adminCommand('ping')"
+
+# Check firewall
+sudo ufw allow 27017
+```
+
+### Performance Issues
+
+#### Symptom: Slow queries
+
+**Solution:**
 ```javascript
-// In MongoDB shell
+// Add indexes via mongosh
+docker exec -it foodxchange-mongo mongosh foodxchange
+
+// Check slow queries
 db.setProfilingLevel(1, { slowms: 100 })
 db.system.profile.find().limit(5).sort({ millis: -1 })
+
+// Add indexes
+db.products.createIndex({ name: "text", description: "text" })
+db.products.createIndex({ category: 1, createdAt: -1 })
+db.rfqs.createIndex({ status: 1, dueDate: 1 })
 ```
 
-2. **Add indexes**
-```javascript
-// Check missing indexes
-db.products.getIndexes()
+### Disk Space Issues
 
-// Add compound index
-db.products.createIndex({ category: 1, status: 1, createdAt: -1 })
-```
+#### Symptom: "not enough disk space"
 
-3. **Optimize connection pool**
-```env
-DB_POOL_SIZE=20
-DB_MAX_POOL_SIZE=50
-DB_MIN_POOL_SIZE=10
-```
-
-### MongoDB Disk Space Issues
-
-#### Symptom
-```
-MongoServerError: not enough disk space
-```
-
-#### Solution
+**Solution:**
 ```bash
 # Check disk usage
-docker exec foodxchange-mongo df -h
+docker exec -it foodxchange-mongo df -h
 
 # Compact database
-docker exec -it foodxchange-mongo mongosh
-use foodxchange
-db.runCommand({ compact: 'products' })
+docker exec -it foodxchange-mongo mongosh foodxchange --eval "db.runCommand({ compact: 'products' })"
 
-# Clean old data
-db.products.deleteMany({ createdAt: { $lt: new Date(Date.now() - 90*24*60*60*1000) } })
+# Remove old data
+docker exec -it foodxchange-mongo mongosh foodxchange --eval "db.logs.deleteMany({ createdAt: { \$lt: new Date(Date.now() - 30*24*60*60*1000) } })"
 ```
 
----
+## Common Error Messages
 
-## Performance Issues
+### "Cannot read property 'x' of undefined"
 
-### Slow API Response Times
+**Cause:** Null reference error, usually missing data
 
-#### Diagnosis
-```bash
-# Check response times
-curl -w "@curl-format.txt" -o /dev/null -s http://localhost:5000/api/health
-
-# Monitor with logs
-DEBUG=app:* npm run dev
-```
-
-#### Solutions
-
-1. **Enable caching**
-```env
-ENABLE_CACHING=true
-CACHE_TTL_DEFAULT=300
-```
-
-2. **Optimize database queries**
-```typescript
-// Use projection
-await Product.find({}, 'name price status').limit(100)
-
-// Use lean for read-only
-await Product.find().lean()
-```
-
-3. **Enable compression**
-```env
-ENABLE_COMPRESSION=true
-COMPRESSION_LEVEL=6
-```
-
-### High Memory Usage
-
-#### Diagnosis
-```bash
-# Monitor memory
-docker stats foodxchange-backend
-
-# Node.js memory
-node --trace-gc dist/server.js
-```
-
-#### Solutions
+**Solution:**
 ```javascript
-// Fix memory leaks
-// Clear intervals
-const interval = setInterval(() => {}, 1000)
-clearInterval(interval)
+// Add null checks
+if (user && user.profile && user.profile.email) {
+  // Safe to use user.profile.email
+}
 
-// Remove event listeners
-emitter.removeAllListeners()
+// Or use optional chaining
+const email = user?.profile?.email || 'default@example.com';
+```
 
-// Clear cache periodically
-setInterval(() => {
-  if (global.gc) {
-    global.gc()
+### "JWT malformed"
+
+**Cause:** Invalid JWT token format
+
+**Solution:**
+```bash
+# Check JWT_SECRET in .env
+JWT_SECRET=your-secret-key-here
+
+# Verify token format
+# Should be: Bearer eyJhbGciOiJIUzI1NiIs...
+```
+
+### "PayloadTooLargeError"
+
+**Cause:** Request body exceeds limit
+
+**Solution:**
+```javascript
+// Increase limit in server.ts
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+```
+
+### "CORS error"
+
+**Cause:** Cross-origin request blocked
+
+**Solution:**
+```javascript
+// Update CORS config
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+```
+
+## Development Environment Issues
+
+### Node.js Version Issues
+
+#### Symptom: "The engine 'node' is incompatible"
+
+**Solution:**
+```bash
+# Check Node version
+node --version
+
+# Install correct version with nvm
+nvm install 18
+nvm use 18
+
+# Or update .nvmrc
+echo "18" > .nvmrc
+```
+
+### TypeScript Issues
+
+#### Symptom: "Cannot use import statement outside a module"
+
+**Solution:**
+```json
+// Update tsconfig.json
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "esModuleInterop": true,
+    "target": "ES2022"
   }
-}, 60000)
+}
+```
+
+### Environment Variable Issues
+
+#### Symptom: Environment variables not loading
+
+**Solution:**
+```bash
+# Check .env file location
+ls -la .env
+
+# Load manually if needed
+node -r dotenv/config dist/server-new.js
+
+# Debug env vars
+console.log('ENV:', process.env.NODE_ENV);
+console.log('PORT:', process.env.PORT);
+```
+
+## Production Deployment Problems
+
+### Memory Leaks
+
+#### Symptom: Increasing memory usage over time
+
+**Solution:**
+```javascript
+// Add memory monitoring
+setInterval(() => {
+  const usage = process.memoryUsage();
+  console.log('Memory Usage:', {
+    rss: `${Math.round(usage.rss / 1024 / 1024)}MB`,
+    heapTotal: `${Math.round(usage.heapTotal / 1024 / 1024)}MB`,
+    heapUsed: `${Math.round(usage.heapUsed / 1024 / 1024)}MB`
+  });
+}, 60000);
+
+// Fix common leaks
+// 1. Clear intervals/timeouts
+// 2. Remove event listeners
+// 3. Close database connections
+// 4. Limit cache sizes
 ```
 
 ### High CPU Usage
 
-#### Diagnosis
+#### Symptom: CPU at 100%
+
+**Solution:**
 ```bash
-# Profile CPU
-node --prof dist/server.js
+# Profile application
+node --prof dist/server-new.js
+
+# Analyze profile
 node --prof-process isolate-*.log > profile.txt
+
+# Common fixes:
+# 1. Add indexes to database
+# 2. Implement caching
+# 3. Optimize algorithms
+# 4. Use worker threads
 ```
 
-#### Solutions
-- Use worker threads for CPU-intensive tasks
-- Implement request queuing
-- Add rate limiting
-- Use clustering
+### SSL/TLS Issues
 
----
+#### Symptom: "SSL certificate problem"
 
-## Development Environment Issues
-
-### Hot Reload Not Working
-
-#### Solution
-```bash
-# Use tsx watch
-npm run dev:tsx
-
-# Or nodemon with ts-node
-npm run dev:nodemon
-```
-
-### Port Already in Use
-
-#### Solution
-```bash
-# Kill all Node processes
-# Windows
-taskkill /F /IM node.exe
-
-# Linux/Mac
-killall node
-```
-
-### Environment Variables Not Loading
-
-#### Solution
-```bash
-# Check .env file exists
-ls -la .env
-
-# Copy from example
-cp .env.example .env
-
-# Verify loading
-node -e "require('dotenv').config(); console.log(process.env.PORT)"
-```
-
----
-
-## Production Issues
-
-### SSL/TLS Certificate Issues
-
-#### Solution
+**Solution:**
 ```nginx
-# In nginx.conf
-ssl_certificate /etc/nginx/ssl/cert.pem;
-ssl_certificate_key /etc/nginx/ssl/key.pem;
-ssl_protocols TLSv1.2 TLSv1.3;
-```
-
-### Load Balancer Health Check Failures
-
-#### Solution
-```javascript
-// Implement proper health check
-app.get('/health', async (req, res) => {
-  try {
-    // Check dependencies
-    await mongoose.connection.db.admin().ping()
-    await redisClient.ping()
-    
-    res.status(200).json({
-      status: 'healthy',
-      timestamp: new Date().toISOString()
-    })
-  } catch (error) {
-    res.status(503).json({
-      status: 'unhealthy',
-      error: error.message
-    })
-  }
-})
-```
-
-### Graceful Shutdown Issues
-
-#### Solution
-```javascript
-// Handle shutdown signals
-process.on('SIGTERM', gracefulShutdown)
-process.on('SIGINT', gracefulShutdown)
-
-async function gracefulShutdown() {
-  console.log('Shutting down gracefully...')
-  
-  // Stop accepting new requests
-  server.close(() => {
-    console.log('HTTP server closed')
-  })
-  
-  // Close database connections
-  await mongoose.connection.close()
-  await redisClient.quit()
-  
-  process.exit(0)
+# nginx.conf
+server {
+    listen 443 ssl http2;
+    ssl_certificate /etc/ssl/certs/foodxchange.crt;
+    ssl_certificate_key /etc/ssl/private/foodxchange.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
 }
 ```
 
----
+## Performance Issues
 
-## Common Error Messages
+### Slow API Responses
 
-### "Cannot find module" Errors
-```bash
-# Solution
-npm rebuild
-npm ci
+**Diagnosis:**
+```javascript
+// Add response time logging
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(`${req.method} ${req.url} - ${duration}ms`);
+  });
+  next();
+});
 ```
 
-### "ECONNREFUSED" Errors
-- Check if services are running
-- Verify connection strings
-- Check firewall rules
+**Solutions:**
+1. Enable caching
+2. Add database indexes
+3. Implement pagination
+4. Use query optimization
+5. Add Redis caching layer
 
-### "ETIMEDOUT" Errors
-- Increase timeout values
-- Check network connectivity
-- Verify service endpoints
+### Database Query Optimization
 
-### "EMFILE: too many open files"
-```bash
-# Increase ulimit
-ulimit -n 4096
+```javascript
+// Slow query
+const products = await Product.find({
+  category: 'beverages',
+  isActive: true
+}).populate('supplier').populate('reviews');
 
-# Or in Docker
-docker run --ulimit nofile=4096:4096 foodxchange-backend
+// Optimized query
+const products = await Product.find({
+  category: 'beverages',
+  isActive: true
+})
+.select('name price description')
+.populate('supplier', 'name email')
+.lean()
+.limit(50);
 ```
 
----
+## Security Issues
 
-## Quick Diagnostic Commands
+### Authentication Failures
+
+#### Symptom: "Invalid token" errors
+
+**Solution:**
+```javascript
+// Verify JWT configuration
+const token = jwt.sign(
+  { userId: user._id },
+  process.env.JWT_SECRET,
+  { expiresIn: '7d' }
+);
+
+// Check token in requests
+const authHeader = req.headers.authorization;
+const token = authHeader && authHeader.split(' ')[1];
+```
+
+### Rate Limiting Issues
+
+#### Symptom: "Too many requests" errors
+
+**Solution:**
+```javascript
+// Adjust rate limits
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // increase limit
+  skipSuccessfulRequests: true
+});
+```
+
+## API Issues
+
+### Request Validation Errors
+
+#### Symptom: "Validation failed"
+
+**Solution:**
+```javascript
+// Add detailed error messages
+const validation = [
+  body('email')
+    .isEmail()
+    .withMessage('Please provide a valid email address')
+    .normalizeEmail(),
+  body('password')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long')
+];
+```
+
+### File Upload Issues
+
+#### Symptom: "Multer error"
+
+**Solution:**
+```javascript
+// Configure multer properly
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only images are allowed'));
+    }
+  }
+});
+```
+
+## WebSocket Issues
+
+### Connection Failures
+
+#### Symptom: "WebSocket connection failed"
+
+**Solution:**
+```javascript
+// Check CORS for WebSocket
+const io = new Server(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL,
+    methods: ['GET', 'POST'],
+    credentials: true
+  },
+  transports: ['websocket', 'polling']
+});
+```
+
+### Event Not Received
+
+#### Symptom: Events not reaching clients
+
+**Solution:**
+```javascript
+// Ensure proper room joining
+socket.join(`rfq-${rfqId}`);
+
+// Emit to room
+io.to(`rfq-${rfqId}`).emit('rfq_update', data);
+
+// Debug connections
+io.on('connection', (socket) => {
+  console.log('Connected:', socket.id);
+  console.log('Rooms:', socket.rooms);
+});
+```
+
+## Integration Issues
+
+### Azure Service Issues
+
+#### Symptom: "Azure authentication failed"
+
+**Solution:**
+```bash
+# Check Azure credentials
+AZURE_CLIENT_ID=your-client-id
+AZURE_CLIENT_SECRET=your-client-secret
+AZURE_TENANT_ID=your-tenant-id
+
+# Test connection
+az login --service-principal \
+  -u $AZURE_CLIENT_ID \
+  -p $AZURE_CLIENT_SECRET \
+  --tenant $AZURE_TENANT_ID
+```
+
+### Email Service Issues
+
+#### Symptom: "Failed to send email"
+
+**Solution:**
+```javascript
+// Check SMTP configuration
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: process.env.SMTP_PORT,
+  secure: true,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
+  },
+  tls: {
+    rejectUnauthorized: false
+  }
+});
+
+// Test email
+transporter.verify((error, success) => {
+  if (error) console.error('SMTP Error:', error);
+  else console.log('SMTP Ready');
+});
+```
+
+## Quick Debugging Commands
 
 ```bash
 # Check all services
 docker-compose ps
 
-# View all logs
-docker-compose logs -f
+# View logs
+docker-compose logs -f foodxchange-backend
 
-# Check system resources
-docker system df
-docker stats
-
-# Test endpoints
-curl http://localhost:5000/health
-curl http://localhost:5000/api/v1/products
-
-# Database connections
+# Test database connection
 docker exec -it foodxchange-mongo mongosh --eval "db.adminCommand('ping')"
+
+# Test Redis connection
 docker exec -it foodxchange-redis redis-cli ping
 
-# Clear everything and restart
-docker-compose down -v
-docker system prune -a
-docker-compose up -d
+# Check disk space
+df -h
+
+# Check memory usage
+free -m
+
+# Check port usage
+netstat -tlnp
+
+# Test API endpoint
+curl -X GET http://localhost:5000/health
+
+# Monitor real-time logs
+tail -f logs/app.log | grep ERROR
 ```
 
----
+## Emergency Recovery
+
+### Complete System Reset
+
+```bash
+# Stop all services
+docker-compose down -v
+
+# Clean everything
+docker system prune -a --volumes
+rm -rf node_modules dist logs
+
+# Fresh start
+npm install
+docker-compose up -d
+npm run dev
+```
+
+### Database Recovery
+
+```bash
+# Backup database
+docker exec foodxchange-mongo mongodump --out /backup
+
+# Restore database
+docker exec foodxchange-mongo mongorestore /backup
+
+# Export specific collection
+docker exec foodxchange-mongo mongoexport \
+  --collection=products \
+  --out=/backup/products.json
+```
 
 ## Getting Help
 
-If you're still experiencing issues:
+If you continue to experience issues:
 
-1. Check logs: `docker-compose logs -f <service>`
-2. Enable debug mode: `DEBUG=* npm run dev`
-3. Search [GitHub Issues](https://github.com/foodxchange/backend/issues)
-4. Join our [Discord Community](https://discord.gg/foodxchange)
-5. Contact support: support@foodxchange.com
+1. Check the [GitHub Issues](https://github.com/foodxchange/backend/issues)
+2. Join our [Discord Community](https://discord.gg/foodxchange)
+3. Contact support: support@foodxchange.com
+4. For critical issues: emergency@foodxchange.com
 
 Remember to include:
 - Error messages
+- Log files
 - Environment details
 - Steps to reproduce
-- Relevant logs
+
+---
+
+**Last Updated**: January 2025  
+**Version**: 2.0.0

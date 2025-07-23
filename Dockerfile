@@ -3,8 +3,20 @@
 # Stage 1: Build
 FROM node:18-alpine AS builder
 
-# Install build dependencies
-RUN apk add --no-cache python3 make g++
+# Install build dependencies including canvas requirements
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    cairo-dev \
+    jpeg-dev \
+    pango-dev \
+    giflib-dev \
+    pixman-dev \
+    pangomm-dev \
+    libjpeg-turbo-dev \
+    freetype-dev \
+    pkgconfig
 
 WORKDIR /app
 
@@ -26,7 +38,7 @@ RUN npm run build
 RUN npm prune --production
 
 # Stage 2: Production
-FROM node:18-alpine
+FROM node:18-alpine AS production
 
 # Install production dependencies
 RUN apk add --no-cache dumb-init
@@ -59,4 +71,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
 ENTRYPOINT ["dumb-init", "--"]
 
 # Start application
-CMD ["node", "dist/server.js"]
+CMD ["node", "dist/server-new.js"]

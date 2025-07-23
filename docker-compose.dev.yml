@@ -6,7 +6,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: development
+      target: builder
     container_name: foodxchange-backend-dev
     restart: unless-stopped
     ports:
@@ -40,11 +40,11 @@ services:
       - ./uploads:/app/uploads
     networks:
       - foodxchange-network
-    command: npm run dev
+    command: sh -c "npm install && npm run dev"
 
-  # MongoDB Database
+  # MongoDB Database (Latest 7.0.x)
   mongo:
-    image: mongo:7.0
+    image: mongo:7.0.5
     container_name: foodxchange-mongo-dev
     restart: unless-stopped
     ports:
@@ -55,9 +55,9 @@ services:
     networks:
       - foodxchange-network
 
-  # Redis Cache
+  # Redis Cache (Latest 7.2.x Alpine)
   redis:
-    image: redis:7-alpine
+    image: redis:7.2.4-alpine
     container_name: foodxchange-redis-dev
     restart: unless-stopped
     ports:

@@ -1,0 +1,53 @@
+===========================================
+QUICK DOCUMENTATION REFRESH COMMANDS
+===========================================
+
+OPTION 1: ALL-IN-ONE COMMAND (Recommended)
+------------------------------------------
+Copy and paste this entire command:
+
+"Delete all old documentation .md files and update and Create complete documentation package with verification. Put in documents all server related issues - including, docker and redis and mongo. Put this as a permanent part of documentation."
+
+
+OPTION 2: STEP BY STEP
+----------------------
+1. "Show me all .md documentation files"
+2. "Delete all old documentation .md files except README.md"
+3. "Create complete documentation package with verification"
+4. "Put all server issues including docker, redis, mongo as permanent documentation"
+5. "Create verification and export scripts"
+6. "Run verification and show results"
+
+
+KEY PHRASES TO REMEMBER
+-----------------------
+- "Delete all old documentation"
+- "Create complete documentation package"
+- "Put as permanent part of documentation"
+- "Including docker and redis and mongo"
+- "With verification"
+
+
+VERIFICATION COMMANDS
+--------------------
+- "What documentation do we have now?"
+- "Run documentation verification"
+- "Show documentation structure"
+
+
+EXPORT COMMANDS
+--------------
+- "How can I document all when session done?"
+- "Create export scripts for documentation"
+- "Export session documentation"
+
+
+IMPORTANT KEYWORDS
+-----------------
+✓ "permanent" - ensures docs aren't temporary
+✓ "complete" - gets comprehensive package
+✓ "verification" - adds checking tools
+✓ "docker, redis, mongo" - ensures all server issues covered
+✓ "delete old" - removes outdated files
+
+===========================================

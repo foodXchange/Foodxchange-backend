@@ -1,0 +1,255 @@
+version: '3.8'
+
+services:
+  # FoodXchange Backend Application - Optimized for Production
+  foodxchange-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+      cache_from:
+        - node:18-alpine
+        - foodxchange-backend:latest
+    image: foodxchange-backend:latest
+    container_name: foodxchange-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+      - "9090:9090"  # Metrics port
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - HOST=0.0.0.0
+      - MONGODB_URI=mongodb://mongo:27017/foodxchange
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:-change-this-in-production}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-change-this-in-production}
+      - LOG_LEVEL=info
+      - METRICS_ENABLED=true
+      - HEALTH_CHECK_ENABLED=true
+      - PERFORMANCE_MONITORING_ENABLED=true
+      - FEATURE_CACHING=true
+      - FEATURE_RATE_LIMITING=true
+      - FEATURE_ANALYTICS=true
+      # Performance optimizations
+      - NODE_OPTIONS=--max-old-space-size=2048
+      - UV_THREADPOOL_SIZE=16
+      # Connection pooling
+      - DB_POOL_SIZE=20
+      - DB_MAX_POOL_SIZE=50
+      - DB_MIN_POOL_SIZE=10
+      # Redis optimizations
+      - REDIS_MAX_RETRIES=5
+      - REDIS_ENABLE_OFFLINE_QUEUE=true
+      - REDIS_CONNECT_TIMEOUT=10000
+    depends_on:
+      redis:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+    volumes:
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
+    networks:
+      - foodxchange-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5000/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # MongoDB Database - Optimized
+  mongo:
+    image: mongo:7.0
+    container_name: foodxchange-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME:-admin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD:-secure-password}
+      - MONGO_INITDB_DATABASE=foodxchange
+    volumes:
+      - mongo-data:/data/db
+      - mongo-config:/data/configdb
+      - ./docker/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - foodxchange-network
+    command: >
+      mongod
+      --auth
+      --wiredTigerCacheSizeGB 1
+      --wiredTigerJournalCompressor zstd
+      --wiredTigerCollectionBlockCompressor zstd
+      --wiredTigerIndexPrefixCompression true
+      --setParameter diagnosticDataCollectionEnabled=false
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  # Redis Cache - Optimized
+  redis:
+    image: redis:7-alpine
+    container_name: foodxchange-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+      - ./docker/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    networks:
+      - foodxchange-network
+    command: redis-server /usr/local/etc/redis/redis.conf
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Nginx Reverse Proxy - Optimized
+  nginx:
+    image: nginx:alpine
+    container_name: foodxchange-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx-optimized.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/ssl:/etc/nginx/ssl:ro
+      - nginx-cache:/var/cache/nginx
+    depends_on:
+      foodxchange-backend:
+        condition: service_healthy
+    networks:
+      - foodxchange-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus Monitoring - Optimized
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: foodxchange-prometheus
+    restart: unless-stopped
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    depends_on:
+      - foodxchange-backend
+    networks:
+      - foodxchange-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--storage.tsdb.retention.size=10GB'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+
+  # Grafana Dashboard - Optimized
+  grafana:
+    image: grafana/grafana:latest
+    container_name: foodxchange-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    networks:
+      - foodxchange-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+volumes:
+  mongo-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/mongo
+  mongo-config:
+    driver: local
+  redis-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/redis
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  nginx-cache:
+    driver: local
+
+networks:
+  foodxchange-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

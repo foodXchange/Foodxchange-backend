@@ -1,0 +1,168 @@
+version: '3.8'
+
+services:
+  # FoodXchange Backend Application - ARM64 Optimized
+  foodxchange-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.arm64
+      platforms:
+        - linux/arm64
+    image: foodxchange-backend:arm64
+    container_name: foodxchange-backend-arm64
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+      - "9090:9090"  # Metrics port
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - HOST=0.0.0.0
+      - MONGODB_URI=mongodb://mongo:27017/foodxchange
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:-change-this-in-production}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-change-this-in-production}
+      - LOG_LEVEL=info
+      # ARM-optimized settings
+      - NODE_OPTIONS=--max-old-space-size=1536
+      - UV_THREADPOOL_SIZE=8
+      # Connection pooling (reduced for ARM)
+      - DB_POOL_SIZE=10
+      - DB_MAX_POOL_SIZE=20
+      - DB_MIN_POOL_SIZE=5
+    depends_on:
+      redis:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+    volumes:
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
+    networks:
+      - foodxchange-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1.5G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5000/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s  # Longer startup for ARM
+
+  # MongoDB Database - ARM64 Optimized
+  mongo:
+    image: arm64v8/mongo:7.0
+    container_name: foodxchange-mongo-arm64
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME:-admin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD:-secure-password}
+      - MONGO_INITDB_DATABASE=foodxchange
+    volumes:
+      - mongo-data:/data/db
+      - mongo-config:/data/configdb
+    networks:
+      - foodxchange-network
+    command: >
+      mongod
+      --auth
+      --wiredTigerCacheSizeGB 0.5
+      --wiredTigerJournalCompressor zstd
+      --wiredTigerCollectionBlockCompressor zstd
+      --setParameter diagnosticDataCollectionEnabled=false
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # Redis Cache - ARM64 Optimized
+  redis:
+    image: arm64v8/redis:7-alpine
+    container_name: foodxchange-redis-arm64
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+      - ./docker/redis/redis-arm64.conf:/usr/local/etc/redis/redis.conf:ro
+    networks:
+      - foodxchange-network
+    command: redis-server /usr/local/etc/redis/redis.conf
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Nginx Reverse Proxy - ARM64 Optimized
+  nginx:
+    image: arm64v8/nginx:alpine
+    container_name: foodxchange-nginx-arm64
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./docker/nginx-arm64.conf:/etc/nginx/nginx.conf:ro
+      - nginx-cache:/var/cache/nginx
+    depends_on:
+      foodxchange-backend:
+        condition: service_healthy
+    networks:
+      - foodxchange-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  mongo-data:
+    driver: local
+  mongo-config:
+    driver: local
+  redis-data:
+    driver: local
+  nginx-cache:
+    driver: local
+
+networks:
+  foodxchange-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
